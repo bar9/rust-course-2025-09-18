@@ -1,0 +1,16 @@
+pages:
+  stage: deploy
+  image: debian:bookworm-slim
+  script:
+    - apt-get update && apt-get install -y wget xz-utils
+    - wget https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz
+    - wget https://github.com/badboy/mdbook-toc/releases/download/0.14.2/mdbook-toc-0.14.2-x86_64-unknown-linux-gnu.tar.gz
+    - tar xvzf mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz
+    - tar xvzf mdbook-toc-0.14.2-x86_64-unknown-linux-gnu.tar.gz
+    - ./mdbook build
+  artifacts:
+    paths:
+      - book
+  only:
+    - main
+  publish: book
