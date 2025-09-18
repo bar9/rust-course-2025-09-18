@@ -1,0 +1,1166 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Collections Deep Dive</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="chapter-6-collections---your-data-structure-toolkit"><a class="header" href="#chapter-6-collections---your-data-structure-toolkit">Chapter 6: Collections - Your Data Structure Toolkit</a></h1>
+<h2 id="vec-hashmap-hashset-and-when-to-use-each"><a class="header" href="#vec-hashmap-hashset-and-when-to-use-each">Vec, HashMap, HashSet, and When to Use Each</a></h2>
+<h3 id="learning-objectives"><a class="header" href="#learning-objectives">Learning Objectives</a></h3>
+<p>By the end of this chapter, you'll be able to:</p>
+<ul>
+<li>Master Vec<T> for dynamic arrays and sequences</li>
+<li>Use HashMap&lt;K, V&gt; efficiently for key-value storage</li>
+<li>Apply HashSet<T> for unique value collections</li>
+<li>Choose the right collection for different use cases</li>
+<li>Understand performance characteristics and trade-offs</li>
+<li>Work with collection iterators and common operations</li>
+<li>Handle edge cases and avoid common pitfalls</li>
+</ul>
+<hr />
+<h2 id="collection-overview"><a class="header" href="#collection-overview">Collection Overview</a></h2>
+<h3 id="rusts-standard-collections-vs-cnet"><a class="header" href="#rusts-standard-collections-vs-cnet">Rust's Standard Collections vs C++/.NET</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Rust Collection</th><th>C++ Equivalent</th><th>C#/.NET Equivalent</th><th>Use Case</th></tr></thead><tbody>
+<tr><td><code>Vec&lt;T&gt;</code></td><td><code>std::vector&lt;T&gt;</code></td><td><code>List&lt;T&gt;</code></td><td>Dynamic arrays</td></tr>
+<tr><td><code>HashMap&lt;K,V&gt;</code></td><td><code>std::unordered_map&lt;K,V&gt;</code></td><td><code>Dictionary&lt;K,V&gt;</code></td><td>Key-value pairs</td></tr>
+<tr><td><code>HashSet&lt;T&gt;</code></td><td><code>std::unordered_set&lt;T&gt;</code></td><td><code>HashSet&lt;T&gt;</code></td><td>Unique values</td></tr>
+<tr><td><code>BTreeMap&lt;K,V&gt;</code></td><td><code>std::map&lt;K,V&gt;</code></td><td><code>SortedDictionary&lt;K,V&gt;</code></td><td>Sorted key-value</td></tr>
+<tr><td><code>BTreeSet&lt;T&gt;</code></td><td><code>std::set&lt;T&gt;</code></td><td><code>SortedSet&lt;T&gt;</code></td><td>Sorted unique values</td></tr>
+<tr><td><code>VecDeque&lt;T&gt;</code></td><td><code>std::deque&lt;T&gt;</code></td><td><code>LinkedList&lt;T&gt;</code></td><td>Double-ended queue</td></tr>
+</tbody></table>
+</div>
+<h3 id="performance-characteristics"><a class="header" href="#performance-characteristics">Performance Characteristics</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Collection</th><th>Access</th><th>Search</th><th>Insert</th><th>Delete</th><th>Memory</th></tr></thead><tbody>
+<tr><td><code>Vec&lt;T&gt;</code></td><td>O(1)</td><td>O(n)</td><td>O(1) amortized*</td><td>O(n)</td><td>Contiguous</td></tr>
+<tr><td><code>HashMap&lt;K,V&gt;</code></td><td>O(1) average</td><td>O(1) average</td><td>O(1) average</td><td>O(1) average</td><td>Hash table</td></tr>
+<tr><td><code>HashSet&lt;T&gt;</code></td><td>N/A</td><td>O(1) average</td><td>O(1) average</td><td>O(1) average</td><td>Hash table</td></tr>
+<tr><td><code>BTreeMap&lt;K,V&gt;</code></td><td>O(log n)</td><td>O(log n)</td><td>O(log n)</td><td>O(log n)</td><td>Tree</td></tr>
+</tbody></table>
+</div>
+<p>*Insert at end is O(1) amortized, O(n) at arbitrary position</p>
+<hr />
+<h2 id="vec-the-workhorse-dynamic-array"><a class="header" href="#vec-the-workhorse-dynamic-array">Vec<T>: The Workhorse Dynamic Array</a></h2>
+<h3 id="creation-and-basic-operations"><a class="header" href="#creation-and-basic-operations">Creation and Basic Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust">fn main() {
+    // Creation methods
+    let mut vec1 = Vec::new();              // Empty vector
+    let mut vec2: Vec&lt;i32&gt; = Vec::new();    // With type annotation
+    let vec3 = vec![1, 2, 3, 4, 5];        // vec! macro
+    let vec4 = Vec::with_capacity(10);      // Pre-allocated capacity
+    
+    // Adding elements
+    vec1.push(1);
+    vec1.push(2);
+    vec1.extend([3, 4, 5]);                 // Add multiple elements
+    
+    // Accessing elements
+    let first = vec1[0];                    // Panics if out of bounds
+    let first_safe = vec1.get(0);           // Returns Option&lt;&amp;T&gt;
+    let last = vec1.last();                 // Returns Option&lt;&amp;T&gt;
+    
+    // Safe element access
+    match vec1.get(10) {
+        Some(value) =&gt; println!("Value: {}", value),
+        None =&gt; println!("Index out of bounds"),
+    }
+    
+    println!("Vec: {:?}", vec1);
+    println!("Length: {}, Capacity: {}", vec1.len(), vec1.capacity());
+}</code></pre></pre>
+<h3 id="iteration-patterns"><a class="header" href="#iteration-patterns">Iteration Patterns</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn iteration_examples() {
+    let vec = vec![1, 2, 3, 4, 5];
+    
+    // Immutable iteration (borrowing)
+    for item in &amp;vec {
+        println!("Item: {}", item);
+    }
+    // vec is still usable here
+    
+    // Mutable iteration (borrowing mutably)
+    let mut vec_mut = vec![1, 2, 3, 4, 5];
+    for item in &amp;mut vec_mut {
+        *item *= 2;  // Modify in place
+    }
+    println!("Doubled: {:?}", vec_mut);
+    
+    // Consuming iteration (takes ownership)
+    for item in vec {  // vec is moved here
+        println!("Owned item: {}", item);
+    }
+    // vec is no longer usable
+    
+    // Index-based iteration
+    let vec2 = vec![10, 20, 30];
+    for (index, value) in vec2.iter().enumerate() {
+        println!("Index {}: {}", index, value);
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="common-vec-operations"><a class="header" href="#common-vec-operations">Common Vec Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn vec_operations() {
+    let mut numbers = vec![1, 2, 3, 4, 5];
+    
+    // Insertion
+    numbers.insert(0, 0);               // Insert at beginning (expensive)
+    numbers.insert(numbers.len(), 6);   // Insert at end (like push)
+    
+    // Removal
+    let popped = numbers.pop();         // Remove last: Some(6)
+    let removed = numbers.remove(0);    // Remove at index (expensive): 0
+    
+    // Slicing
+    let slice = &amp;numbers[1..4];         // Slice: [2, 3, 4]
+    let first_three = &amp;numbers[..3];    // First three elements
+    let last_two = &amp;numbers[numbers.len()-2..];  // Last two elements
+    
+    // Searching
+    if numbers.contains(&amp;3) {
+        println!("Found 3!");
+    }
+    
+    let position = numbers.iter().position(|&amp;x| x == 4);
+    println!("Position of 4: {:?}", position);
+    
+    // Sorting and deduplication
+    let mut words = vec!["banana", "apple", "cherry", "apple"];
+    words.sort();                       // Sort in place
+    words.dedup();                      // Remove consecutive duplicates
+    
+    println!("Sorted unique words: {:?}", words);
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="advanced-vec-techniques"><a class="header" href="#advanced-vec-techniques">Advanced Vec Techniques</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn advanced_vec_techniques() {
+    // Pre-sizing for performance
+    let mut vec = Vec::with_capacity(1000);
+    for i in 0..1000 {
+        vec.push(i);  // No reallocations needed
+    }
+    
+    // Splitting and joining
+    let mut data = vec![1, 2, 3, 4, 5, 6];
+    let (left, right) = data.split_at_mut(3);
+    left[0] = 10;
+    right[0] = 40;
+    println!("Split and modified: {:?}", data);  // [10, 2, 3, 40, 5, 6]
+    
+    // Retain elements matching condition
+    let mut numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    numbers.retain(|&amp;x| x % 2 == 0);    // Keep only even numbers
+    println!("Even numbers: {:?}", numbers);
+    
+    // Convert between Vec and other collections
+    let vec_from_iter: Vec&lt;i32&gt; = (0..5).collect();
+    let string_from_chars: String = vec!['H', 'e', 'l', 'l', 'o'].into_iter().collect();
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="hashmapk-v-key-value-storage"><a class="header" href="#hashmapk-v-key-value-storage">HashMap&lt;K, V&gt;: Key-Value Storage</a></h2>
+<h3 id="creation-and-basic-operations-1"><a class="header" href="#creation-and-basic-operations-1">Creation and Basic Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+fn hashmap_basics() {
+    // Creation methods
+    let mut scores = HashMap::new();
+    scores.insert("Alice".to_string(), 100);
+    scores.insert("Bob".to_string(), 85);
+    scores.insert("Carol".to_string(), 92);
+    
+    // From iterator
+    let teams = vec!["Blue", "Yellow", "Red"];
+    let initial_scores = vec![10, 50, 25];
+    let team_scores: HashMap&lt;_, _&gt; = teams
+        .into_iter()
+        .zip(initial_scores.into_iter())
+        .collect();
+    
+    // Accessing values
+    let alice_score = scores.get("Alice");
+    match alice_score {
+        Some(score) =&gt; println!("Alice's score: {}", score),
+        None =&gt; println!("Alice not found"),
+    }
+    
+    // Direct access (panics if key doesn't exist)
+    // let bob_score = scores["Bob"];  // Risky!
+    
+    // Safe access with default
+    let charlie_score = scores.get("Charlie").unwrap_or(&amp;0);
+    println!("Charlie's score: {}", charlie_score);
+    
+    // Check if key exists
+    if scores.contains_key("Alice") {
+        println!("Alice is in the map");
+    }
+    
+    println!("All scores: {:?}", scores);
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="the-entry-api-powerful-key-value-operations"><a class="header" href="#the-entry-api-powerful-key-value-operations">The Entry API: Powerful Key-Value Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+fn entry_api_examples() {
+    let mut word_count = HashMap::new();
+    let text = "the quick brown fox jumps over the lazy dog the";
+    
+    // Count words using entry API
+    for word in text.split_whitespace() {
+        let count = word_count.entry(word.to_string()).or_insert(0);
+        *count += 1;
+    }
+    
+    println!("Word counts: {:?}", word_count);
+    
+    // Entry patterns
+    let mut player_scores = HashMap::new();
+    
+    // Insert if not present
+    player_scores.entry("Alice".to_string()).or_insert(0);
+    
+    // Insert with computed value if not present
+    player_scores.entry("Bob".to_string()).or_insert_with(|| {
+        // Expensive computation here
+        42
+    });
+    
+    // Modify existing or insert new
+    *player_scores.entry("Alice".to_string()).or_insert(0) += 10;
+    
+    // Pattern: update or set default
+    let alice_entry = player_scores.entry("Alice".to_string());
+    match alice_entry {
+        std::collections::hash_map::Entry::Occupied(mut e) =&gt; {
+            *e.get_mut() *= 2;  // Double existing score
+        }
+        std::collections::hash_map::Entry::Vacant(e) =&gt; {
+            e.insert(100);      // New player starts with 100
+        }
+    }
+    
+    println!("Player scores: {:?}", player_scores);
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="hashmap-iteration-and-operations"><a class="header" href="#hashmap-iteration-and-operations">HashMap Iteration and Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+fn hashmap_operations() {
+    let mut inventory = HashMap::new();
+    inventory.insert("apples", 10);
+    inventory.insert("bananas", 5);
+    inventory.insert("oranges", 8);
+    
+    // Iterate over key-value pairs
+    for (item, quantity) in &amp;inventory {
+        println!("{}: {}", item, quantity);
+    }
+    
+    // Iterate over keys only
+    for item in inventory.keys() {
+        println!("Item: {}", item);
+    }
+    
+    // Iterate over values only
+    for quantity in inventory.values() {
+        println!("Quantity: {}", quantity);
+    }
+    
+    // Mutable iteration over values
+    for quantity in inventory.values_mut() {
+        *quantity *= 2;  // Double all quantities
+    }
+    
+    // Remove elements
+    if let Some(removed) = inventory.remove("bananas") {
+        println!("Removed {} bananas", removed);
+    }
+    
+    // Bulk operations
+    let total_items: i32 = inventory.values().sum();
+    println!("Total items: {}", total_items);
+    
+    // Retain only items matching condition
+    inventory.retain(|&amp;item, &amp;mut quantity| quantity &gt; 10);
+    println!("High quantity items: {:?}", inventory);
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="custom-keys-and-hash-implementation"><a class="header" href="#custom-keys-and-hash-implementation">Custom Keys and Hash Implementation</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+
+#[derive(Debug, Eq, PartialEq)]
+struct Person {
+    name: String,
+    age: u32,
+}
+
+// Custom hash implementation - only hash by name
+impl Hash for Person {
+    fn hash&lt;H: Hasher&gt;(&amp;self, state: &amp;mut H) {
+        self.name.hash(state);  // Only hash the name
+    }
+}
+
+fn custom_keys() {
+    let mut people_scores = HashMap::new();
+    
+    let alice = Person { 
+        name: "Alice".to_string(), 
+        age: 30 
+    };
+    let bob = Person { 
+        name: "Bob".to_string(), 
+        age: 25 
+    };
+    
+    people_scores.insert(alice, 100);
+    people_scores.insert(bob, 85);
+    
+    // Lookup by creating temporary Person
+    let lookup_alice = Person { 
+        name: "Alice".to_string(), 
+        age: 999  // Age doesn't matter for hash/equality
+    };
+    
+    if let Some(score) = people_scores.get(&amp;lookup_alice) {
+        println!("Alice's score: {}", score);
+    }
+    
+    println!("People scores: {:?}", people_scores);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="hashset-unique-value-collections"><a class="header" href="#hashset-unique-value-collections">HashSet<T>: Unique Value Collections</a></h2>
+<h3 id="basic-operations"><a class="header" href="#basic-operations">Basic Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashSet;
+
+fn hashset_basics() {
+    // Creation
+    let mut set1 = HashSet::new();
+    set1.insert("apple");
+    set1.insert("banana");
+    set1.insert("cherry");
+    set1.insert("apple");  // Duplicate - won't be added
+    
+    // From iterator
+    let set2: HashSet&lt;i32&gt; = vec![1, 2, 3, 2, 4, 3, 5].into_iter().collect();
+    println!("Unique numbers: {:?}", set2);  // {1, 2, 3, 4, 5}
+    
+    // Check membership
+    if set1.contains("apple") {
+        println!("Set contains apple");
+    }
+    
+    // Remove elements
+    set1.remove("banana");
+    
+    // Iteration
+    for item in &amp;set1 {
+        println!("Item: {}", item);
+    }
+    
+    println!("Fruits: {:?}", set1);
+    println!("Set length: {}", set1.len());
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="set-operations"><a class="header" href="#set-operations">Set Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashSet;
+
+fn set_operations() {
+    let set_a: HashSet&lt;i32&gt; = vec![1, 2, 3, 4, 5].into_iter().collect();
+    let set_b: HashSet&lt;i32&gt; = vec![4, 5, 6, 7, 8].into_iter().collect();
+    
+    // Union: all elements from both sets
+    let union: HashSet&lt;i32&gt; = set_a.union(&amp;set_b).cloned().collect();
+    println!("Union: {:?}", union);  // {1, 2, 3, 4, 5, 6, 7, 8}
+    
+    // Intersection: common elements
+    let intersection: HashSet&lt;i32&gt; = set_a.intersection(&amp;set_b).cloned().collect();
+    println!("Intersection: {:?}", intersection);  // {4, 5}
+    
+    // Difference: elements in A but not B
+    let difference: HashSet&lt;i32&gt; = set_a.difference(&amp;set_b).cloned().collect();
+    println!("Difference (A - B): {:?}", difference);  // {1, 2, 3}
+    
+    // Symmetric difference: elements in A or B but not both
+    let sym_diff: HashSet&lt;i32&gt; = set_a.symmetric_difference(&amp;set_b).cloned().collect();
+    println!("Symmetric difference: {:?}", sym_diff);  // {1, 2, 3, 6, 7, 8}
+    
+    // Subset/superset checks
+    let subset: HashSet&lt;i32&gt; = vec![2, 3].into_iter().collect();
+    println!("Is {2, 3} subset of A? {}", subset.is_subset(&amp;set_a));
+    println!("Is A superset of {2, 3}? {}", set_a.is_superset(&amp;subset));
+    
+    // Disjoint check
+    let disjoint_set: HashSet&lt;i32&gt; = vec![10, 11, 12].into_iter().collect();
+    println!("Are A and {10, 11, 12} disjoint? {}", set_a.is_disjoint(&amp;disjoint_set));
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="practical-hashset-examples"><a class="header" href="#practical-hashset-examples">Practical HashSet Examples</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashSet;
+
+fn practical_hashset_examples() {
+    // Remove duplicates from a vector
+    let numbers = vec![1, 2, 2, 3, 3, 3, 4, 4, 4, 4];
+    let unique: HashSet&lt;i32&gt; = numbers.into_iter().collect();
+    let deduped: Vec&lt;i32&gt; = unique.into_iter().collect();
+    println!("Deduplicated: {:?}", deduped);
+    
+    // Track visited items
+    let mut visited_pages = HashSet::new();
+    let pages_to_visit = vec![
+        "home", "about", "contact", "home", "products", "about"
+    ];
+    
+    for page in pages_to_visit {
+        if visited_pages.insert(page) {
+            println!("First visit to: {}", page);
+        } else {
+            println!("Already visited: {}", page);
+        }
+    }
+    
+    // Find unique words in text
+    let text = "the quick brown fox jumps over the lazy dog";
+    let words: HashSet&lt;&amp;str&gt; = text.split_whitespace().collect();
+    println!("Unique words: {:?}", words);
+    println!("Unique word count: {}", words.len());
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="other-important-collections"><a class="header" href="#other-important-collections">Other Important Collections</a></h2>
+<h3 id="btreemap-and-btreeset-sorted-collections"><a class="header" href="#btreemap-and-btreeset-sorted-collections">BTreeMap and BTreeSet: Sorted Collections</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::{BTreeMap, BTreeSet};
+
+fn sorted_collections() {
+    // BTreeMap keeps keys sorted
+    let mut scores = BTreeMap::new();
+    scores.insert("Charlie", 85);
+    scores.insert("Alice", 92);
+    scores.insert("Bob", 78);
+    
+    println!("Sorted scores:");
+    for (name, score) in &amp;scores {
+        println!("{}: {}", name, score);  // Prints in alphabetical order
+    }
+    
+    // Range queries
+    let range: BTreeMap&lt;&amp;str, i32&gt; = scores
+        .range("Alice".."Charlie")  // From Alice to Charlie (exclusive)
+        .map(|(&amp;k, &amp;v)| (k, v))
+        .collect();
+    println!("Range A-C: {:?}", range);
+    
+    // BTreeSet for sorted unique values
+    let mut numbers = BTreeSet::new();
+    numbers.insert(5);
+    numbers.insert(2);
+    numbers.insert(8);
+    numbers.insert(2);  // Duplicate ignored
+    
+    println!("Sorted numbers: {:?}", numbers);  // {2, 5, 8}
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="vecdeque-double-ended-queue"><a class="header" href="#vecdeque-double-ended-queue">VecDeque: Double-Ended Queue</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::VecDeque;
+
+fn vecdeque_example() {
+    let mut deque = VecDeque::new();
+    
+    // Add to both ends efficiently
+    deque.push_back(1);     // Add to back: [1]
+    deque.push_front(2);    // Add to front: [2, 1]
+    deque.push_back(3);     // Add to back: [2, 1, 3]
+    
+    println!("Deque: {:?}", deque);
+    
+    // Remove from both ends
+    let front = deque.pop_front();  // Some(2), deque: [1, 3]
+    let back = deque.pop_back();    // Some(3), deque: [1]
+    
+    println!("Removed front: {:?}, back: {:?}", front, back);
+    println!("Remaining: {:?}", deque);
+    
+    // Use as a queue (FIFO)
+    let mut queue = VecDeque::new();
+    queue.push_back("first");
+    queue.push_back("second");
+    queue.push_back("third");
+    
+    while let Some(item) = queue.pop_front() {
+        println!("Processing: {}", item);
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="collection-performance-and-when-to-use-each"><a class="header" href="#collection-performance-and-when-to-use-each">Collection Performance and When to Use Each</a></h2>
+<h3 id="performance-guide"><a class="header" href="#performance-guide">Performance Guide</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet, VecDeque};
+
+fn performance_examples() {
+    // Vec&lt;T&gt; - Use when:
+    // - You need indexed access
+    // - You're iterating in order frequently
+    // - Memory usage is critical (most compact)
+    let mut data_list = Vec::new();
+    for i in 0..1000 {
+        data_list.push(i);  // O(1) amortized
+    }
+    let tenth_item = data_list[9];  // O(1) access
+    
+    // HashMap&lt;K,V&gt; - Use when:
+    // - You need fast key-based lookups
+    // - Order doesn't matter
+    // - Keys implement Hash + Eq
+    let mut user_data = HashMap::new();
+    user_data.insert("user123", "Alice");  // O(1) average
+    let user = user_data.get("user123");   // O(1) average
+    
+    // BTreeMap&lt;K,V&gt; - Use when:
+    // - You need sorted iteration
+    // - You need range queries
+    // - Keys implement Ord
+    let mut sorted_data = BTreeMap::new();
+    sorted_data.insert(10, "ten");
+    sorted_data.insert(5, "five");
+    // Iteration is in sorted order
+    
+    // HashSet&lt;T&gt; - Use when:
+    // - You need to track unique items
+    // - Membership testing is primary operation
+    // - Order doesn't matter
+    let mut unique_ids = HashSet::new();
+    unique_ids.insert(123);
+    let is_present = unique_ids.contains(&amp;123);  // O(1) average
+    
+    // VecDeque&lt;T&gt; - Use when:
+    // - You need efficient operations at both ends
+    // - Implementing queues or double-ended operations
+    let mut buffer = VecDeque::new();
+    buffer.push_back("data");   // O(1)
+    buffer.push_front("data");  // O(1)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="collection-selection-decision-tree"><a class="header" href="#collection-selection-decision-tree">Collection Selection Decision Tree</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Decision helper function
+fn choose_collection_advice() {
+    println!("Collection Selection Guide:");
+    println!("
+    Need indexed access (arr[i])? 
+    ├─ Yes → Vec&lt;T&gt;
+    └─ No
+       ├─ Key-value pairs?
+       │  ├─ Need sorted keys? → BTreeMap&lt;K,V&gt;
+       │  └─ Fast lookup priority? → HashMap&lt;K,V&gt;
+       └─ Just unique values?
+          ├─ Need sorted values? → BTreeSet&lt;T&gt;
+          ├─ Fast membership testing? → HashSet&lt;T&gt;
+          └─ Operations at both ends? → VecDeque&lt;T&gt;
+    ");
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="common-pitfalls-and-best-practices"><a class="header" href="#common-pitfalls-and-best-practices">Common Pitfalls and Best Practices</a></h2>
+<h3 id="pitfall-1-inefficient-vec-operations"><a class="header" href="#pitfall-1-inefficient-vec-operations">Pitfall 1: Inefficient Vec Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn vec_performance_pitfalls() {
+    let mut vec = vec![1, 2, 3, 4, 5];
+    
+    // ❌ Inefficient: frequent insertions at beginning
+    // Each insert shifts all elements
+    for i in 0..1000 {
+        vec.insert(0, i);  // O(n) operation
+    }
+    
+    // ✅ Better: collect in reverse order or use VecDeque
+    let mut efficient_vec = Vec::new();
+    for i in 0..1000 {
+        efficient_vec.push(i);  // O(1) amortized
+    }
+    efficient_vec.reverse();    // O(n) but only once
+    
+    // ✅ Or use VecDeque for frequent front insertions
+    let mut deque = std::collections::VecDeque::new();
+    for i in 0..1000 {
+        deque.push_front(i);  // O(1) operation
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="pitfall-2-hashmap-key-requirements"><a class="header" href="#pitfall-2-hashmap-key-requirements">Pitfall 2: HashMap Key Requirements</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+// ❌ This won't work - f64 doesn't implement Eq
+// let mut float_map: HashMap&lt;f64, String&gt; = HashMap::new();
+
+// ✅ Use ordered float wrapper or avoid floats as keys
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
+#[derive(Debug)]
+struct OrderedFloat(f64);
+
+impl PartialEq for OrderedFloat {
+    fn eq(&amp;self, other: &amp;Self) -&gt; bool {
+        self.0.to_bits() == other.0.to_bits()
+    }
+}
+
+impl Eq for OrderedFloat {}
+
+impl Hash for OrderedFloat {
+    fn hash&lt;H: Hasher&gt;(&amp;self, state: &amp;mut H) {
+        self.0.to_bits().hash(state);
+    }
+}
+
+fn float_key_solution() {
+    let mut float_map = HashMap::new();
+    float_map.insert(OrderedFloat(3.14), "pi".to_string());
+    float_map.insert(OrderedFloat(2.71), "e".to_string());
+    
+    println!("Float map: {:?}", float_map);
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="pitfall-3-borrowing-during-iteration"><a class="header" href="#pitfall-3-borrowing-during-iteration">Pitfall 3: Borrowing During Iteration</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+fn borrowing_pitfalls() {
+    let mut scores = HashMap::new();
+    scores.insert("Alice", 100);
+    scores.insert("Bob", 85);
+    
+    // ❌ Can't modify while borrowing immutably
+    // for (name, score) in &amp;scores {
+    //     if *score &lt; 90 {
+    //         scores.insert("bonus_" + name, 10);  // Borrow checker error!
+    //     }
+    // }
+    
+    // ✅ Solution 1: Collect keys first
+    let low_scorers: Vec&lt;String&gt; = scores
+        .iter()
+        .filter(|(_, &amp;score)| score &lt; 90)
+        .map(|(name, _)| format!("bonus_{}", name))
+        .collect();
+    
+    for bonus_name in low_scorers {
+        scores.insert(bonus_name, 10);
+    }
+    
+    // ✅ Solution 2: Use entry API when possible
+    let name = "Charlie";
+    scores.entry(name.to_string()).and_modify(|score| *score += 5).or_insert(80);
+    
+    println!("Updated scores: {:?}", scores);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
+<ol>
+<li><strong>Vec<T></strong> is your default choice for sequences and lists</li>
+<li><strong>HashMap&lt;K,V&gt;</strong> for fast key-value lookups when order doesn't matter</li>
+<li><strong>HashSet<T></strong> for unique value collections and membership testing</li>
+<li><strong>BTreeMap/BTreeSet</strong> when you need sorted iteration or range queries</li>
+<li><strong>VecDeque<T></strong> for efficient operations at both ends</li>
+<li><strong>Consider performance characteristics</strong> when choosing collections</li>
+<li><strong>Use iterators</strong> instead of index-based loops for better performance and safety</li>
+</ol>
+<hr />
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<h3 id="exercise-1-word-frequency-counter"><a class="header" href="#exercise-1-word-frequency-counter">Exercise 1: Word Frequency Counter</a></h3>
+<p>Build a comprehensive text analysis tool:</p>
+<pre><pre class="playground"><code class="language-rust">use std::collections::HashMap;
+
+struct TextAnalyzer {
+    word_counts: HashMap&lt;String, usize&gt;,
+    total_words: usize,
+}
+
+impl TextAnalyzer {
+    fn new() -&gt; Self {
+        // Implement
+    }
+    
+    fn add_text(&amp;mut self, text: &amp;str) {
+        // Implement: add words from text to counter
+        // Handle punctuation and case normalization
+    }
+    
+    fn most_common(&amp;self, n: usize) -&gt; Vec&lt;(String, usize)&gt; {
+        // Implement: return n most common words with counts
+    }
+    
+    fn unique_words(&amp;self) -&gt; usize {
+        // Implement: return number of unique words
+    }
+    
+    fn word_frequency(&amp;self, word: &amp;str) -&gt; f64 {
+        // Implement: return frequency of word as percentage
+    }
+    
+    fn words_starting_with(&amp;self, prefix: &amp;str) -&gt; Vec&lt;String&gt; {
+        // Implement: return words starting with prefix
+    }
+}
+
+fn main() {
+    let mut analyzer = TextAnalyzer::new();
+    
+    analyzer.add_text("The quick brown fox jumps over the lazy dog");
+    analyzer.add_text("The dog was really lazy, but the fox was quick");
+    
+    println!("Most common words: {:?}", analyzer.most_common(3));
+    println!("Unique words: {}", analyzer.unique_words());
+    println!("Frequency of 'the': {:.2}%", analyzer.word_frequency("the"));
+    println!("Words starting with 'th': {:?}", analyzer.words_starting_with("th"));
+}</code></pre></pre>
+<h3 id="exercise-2-set-based-permission-system"><a class="header" href="#exercise-2-set-based-permission-system">Exercise 2: Set-Based Permission System</a></h3>
+<p>Implement a role-based permission system:</p>
+<pre><pre class="playground"><code class="language-rust">use std::collections::{HashMap, HashSet};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum Permission {
+    Read,
+    Write,
+    Delete,
+    Admin,
+    Execute,
+}
+
+struct User {
+    name: String,
+    permissions: HashSet&lt;Permission&gt;,
+}
+
+struct PermissionManager {
+    users: HashMap&lt;String, User&gt;,
+    roles: HashMap&lt;String, HashSet&lt;Permission&gt;&gt;,
+}
+
+impl PermissionManager {
+    fn new() -&gt; Self {
+        // Implement
+    }
+    
+    fn create_role(&amp;mut self, role_name: String, permissions: HashSet&lt;Permission&gt;) {
+        // Implement: create a role with given permissions
+    }
+    
+    fn add_user(&amp;mut self, username: String) {
+        // Implement: add user with no permissions
+    }
+    
+    fn assign_role(&amp;mut self, username: &amp;str, role_name: &amp;str) -&gt; Result&lt;(), String&gt; {
+        // Implement: assign role permissions to user
+    }
+    
+    fn grant_permission(&amp;mut self, username: &amp;str, permission: Permission) -&gt; Result&lt;(), String&gt; {
+        // Implement: grant specific permission to user
+    }
+    
+    fn revoke_permission(&amp;mut self, username: &amp;str, permission: Permission) -&gt; Result&lt;(), String&gt; {
+        // Implement: revoke specific permission from user
+    }
+    
+    fn has_permission(&amp;self, username: &amp;str, permission: &amp;Permission) -&gt; bool {
+        // Implement: check if user has specific permission
+    }
+    
+    fn get_user_permissions(&amp;self, username: &amp;str) -&gt; Option&lt;&amp;HashSet&lt;Permission&gt;&gt; {
+        // Implement: get all permissions for user
+    }
+    
+    fn users_with_permission(&amp;self, permission: &amp;Permission) -&gt; Vec&lt;String&gt; {
+        // Implement: get all users with specific permission
+    }
+}
+
+fn main() {
+    let mut pm = PermissionManager::new();
+    
+    // Create roles
+    pm.create_role("admin".to_string(), 
+                   [Permission::Read, Permission::Write, Permission::Delete, Permission::Admin]
+                   .into_iter().collect());
+    
+    pm.create_role("editor".to_string(),
+                   [Permission::Read, Permission::Write].into_iter().collect());
+    
+    // Add users
+    pm.add_user("alice".to_string());
+    pm.add_user("bob".to_string());
+    
+    // Assign roles
+    pm.assign_role("alice", "admin").unwrap();
+    pm.assign_role("bob", "editor").unwrap();
+    
+    // Grant additional permission
+    pm.grant_permission("bob", Permission::Execute).unwrap();
+    
+    // Test permissions
+    println!("Alice has admin? {}", pm.has_permission("alice", &amp;Permission::Admin));
+    println!("Bob has admin? {}", pm.has_permission("bob", &amp;Permission::Admin));
+    println!("Bob's permissions: {:?}", pm.get_user_permissions("bob"));
+    println!("Users with write permission: {:?}", pm.users_with_permission(&amp;Permission::Write));
+}</code></pre></pre>
+<h3 id="exercise-3-multi-collection-data-structure"><a class="header" href="#exercise-3-multi-collection-data-structure">Exercise 3: Multi-Collection Data Structure</a></h3>
+<p>Build a library catalog that efficiently supports multiple types of queries:</p>
+<pre><pre class="playground"><code class="language-rust">use std::collections::{HashMap, HashSet, BTreeMap, VecDeque};
+
+#[derive(Debug, Clone)]
+struct Book {
+    id: u32,
+    title: String,
+    author: String,
+    year: u16,
+    genres: HashSet&lt;String&gt;,
+    available: bool,
+}
+
+struct LibraryCatalog {
+    books: HashMap&lt;u32, Book&gt;,                    // Fast lookup by ID
+    by_author: HashMap&lt;String, Vec&lt;u32&gt;&gt;,         // Books by author
+    by_year: BTreeMap&lt;u16, Vec&lt;u32&gt;&gt;,            // Books by year (sorted)
+    by_genre: HashMap&lt;String, HashSet&lt;u32&gt;&gt;,      // Books by genre
+    recently_added: VecDeque&lt;u32&gt;,                // Recently added books
+    available_books: HashSet&lt;u32&gt;,                // Currently available
+}
+
+impl LibraryCatalog {
+    fn new() -&gt; Self {
+        // Implement
+    }
+    
+    fn add_book(&amp;mut self, book: Book) {
+        // Implement: add book to all appropriate collections
+    }
+    
+    fn remove_book(&amp;mut self, book_id: u32) -&gt; Option&lt;Book&gt; {
+        // Implement: remove book from all collections
+    }
+    
+    fn find_by_id(&amp;self, id: u32) -&gt; Option&lt;&amp;Book&gt; {
+        // Implement
+    }
+    
+    fn find_by_author(&amp;self, author: &amp;str) -&gt; Vec&lt;&amp;Book&gt; {
+        // Implement: return all books by author
+    }
+    
+    fn find_by_genre(&amp;self, genre: &amp;str) -&gt; Vec&lt;&amp;Book&gt; {
+        // Implement: return all books in genre
+    }
+    
+    fn find_by_year_range(&amp;self, start_year: u16, end_year: u16) -&gt; Vec&lt;&amp;Book&gt; {
+        // Implement: return books published in year range
+    }
+    
+    fn recently_added(&amp;self, count: usize) -&gt; Vec&lt;&amp;Book&gt; {
+        // Implement: return most recently added books
+    }
+    
+    fn available_in_genre(&amp;self, genre: &amp;str) -&gt; Vec&lt;&amp;Book&gt; {
+        // Implement: return available books in genre
+    }
+    
+    fn checkout_book(&amp;mut self, book_id: u32) -&gt; Result&lt;(), String&gt; {
+        // Implement: mark book as unavailable
+    }
+    
+    fn return_book(&amp;mut self, book_id: u32) -&gt; Result&lt;(), String&gt; {
+        // Implement: mark book as available
+    }
+    
+    fn statistics(&amp;self) -&gt; (usize, usize, Vec&lt;String&gt;) {
+        // Implement: return (total_books, available_books, top_genres)
+    }
+}
+
+fn main() {
+    let mut catalog = LibraryCatalog::new();
+    
+    // Add some books
+    catalog.add_book(Book {
+        id: 1,
+        title: "The Rust Programming Language".to_string(),
+        author: "Steve Klabnik".to_string(),
+        year: 2018,
+        genres: ["Programming", "Technology"].iter().map(|s| s.to_string()).collect(),
+        available: true,
+    });
+    
+    catalog.add_book(Book {
+        id: 2,
+        title: "Dune".to_string(),
+        author: "Frank Herbert".to_string(),
+        year: 1965,
+        genres: ["Science Fiction", "Adventure"].iter().map(|s| s.to_string()).collect(),
+        available: true,
+    });
+    
+    // Test various queries
+    println!("Books by Frank Herbert: {:?}", 
+             catalog.find_by_author("Frank Herbert").len());
+    println!("Programming books: {:?}", 
+             catalog.find_by_genre("Programming").len());
+    println!("Books from 1960-1970: {:?}", 
+             catalog.find_by_year_range(1960, 1970).len());
+    
+    catalog.checkout_book(1).unwrap();
+    println!("Available programming books after checkout: {:?}", 
+             catalog.available_in_genre("Programming").len());
+    
+    let (total, available, top_genres) = catalog.statistics();
+    println!("Stats - Total: {}, Available: {}, Top genres: {:?}", 
+             total, available, top_genres);
+}</code></pre></pre>
+<p><strong>Next Up:</strong> In Chapter 7, we'll explore traits - Rust's powerful system for defining shared behavior and enabling polymorphism without inheritance.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../day1/05_smart_pointers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../day2/07_traits.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../day1/05_smart_pointers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../day2/07_traits.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

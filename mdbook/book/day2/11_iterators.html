@@ -1,0 +1,1161 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Iterators &amp; Functional Programming</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="chapter-11-iterators-and-functional-programming"><a class="header" href="#chapter-11-iterators-and-functional-programming">Chapter 11: Iterators and Functional Programming</a></h1>
+<h2 id="iterator-trait-closures-and-lazy-evaluation-in-rust"><a class="header" href="#iterator-trait-closures-and-lazy-evaluation-in-rust">Iterator Trait, Closures, and Lazy Evaluation in Rust</a></h2>
+<h3 id="learning-objectives"><a class="header" href="#learning-objectives">Learning Objectives</a></h3>
+<p>By the end of this chapter, you'll be able to:</p>
+<ul>
+<li>Understand the Iterator trait and implement custom iterators</li>
+<li>Use iterator adaptors like map, filter, fold, and collect effectively</li>
+<li>Write and use closures with proper capture semantics</li>
+<li>Leverage lazy evaluation for performance</li>
+<li>Choose between imperative loops and functional iterator chains</li>
+<li>Handle iterator errors and edge cases</li>
+<li>Write efficient, readable functional-style Rust code</li>
+</ul>
+<hr />
+<h2 id="iterator-trait-vs-other-languages"><a class="header" href="#iterator-trait-vs-other-languages">Iterator Trait vs Other Languages</a></h2>
+<h3 id="comparison-with-other-languages"><a class="header" href="#comparison-with-other-languages">Comparison with Other Languages</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>C++ STL</th><th>C# LINQ</th><th>Java Streams</th><th>Rust Iterators</th></tr></thead><tbody>
+<tr><td>Lazy evaluation</td><td>Partial</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Zero-cost</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+<tr><td>Chaining</td><td>Limited</td><td>Extensive</td><td>Extensive</td><td>Extensive</td></tr>
+<tr><td>Error handling</td><td>Exceptions</td><td>Exceptions</td><td>Exceptions</td><td>Result&lt;T, E&gt;</td></tr>
+<tr><td>Memory safety</td><td>No</td><td>GC</td><td>GC</td><td>Compile-time</td></tr>
+<tr><td>Parallel processing</td><td>Limited</td><td>PLINQ</td><td>Parallel streams</td><td>Rayon</td></tr>
+</tbody></table>
+</div>
+<h3 id="the-iterator-trait"><a class="header" href="#the-iterator-trait">The Iterator Trait</a></h3>
+<pre><pre class="playground"><code class="language-rust">trait Iterator {
+    type Item;
+    
+    // Required method
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;
+    
+    // Many default implementations built on next()
+    fn collect&lt;B: FromIterator&lt;Self::Item&gt;&gt;(self) -&gt; B { ... }
+    fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt; { ... }
+    fn filter&lt;P&gt;(self, predicate: P) -&gt; Filter&lt;Self, P&gt; { ... }
+    // ... and many more
+}
+
+// Example: Custom iterator
+struct Counter {
+    current: u32,
+    max: u32,
+}
+
+impl Counter {
+    fn new(max: u32) -&gt; Counter {
+        Counter { current: 0, max }
+    }
+}
+
+impl Iterator for Counter {
+    type Item = u32;
+    
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        if self.current &lt; self.max {
+            let current = self.current;
+            self.current += 1;
+            Some(current)
+        } else {
+            None
+        }
+    }
+}
+
+fn main() {
+    let counter = Counter::new(5);
+    for n in counter {
+        println!("{}", n); // 0, 1, 2, 3, 4
+    }
+}</code></pre></pre>
+<hr />
+<h2 id="creating-iterators"><a class="header" href="#creating-iterators">Creating Iterators</a></h2>
+<h3 id="from-collections"><a class="header" href="#from-collections">From Collections</a></h3>
+<pre><pre class="playground"><code class="language-rust">fn main() {
+    let vec = vec![1, 2, 3, 4, 5];
+    
+    // iter() - borrows elements
+    for item in vec.iter() {
+        println!("Borrowed: {}", item); // item is &amp;i32
+    }
+    
+    // into_iter() - takes ownership
+    for item in vec.into_iter() {
+        println!("Owned: {}", item); // item is i32
+    }
+    // vec is no longer accessible here
+    
+    let mut vec = vec![1, 2, 3, 4, 5];
+    
+    // iter_mut() - mutable borrows
+    for item in vec.iter_mut() {
+        *item *= 2; // item is &amp;mut i32
+    }
+    println!("{:?}", vec); // [2, 4, 6, 8, 10]
+}
+
+// Range iterators
+fn range_examples() {
+    // Inclusive range
+    for i in 0..=5 {
+        println!("{}", i); // 0, 1, 2, 3, 4, 5
+    }
+    
+    // Exclusive range
+    let squares: Vec&lt;i32&gt; = (1..6)
+        .map(|x| x * x)
+        .collect();
+    println!("{:?}", squares); // [1, 4, 9, 16, 25]
+    
+    // Step by
+    let evens: Vec&lt;i32&gt; = (0..10)
+        .step_by(2)
+        .collect();
+    println!("{:?}", evens); // [0, 2, 4, 6, 8]
+}</code></pre></pre>
+<h3 id="custom-iterator-implementation"><a class="header" href="#custom-iterator-implementation">Custom Iterator Implementation</a></h3>
+<pre><pre class="playground"><code class="language-rust">// Fibonacci iterator
+struct Fibonacci {
+    current: u64,
+    next: u64,
+}
+
+impl Fibonacci {
+    fn new() -&gt; Self {
+        Fibonacci { current: 0, next: 1 }
+    }
+}
+
+impl Iterator for Fibonacci {
+    type Item = u64;
+    
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        let current = self.current;
+        self.current = self.next;
+        self.next = current + self.next;
+        
+        // Prevent overflow
+        if self.current &gt; u64::MAX / 2 {
+            None
+        } else {
+            Some(current)
+        }
+    }
+}
+
+// File line iterator
+use std::fs::File;
+use std::io::{BufRead, BufReader, Lines};
+
+struct FileLines {
+    lines: Lines&lt;BufReader&lt;File&gt;&gt;,
+}
+
+impl FileLines {
+    fn new(file: File) -&gt; Self {
+        let reader = BufReader::new(file);
+        FileLines {
+            lines: reader.lines(),
+        }
+    }
+}
+
+impl Iterator for FileLines {
+    type Item = Result&lt;String, std::io::Error&gt;;
+    
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        self.lines.next()
+    }
+}
+
+fn main() {
+    // Fibonacci sequence
+    let fib: Vec&lt;u64&gt; = Fibonacci::new()
+        .take(10)
+        .collect();
+    println!("Fibonacci: {:?}", fib);
+    
+    // File processing (if file exists)
+    if let Ok(file) = File::open("data.txt") {
+        for line_result in FileLines::new(file) {
+            match line_result {
+                Ok(line) =&gt; println!("Line: {}", line),
+                Err(e) =&gt; eprintln!("Error reading line: {}", e),
+            }
+        }
+    }
+}</code></pre></pre>
+<hr />
+<h2 id="iterator-adaptors"><a class="header" href="#iterator-adaptors">Iterator Adaptors</a></h2>
+<h3 id="map-filter-and-collect"><a class="header" href="#map-filter-and-collect">Map, Filter, and Collect</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn basic_adaptors() {
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    
+    // Chain multiple operations
+    let result: Vec&lt;i32&gt; = numbers
+        .iter()
+        .filter(|&amp;x| x % 2 == 0)  // Keep even numbers
+        .map(|x| x * x)           // Square them
+        .collect();               // Collect into Vec
+    println!("Even squares: {:?}", result); // [4, 16, 36, 64, 100]
+    
+    // Different collection types
+    use std::collections::HashSet;
+    
+    let unique_lengths: HashSet&lt;usize&gt; = vec!["hello", "world", "rust", "is", "awesome"]
+        .iter()
+        .map(|s| s.len())
+        .collect();
+    println!("Unique lengths: {:?}", unique_lengths);
+    
+    // Collect to String
+    let concatenated: String = vec!["Hello", " ", "world", "!"]
+        .iter()
+        .cloned()
+        .collect();
+    println!("{}", concatenated); // Hello world!
+}
+
+// Working with Results
+fn process_with_results() -&gt; Result&lt;Vec&lt;i32&gt;, std::num::ParseIntError&gt; {
+    let strings = vec!["1", "2", "3", "4", "not_a_number", "6"];
+    
+    // This will short-circuit on first error
+    let numbers: Result&lt;Vec&lt;i32&gt;, _&gt; = strings
+        .iter()
+        .map(|s| s.parse::&lt;i32&gt;())
+        .collect();
+    
+    numbers
+}
+
+fn process_filtering_errors() -&gt; Vec&lt;i32&gt; {
+    let strings = vec!["1", "2", "3", "4", "not_a_number", "6"];
+    
+    // Filter out errors, keep only successful parses
+    strings
+        .iter()
+        .filter_map(|s| s.parse::&lt;i32&gt;().ok())
+        .collect()
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="enumerate-zip-and-take"><a class="header" href="#enumerate-zip-and-take">Enumerate, Zip, and Take</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn advanced_adaptors() {
+    let names = vec!["Alice", "Bob", "Charlie", "Diana"];
+    let ages = vec![25, 30, 35, 28];
+    
+    // Enumerate - add indices
+    for (index, name) in names.iter().enumerate() {
+        println!("{}: {}", index, name);
+    }
+    
+    // Zip - combine two iterators
+    let people: Vec&lt;(&amp;&amp;str, &amp;i32)&gt; = names
+        .iter()
+        .zip(ages.iter())
+        .collect();
+    
+    for (name, age) in people {
+        println!("{} is {} years old", name, age);
+    }
+    
+    // Take and skip
+    let first_three: Vec&lt;&amp;str&gt; = names
+        .iter()
+        .take(3)
+        .cloned()
+        .collect();
+    println!("First three: {:?}", first_three);
+    
+    let skip_first_two: Vec&lt;&amp;str&gt; = names
+        .iter()
+        .skip(2)
+        .cloned()
+        .collect();
+    println!("Skip first two: {:?}", skip_first_two);
+    
+    // Take while predicate is true
+    let numbers = vec![1, 3, 5, 8, 9, 11];
+    let odds_until_even: Vec&lt;i32&gt; = numbers
+        .iter()
+        .take_while(|&amp;&amp;x| x % 2 == 1)
+        .cloned()
+        .collect();
+    println!("Odds until even: {:?}", odds_until_even); // [1, 3, 5]
+}
+
+// Chain and flatten
+fn combining_iterators() {
+    let vec1 = vec![1, 2, 3];
+    let vec2 = vec![4, 5, 6];
+    
+    // Chain iterators
+    let combined: Vec&lt;i32&gt; = vec1
+        .iter()
+        .chain(vec2.iter())
+        .cloned()
+        .collect();
+    println!("Combined: {:?}", combined); // [1, 2, 3, 4, 5, 6]
+    
+    // Flatten nested structures
+    let nested = vec![vec![1, 2], vec![3, 4, 5], vec![6]];
+    let flattened: Vec&lt;i32&gt; = nested
+        .iter()
+        .flatten()
+        .cloned()
+        .collect();
+    println!("Flattened: {:?}", flattened); // [1, 2, 3, 4, 5, 6]
+    
+    // flat_map - map then flatten
+    let words = vec!["hello world", "rust programming"];
+    let all_words: Vec&lt;&amp;str&gt; = words
+        .iter()
+        .flat_map(|s| s.split_whitespace())
+        .collect();
+    println!("All words: {:?}", all_words); // ["hello", "world", "rust", "programming"]
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="closures-and-capture"><a class="header" href="#closures-and-capture">Closures and Capture</a></h2>
+<h3 id="closure-syntax-and-types"><a class="header" href="#closure-syntax-and-types">Closure Syntax and Types</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn closure_basics() {
+    let numbers = vec![1, 2, 3, 4, 5];
+    
+    // Different closure syntaxes
+    let add_one = |x| x + 1;
+    let add_two = |x: i32| -&gt; i32 { x + 2 };
+    let add_three = |x: i32| {
+        let result = x + 3;
+        result
+    };
+    
+    // Using closures with iterators
+    let incremented: Vec&lt;i32&gt; = numbers
+        .iter()
+        .map(|&amp;x| add_one(x))
+        .collect();
+    println!("Incremented: {:?}", incremented);
+    
+    // Inline closures
+    let evens: Vec&lt;i32&gt; = numbers
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .cloned()
+        .collect();
+    println!("Evens: {:?}", evens);
+}
+
+// Capture modes
+fn capture_modes() {
+    let multiplier = 10;
+    let mut counter = 0;
+    let mut data = vec![1, 2, 3];
+    
+    // Fn - immutable borrow
+    let multiply_by = |x| x * multiplier;
+    println!("5 * {} = {}", multiplier, multiply_by(5));
+    
+    // FnMut - mutable borrow
+    let mut count_calls = || {
+        counter += 1;
+        counter
+    };
+    println!("Call count: {}", count_calls());
+    println!("Call count: {}", count_calls());
+    
+    // FnOnce - takes ownership
+    let consume_data = || {
+        let owned_data = data; // Takes ownership
+        owned_data.len()
+    };
+    println!("Data length: {}", consume_data());
+    // data is no longer accessible
+    
+    // Move keyword forces ownership
+    let value = 42;
+    let thread_closure = move || {
+        println!("Value in thread: {}", value);
+    };
+    // value is moved into closure
+    
+    std::thread::spawn(thread_closure).join().unwrap();
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="advanced-closure-patterns"><a class="header" href="#advanced-closure-patterns">Advanced Closure Patterns</a></h3>
+<pre><pre class="playground"><code class="language-rust">// Higher-order functions
+fn apply_twice&lt;F&gt;(f: F, x: i32) -&gt; i32 
+where 
+    F: Fn(i32) -&gt; i32,
+{
+    f(f(x))
+}
+
+fn create_multiplier(factor: i32) -&gt; impl Fn(i32) -&gt; i32 {
+    move |x| x * factor
+}
+
+fn conditional_processor&lt;F, G&gt;(
+    condition: bool,
+    true_fn: F,
+    false_fn: G,
+) -&gt; Box&lt;dyn Fn(i32) -&gt; i32&gt;
+where
+    F: Fn(i32) -&gt; i32 + 'static,
+    G: Fn(i32) -&gt; i32 + 'static,
+{
+    if condition {
+        Box::new(true_fn)
+    } else {
+        Box::new(false_fn)
+    }
+}
+
+fn main() {
+    // Using higher-order functions
+    let double = |x| x * 2;
+    let result = apply_twice(double, 5);
+    println!("Applied twice: {}", result); // 20
+    
+    // Factory functions
+    let triple = create_multiplier(3);
+    println!("Triple of 7: {}", triple(7)); // 21
+    
+    // Dynamic closure selection
+    let processor = conditional_processor(
+        true,
+        |x| x * 2,
+        |x| x + 10,
+    );
+    println!("Processed: {}", processor(5)); // 10
+}
+
+// Closure performance considerations
+fn performance_comparison() {
+    let data = (0..1_000_000).collect::&lt;Vec&lt;i32&gt;&gt;();
+    
+    // Functional style (often optimizes well)
+    let start = std::time::Instant::now();
+    let sum1: i32 = data
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .map(|&amp;x| x * x)
+        .sum();
+    let duration1 = start.elapsed();
+    
+    // Imperative style
+    let start = std::time::Instant::now();
+    let mut sum2 = 0;
+    for &amp;x in &amp;data {
+        if x % 2 == 0 {
+            sum2 += x * x;
+        }
+    }
+    let duration2 = start.elapsed();
+    
+    println!("Functional: {} in {:?}", sum1, duration1);
+    println!("Imperative: {} in {:?}", sum2, duration2);
+}</code></pre></pre>
+<hr />
+<h2 id="reduction-operations"><a class="header" href="#reduction-operations">Reduction Operations</a></h2>
+<h3 id="fold-reduce-and-sum"><a class="header" href="#fold-reduce-and-sum">Fold, Reduce, and Sum</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn reduction_operations() {
+    let numbers = vec![1, 2, 3, 4, 5];
+    
+    // sum() - built-in reduction
+    let sum: i32 = numbers.iter().sum();
+    println!("Sum: {}", sum); // 15
+    
+    // fold() - with initial value
+    let product = numbers
+        .iter()
+        .fold(1, |acc, &amp;x| acc * x);
+    println!("Product: {}", product); // 120
+    
+    // reduce() - no initial value (returns Option)
+    let max = numbers
+        .iter()
+        .reduce(|acc, x| if acc &gt; x { acc } else { x });
+    println!("Max: {:?}", max); // Some(5)
+    
+    // Complex fold example: word frequency
+    let text = "hello world hello rust world";
+    let word_count = text
+        .split_whitespace()
+        .fold(std::collections::HashMap::new(), |mut acc, word| {
+            *acc.entry(word).or_insert(0) += 1;
+            acc
+        });
+    println!("Word count: {:?}", word_count);
+}
+
+fn advanced_reductions() {
+    use std::collections::HashMap;
+    
+    #[derive(Debug)]
+    struct Sale {
+        product: String,
+        amount: f64,
+        region: String,
+    }
+    
+    let sales = vec![
+        Sale { product: "Widget".to_string(), amount: 100.0, region: "North".to_string() },
+        Sale { product: "Gadget".to_string(), amount: 150.0, region: "South".to_string() },
+        Sale { product: "Widget".to_string(), amount: 200.0, region: "North".to_string() },
+        Sale { product: "Gadget".to_string(), amount: 175.0, region: "North".to_string() },
+    ];
+    
+    // Group sales by region
+    let sales_by_region = sales
+        .iter()
+        .fold(HashMap::new(), |mut acc, sale| {
+            acc.entry(&amp;sale.region)
+                .or_insert(Vec::new())
+                .push(sale);
+            acc
+        });
+    
+    // Calculate totals by region
+    let totals_by_region: HashMap&lt;&amp;String, f64&gt; = sales_by_region
+        .iter()
+        .map(|(region, sales)| {
+            let total = sales.iter().map(|s| s.amount).sum();
+            (*region, total)
+        })
+        .collect();
+    
+    println!("Sales by region: {:?}", totals_by_region);
+    
+    // Find highest sale
+    let highest_sale = sales
+        .iter()
+        .max_by(|a, b| a.amount.partial_cmp(&amp;b.amount).unwrap());
+    println!("Highest sale: {:?}", highest_sale);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="lazy-evaluation-and-performance"><a class="header" href="#lazy-evaluation-and-performance">Lazy Evaluation and Performance</a></h2>
+<h3 id="understanding-lazy-evaluation"><a class="header" href="#understanding-lazy-evaluation">Understanding Lazy Evaluation</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn lazy_evaluation_demo() {
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    
+    // This creates iterator adaptors but doesn't process anything yet
+    let iter = numbers
+        .iter()
+        .inspect(|&amp;x| println!("Processing: {}", x))  // Debug what's happening
+        .filter(|&amp;&amp;x| {
+            println!("Filtering: {}", x);
+            x % 2 == 0
+        })
+        .map(|&amp;x| {
+            println!("Mapping: {}", x);
+            x * x
+        });
+    
+    println!("Iterator created, but nothing processed yet!");
+    
+    // Only now does processing happen
+    let result: Vec&lt;i32&gt; = iter.take(2).collect();
+    println!("Result: {:?}", result);
+    // Notice: Only processes elements until it gets 2 results
+}
+
+// Performance benefits
+fn performance_benefits() {
+    let large_data = (0..1_000_000).collect::&lt;Vec&lt;i32&gt;&gt;();
+    
+    // Early termination with lazy evaluation
+    let start = std::time::Instant::now();
+    let first_large_even = large_data
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .filter(|&amp;&amp;x| x &gt; 100_000)
+        .next();  // Stops at first match!
+    let duration = start.elapsed();
+    
+    println!("First large even: {:?} in {:?}", first_large_even, duration);
+    
+    // Compare with eager evaluation (collect before next)
+    let start = std::time::Instant::now();
+    let all_evens: Vec&lt;_&gt; = large_data
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .collect();  // Processes ALL elements
+    let first_large = all_evens
+        .iter()
+        .find(|&amp;&amp;&amp;x| x &gt; 100_000);
+    let duration_eager = start.elapsed();
+    
+    println!("Eager approach: {:?} in {:?}", first_large, duration_eager);
+}
+
+// Memory efficiency
+fn memory_efficiency() {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+    
+    // Process large file without loading everything into memory
+    fn process_large_file(filename: &amp;str) -&gt; std::io::Result&lt;usize&gt; {
+        let file = File::open(filename)?;
+        let reader = BufReader::new(file);
+        
+        let long_lines_count = reader
+            .lines()
+            .map(|line| line.unwrap_or_default())
+            .filter(|line| line.len() &gt; 100)
+            .count();
+        
+        Ok(long_lines_count)
+    }
+    
+    // This is memory-efficient: processes one line at a time
+    match process_large_file("large_file.txt") {
+        Ok(count) =&gt; println!("Long lines: {}", count),
+        Err(e) =&gt; println!("Error: {}", e),
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="error-handling-with-iterators"><a class="header" href="#error-handling-with-iterators">Error Handling with Iterators</a></h2>
+<h3 id="handling-results-in-iterator-chains"><a class="header" href="#handling-results-in-iterator-chains">Handling Results in Iterator Chains</a></h3>
+<pre><pre class="playground"><code class="language-rust">fn error_handling_patterns() {
+    let inputs = vec!["1", "2", "invalid", "4", "5"];
+    
+    // Pattern 1: Collect results, short-circuit on error
+    let results: Result&lt;Vec&lt;i32&gt;, _&gt; = inputs
+        .iter()
+        .map(|s| s.parse::&lt;i32&gt;())
+        .collect();
+    
+    match results {
+        Ok(numbers) =&gt; println!("All parsed: {:?}", numbers),
+        Err(e) =&gt; println!("Parse error: {}", e),
+    }
+    
+    // Pattern 2: Filter out errors, keep successful results
+    let successful_parses: Vec&lt;i32&gt; = inputs
+        .iter()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    println!("Successful parses: {:?}", successful_parses);
+    
+    // Pattern 3: Partition results
+    let (successes, errors): (Vec&lt;_&gt;, Vec&lt;_&gt;) = inputs
+        .iter()
+        .map(|s| s.parse::&lt;i32&gt;())
+        .partition(Result::is_ok);
+    
+    let successes: Vec&lt;i32&gt; = successes.into_iter().map(Result::unwrap).collect();
+    let errors: Vec&lt;_&gt; = errors.into_iter().map(Result::unwrap_err).collect();
+    
+    println!("Successes: {:?}", successes);
+    println!("Errors: {:?}", errors);
+}
+
+// Custom error handling
+#[derive(Debug)]
+struct ProcessingError {
+    input: String,
+    reason: String,
+}
+
+fn process_with_custom_errors(inputs: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;i32&gt;, Vec&lt;ProcessingError&gt;&gt; {
+    let mut successes = Vec::new();
+    let mut errors = Vec::new();
+    
+    for &amp;input in inputs {
+        match input.parse::&lt;i32&gt;() {
+            Ok(num) if num &gt;= 0 =&gt; successes.push(num),
+            Ok(_) =&gt; errors.push(ProcessingError {
+                input: input.to_string(),
+                reason: "Negative numbers not allowed".to_string(),
+            }),
+            Err(_) =&gt; errors.push(ProcessingError {
+                input: input.to_string(),
+                reason: "Invalid number format".to_string(),
+            }),
+        }
+    }
+    
+    if errors.is_empty() {
+        Ok(successes)
+    } else {
+        Err(errors)
+    }
+}
+
+fn main() {
+    let inputs = vec!["1", "2", "-3", "invalid", "5"];
+    
+    match process_with_custom_errors(&amp;inputs) {
+        Ok(numbers) =&gt; println!("Processed: {:?}", numbers),
+        Err(errors) =&gt; {
+            println!("Errors occurred:");
+            for error in errors {
+                println!("  {}: {}", error.input, error.reason);
+            }
+        }
+    }
+}</code></pre></pre>
+<hr />
+<h2 id="common-pitfalls-and-best-practices"><a class="header" href="#common-pitfalls-and-best-practices">Common Pitfalls and Best Practices</a></h2>
+<h3 id="pitfall-1-forgetting-to-consume-iterators"><a class="header" href="#pitfall-1-forgetting-to-consume-iterators">Pitfall 1: Forgetting to Consume Iterators</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn pitfall_unused_iterators() {
+    let numbers = vec![1, 2, 3, 4, 5];
+    
+    // BAD: This does nothing! Iterator adaptors are lazy
+    numbers
+        .iter()
+        .map(|x| x * 2)
+        .filter(|&amp;&amp;x| x &gt; 5); // Warning: unused iterator that must be used
+    
+    // GOOD: Consume the iterator
+    let result: Vec&lt;i32&gt; = numbers
+        .iter()
+        .map(|x| x * 2)
+        .filter(|&amp;&amp;x| x &gt; 5)
+        .cloned()
+        .collect();
+    
+    println!("Result: {:?}", result);
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="pitfall-2-inefficient-cloning"><a class="header" href="#pitfall-2-inefficient-cloning">Pitfall 2: Inefficient Cloning</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn avoid_unnecessary_cloning() {
+    let strings = vec!["hello".to_string(), "world".to_string()];
+    
+    // BAD: Clones every string
+    let lengths: Vec&lt;usize&gt; = strings
+        .iter()
+        .cloned()  // Expensive!
+        .map(|s| s.len())
+        .collect();
+    
+    // GOOD: Work with references
+    let lengths: Vec&lt;usize&gt; = strings
+        .iter()
+        .map(|s| s.len())  // s is &amp;String
+        .collect();
+    
+    println!("Lengths: {:?}", lengths);
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 1. Use iterator methods over manual loops when appropriate
+fn best_practices() {
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    
+    // Good: Functional style for complex transformations
+    let processed: Vec&lt;String&gt; = numbers
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .map(|&amp;x| x * x)
+        .map(|x| format!("Square: {}", x))
+        .collect();
+    
+    // Good: Use specific methods when available
+    let sum: i32 = numbers.iter().sum();
+    let max = numbers.iter().max();
+    
+    // Good: Early termination
+    let first_large = numbers
+        .iter()
+        .find(|&amp;&amp;x| x &gt; 5);
+    
+    // Good: Use for_each for side effects without collecting
+    numbers
+        .iter()
+        .filter(|&amp;&amp;x| x % 3 == 0)
+        .for_each(|x| println!("Divisible by 3: {}", x));
+}
+
+// 2. Choose the right level of functional vs imperative
+fn choose_appropriate_style() {
+    let data = vec![1, 2, 3, 4, 5];
+    
+    // Simple case: iterator is cleaner
+    let doubled: Vec&lt;i32&gt; = data.iter().map(|x| x * 2).collect();
+    
+    // Complex case: imperative might be clearer
+    fn complex_processing(data: &amp;[i32]) -&gt; Vec&lt;String&gt; {
+        let mut results = Vec::new();
+        
+        for &amp;item in data {
+            if item % 2 == 0 {
+                let processed = item * item;
+                if processed &gt; 10 {
+                    results.push(format!("Large square: {}", processed));
+                } else {
+                    results.push(format!("Small square: {}", processed));
+                }
+            }
+        }
+        
+        results
+    }
+    
+    // vs functional (might be less readable for complex logic)
+    let functional_result: Vec&lt;String&gt; = data
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .map(|&amp;x| x * x)
+        .map(|x| {
+            if x &gt; 10 {
+                format!("Large square: {}", x)
+            } else {
+                format!("Small square: {}", x)
+            }
+        })
+        .collect();
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<h3 id="exercise-1-data-processing-pipeline"><a class="header" href="#exercise-1-data-processing-pipeline">Exercise 1: Data Processing Pipeline</a></h3>
+<p>Create a data processing pipeline that handles a list of employee records:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Debug, Clone)]
+struct Employee {
+    name: String,
+    department: String,
+    salary: f64,
+    years_of_service: u32,
+}
+
+// TODO: Implement these functions using iterators
+fn high_earners(employees: &amp;[Employee], threshold: f64) -&gt; Vec&lt;Employee&gt; {
+    // Return employees earning more than threshold, sorted by salary (highest first)
+    todo!()
+}
+
+fn department_stats(employees: &amp;[Employee]) -&gt; std::collections::HashMap&lt;String, (usize, f64)&gt; {
+    // Return (count, average_salary) for each department
+    todo!()
+}
+
+fn senior_employees_by_dept(employees: &amp;[Employee], min_years: u32) -&gt; std::collections::HashMap&lt;String, Vec&lt;String&gt;&gt; {
+    // Return employee names grouped by department for employees with &gt;= min_years service
+    todo!()
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="exercise-2-text-processing"><a class="header" href="#exercise-2-text-processing">Exercise 2: Text Processing</a></h3>
+<p>Process a text file and extract various statistics:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// TODO: Implement these text processing functions
+fn word_frequency(text: &amp;str) -&gt; std::collections::HashMap&lt;String, usize&gt; {
+    // Return word frequency map (case-insensitive, ignore punctuation)
+    todo!()
+}
+
+fn longest_words(text: &amp;str, n: usize) -&gt; Vec&lt;String&gt; {
+    // Return n longest unique words
+    todo!()
+}
+
+fn sentences_with_word(text: &amp;str, target_word: &amp;str) -&gt; Vec&lt;String&gt; {
+    // Return sentences containing target_word (case-insensitive)
+    // Split on ., !, or ?
+    todo!()
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="exercise-3-number-sequence-processing"><a class="header" href="#exercise-3-number-sequence-processing">Exercise 3: Number Sequence Processing</a></h3>
+<p>Work with mathematical sequences:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// TODO: Implement a custom iterator for prime numbers
+struct PrimeIterator {
+    current: u64,
+}
+
+impl PrimeIterator {
+    fn new() -&gt; Self {
+        // Start from 2 (first prime)
+        todo!()
+    }
+    
+    fn is_prime(n: u64) -&gt; bool {
+        // Helper function to check if number is prime
+        todo!()
+    }
+}
+
+impl Iterator for PrimeIterator {
+    type Item = u64;
+    
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        // Return next prime number
+        todo!()
+    }
+}
+
+// TODO: Use the iterator to solve these problems
+fn sum_of_primes_below(limit: u64) -&gt; u64 {
+    // Sum all prime numbers below limit
+    todo!()
+}
+
+fn nth_prime(n: usize) -&gt; Option&lt;u64&gt; {
+    // Return the nth prime number (1-indexed)
+    todo!()
+}
+
+fn prime_gaps(limit: u64) -&gt; Vec&lt;u64&gt; {
+    // Return gaps between consecutive primes below limit
+    // e.g., for primes 2,3,5,7,11: gaps are [1,2,2,4]
+    todo!()
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
+<ol>
+<li><strong>Lazy evaluation</strong> makes iterators memory-efficient and fast</li>
+<li><strong>Zero-cost abstractions</strong> mean functional style can be as fast as imperative</li>
+<li><strong>Closure capture</strong> has three modes: Fn, FnMut, and FnOnce</li>
+<li><strong>Iterator adaptors</strong> are composable and chainable</li>
+<li><strong>Error handling</strong> in iterator chains requires careful consideration</li>
+<li><strong>Choose the right tool</strong> - iterators for transformations, loops for complex control flow</li>
+<li><strong>Early termination</strong> with find() and take() can provide significant performance benefits</li>
+<li><strong>Memory efficiency</strong> comes from processing one item at a time, not collecting unnecessarily</li>
+</ol>
+<p><strong>Next Up:</strong> In Chapter 12, we'll explore testing - how to write reliable tests for your Rust code with unit tests, integration tests, and documentation tests.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../day2/10_error_handling.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../day2/12_macros.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../day2/10_error_handling.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../day2/12_macros.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

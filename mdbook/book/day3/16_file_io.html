@@ -1,0 +1,1373 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>File I/O &amp; Serialization</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="chapter-16-file-io--serialization"><a class="header" href="#chapter-16-file-io--serialization">Chapter 16: File I/O &amp; Serialization</a></h1>
+<h2 id="learning-objectives"><a class="header" href="#learning-objectives">Learning Objectives</a></h2>
+<ul>
+<li>Master file operations with proper error handling and buffering strategies</li>
+<li>Work with path manipulation and filesystem operations safely</li>
+<li>Use serde for JSON, TOML, and binary serialization/deserialization</li>
+<li>Build robust CLI applications with clap argument parsing</li>
+<li>Understand async vs sync I/O trade-offs and when to use each</li>
+<li>Handle cross-platform file system differences effectively</li>
+</ul>
+<h2 id="file-operations-and-error-handling"><a class="header" href="#file-operations-and-error-handling">File Operations and Error Handling</a></h2>
+<p>Rust provides comprehensive file I/O capabilities through <code>std::fs</code> and <code>std::io</code> modules:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::fs::{File, OpenOptions};
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
+use std::path::Path;
+
+// Basic file reading with proper error handling
+fn read_file_to_string(path: &amp;Path) -&gt; io::Result&lt;String&gt; {
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&amp;mut contents)?;
+    Ok(contents)
+}
+
+// More efficient for large files: buffered reading
+fn read_file_buffered(path: &amp;Path) -&gt; io::Result&lt;Vec&lt;String&gt;&gt; {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let lines: Result&lt;Vec&lt;_&gt;, _&gt; = reader.lines().collect();
+    lines
+}
+
+// Writing files with different options
+fn write_file_examples(path: &amp;Path, content: &amp;str) -&gt; io::Result&lt;()&gt; {
+    // Simple write (overwrites existing file)
+    std::fs::write(path, content)?;
+    
+    // More control with OpenOptions
+    let mut file = OpenOptions::new()
+        .create(true)          // Create if doesn't exist
+        .write(true)           // Allow writing
+        .append(true)          // Append to existing content
+        .open(path)?;
+    
+    writeln!(file, "Additional line: {}", content)?;
+    
+    // Ensure data is written to disk
+    file.flush()?;
+    
+    Ok(())
+}
+
+// Buffered writing for better performance
+fn write_file_buffered(path: &amp;Path, lines: &amp;[String]) -&gt; io::Result&lt;()&gt; {
+    let file = File::create(path)?;
+    let mut writer = BufWriter::new(file);
+    
+    for line in lines {
+        writeln!(writer, "{}", line)?;
+    }
+    
+    // Important: flush buffer before dropping
+    writer.flush()?;
+    Ok(())
+}
+
+// Copy files with progress tracking
+fn copy_file_with_progress&lt;P: AsRef&lt;Path&gt;&gt;(
+    source: P,
+    dest: P,
+    buffer_size: usize,
+) -&gt; io::Result&lt;u64&gt; {
+    let mut source_file = File::open(&amp;source)?;
+    let mut dest_file = File::create(&amp;dest)?;
+    
+    let mut buffer = vec![0; buffer_size];
+    let mut total_copied = 0u64;
+    
+    loop {
+        let bytes_read = source_file.read(&amp;mut buffer)?;
+        if bytes_read == 0 {
+            break; // EOF reached
+        }
+        
+        dest_file.write_all(&amp;buffer[..bytes_read])?;
+        total_copied += bytes_read as u64;
+        
+        // Progress callback could go here
+        if total_copied % (1024 * 1024) == 0 { // Every MB
+            println!("Copied {} MB", total_copied / (1024 * 1024));
+        }
+    }
+    
+    dest_file.flush()?;
+    Ok(total_copied)
+}
+<span class="boring">}</span></code></pre></pre>
+<p><strong>C++/C# Comparison:</strong></p>
+<ul>
+<li><strong>C++</strong>: std::ifstream/ofstream, manual resource management</li>
+<li><strong>C#</strong>: FileStream, StreamReader/Writer with using statements</li>
+<li><strong>Rust</strong>: Built-in RAII, explicit error handling, zero-cost abstractions</li>
+</ul>
+<h2 id="path-manipulation-and-filesystem-operations"><a class="header" href="#path-manipulation-and-filesystem-operations">Path Manipulation and Filesystem Operations</a></h2>
+<p>Working safely with paths across platforms:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::path::{Path, PathBuf};
+use std::fs;
+use std::env;
+
+// Path construction and manipulation
+fn path_operations() -&gt; io::Result&lt;()&gt; {
+    // Get current directory
+    let current_dir = env::current_dir()?;
+    println!("Current directory: {}", current_dir.display());
+    
+    // Build paths safely
+    let mut config_path = current_dir.clone();
+    config_path.push("config");
+    config_path.push("app.toml");
+    
+    // Alternative: using join
+    let data_path = current_dir.join("data").join("users.json");
+    
+    // Path components
+    if let Some(parent) = config_path.parent() {
+        println!("Config directory: {}", parent.display());
+    }
+    
+    if let Some(filename) = config_path.file_name() {
+        println!("Config filename: {:?}", filename);
+    }
+    
+    if let Some(extension) = config_path.extension() {
+        println!("File extension: {:?}", extension);
+    }
+    
+    // Path validation
+    if config_path.exists() {
+        println!("Config file exists");
+        
+        if config_path.is_file() {
+            println!("It's a file");
+        }
+        
+        let metadata = fs::metadata(&amp;config_path)?;
+        println!("File size: {} bytes", metadata.len());
+        println!("Modified: {:?}", metadata.modified()?);
+    }
+    
+    Ok(())
+}
+
+// Directory operations
+fn directory_operations() -&gt; io::Result&lt;()&gt; {
+    let base_dir = Path::new("./workspace");
+    
+    // Create directories
+    fs::create_dir_all(base_dir.join("logs"))?;
+    fs::create_dir_all(base_dir.join("data/cache"))?;
+    
+    // List directory contents
+    for entry in fs::read_dir(base_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.is_file() {
+            println!("File: {}", path.display());
+        } else if path.is_dir() {
+            println!("Directory: {}", path.display());
+        }
+    }
+    
+    // Recursive directory traversal
+    fn visit_dir(dir: &amp;Path, depth: usize) -&gt; io::Result&lt;()&gt; {
+        if depth &gt; 5 { // Prevent infinite recursion
+            return Ok(());
+        }
+        
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            println!("{:indent$}{}", "", path.file_name().unwrap().to_string_lossy(),
+                    indent = depth * 2);
+            
+            if path.is_dir() {
+                visit_dir(&amp;path, depth + 1)?;
+            }
+        }
+        Ok(())
+    }
+    
+    visit_dir(base_dir, 0)?;
+    
+    Ok(())
+}
+
+// File system operations with error handling
+fn filesystem_operations() -&gt; io::Result&lt;()&gt; {
+    let temp_file = Path::new("temp.txt");
+    let backup_file = Path::new("temp.txt.backup");
+    
+    // Create a temporary file
+    fs::write(temp_file, "temporary content")?;
+    
+    // Copy file
+    fs::copy(temp_file, backup_file)?;
+    
+    // Move/rename file
+    let renamed_file = Path::new("renamed.txt");
+    fs::rename(backup_file, renamed_file)?;
+    
+    // Remove files
+    fs::remove_file(temp_file)?;
+    fs::remove_file(renamed_file)?;
+    
+    // Create and remove directories
+    let test_dir = Path::new("test_directory");
+    fs::create_dir(test_dir)?;
+    fs::remove_dir(test_dir)?;
+    
+    Ok(())
+}
+
+// Cross-platform path handling
+fn cross_platform_paths() {
+    // Platform-specific separators
+    println!("Path separator: {}", std::path::MAIN_SEPARATOR);
+    
+    // Build paths that work on all platforms
+    let home_dir = env::var("HOME")
+        .or_else(|_| env::var("USERPROFILE"))  // Windows fallback
+        .expect("Could not find home directory");
+    
+    let config_path = Path::new(&amp;home_dir).join(".config").join("myapp");
+    println!("Config path: {}", config_path.display());
+    
+    // Handle different path formats
+    let path_str = if cfg!(windows) {
+        r"C:\Users\John\Documents\file.txt"
+    } else {
+        "/home/john/Documents/file.txt"
+    };
+    
+    let path = Path::new(path_str);
+    println!("Parsed path: {}", path.display());
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="serialization-with-serde"><a class="header" href="#serialization-with-serde">Serialization with Serde</a></h2>
+<p>Serde provides powerful serialization/deserialization capabilities:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+// Basic serializable structures
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct User {
+    id: u32,
+    username: String,
+    email: String,
+    active: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_picture: Option&lt;String&gt;,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    database_url: String,
+    port: u16,
+    debug: bool,
+    features: Vec&lt;String&gt;,
+    cache_settings: CacheConfig,
+    #[serde(default)]
+    optional_settings: HashMap&lt;String, String&gt;,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct CacheConfig {
+    ttl_seconds: u64,
+    max_size: usize,
+    #[serde(rename = "enabled")]
+    is_enabled: bool,
+}
+
+// JSON serialization
+fn json_examples() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let user = User {
+        id: 1,
+        username: "alice".to_string(),
+        email: "alice@example.com".to_string(),
+        active: true,
+        profile_picture: Some("avatar.jpg".to_string()),
+    };
+    
+    // Serialize to JSON string
+    let json_string = serde_json::to_string(&amp;user)?;
+    println!("JSON: {}", json_string);
+    
+    // Pretty-print JSON
+    let json_pretty = serde_json::to_string_pretty(&amp;user)?;
+    println!("Pretty JSON:\n{}", json_pretty);
+    
+    // Deserialize from JSON
+    let user_from_json: User = serde_json::from_str(&amp;json_string)?;
+    println!("Deserialized: {:?}", user_from_json);
+    
+    // Work with JSON files
+    let users = vec![user.clone(), User {
+        id: 2,
+        username: "bob".to_string(),
+        email: "bob@example.com".to_string(),
+        active: false,
+        profile_picture: None,
+    }];
+    
+    // Write to file
+    let json_file = File::create("users.json")?;
+    serde_json::to_writer_pretty(json_file, &amp;users)?;
+    
+    // Read from file
+    let json_file = File::open("users.json")?;
+    let users_from_file: Vec&lt;User&gt; = serde_json::from_reader(json_file)?;
+    println!("Users from file: {:#?}", users_from_file);
+    
+    Ok(())
+}
+
+// TOML configuration files
+fn toml_examples() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let config = Config {
+        database_url: "postgresql://localhost:5432/myapp".to_string(),
+        port: 8080,
+        debug: false,
+        features: vec!["auth".to_string(), "api".to_string()],
+        cache_settings: CacheConfig {
+            ttl_seconds: 3600,
+            max_size: 10000,
+            is_enabled: true,
+        },
+        optional_settings: {
+            let mut settings = HashMap::new();
+            settings.insert("theme".to_string(), "dark".to_string());
+            settings.insert("language".to_string(), "en".to_string());
+            settings
+        },
+    };
+    
+    // Serialize to TOML
+    let toml_string = toml::to_string(&amp;config)?;
+    println!("TOML configuration:\n{}", toml_string);
+    
+    // Write to file
+    std::fs::write("config.toml", &amp;toml_string)?;
+    
+    // Read from file
+    let toml_content = std::fs::read_to_string("config.toml")?;
+    let config_from_toml: Config = toml::from_str(&amp;toml_content)?;
+    println!("Config from TOML: {:#?}", config_from_toml);
+    
+    Ok(())
+}
+
+// Binary serialization with bincode
+fn binary_serialization() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let users = vec![
+        User {
+            id: 1,
+            username: "alice".to_string(),
+            email: "alice@example.com".to_string(),
+            active: true,
+            profile_picture: Some("avatar.jpg".to_string()),
+        },
+        User {
+            id: 2,
+            username: "bob".to_string(),
+            email: "bob@example.com".to_string(),
+            active: false,
+            profile_picture: None,
+        },
+    ];
+    
+    // Serialize to binary
+    let encoded: Vec&lt;u8&gt; = bincode::serialize(&amp;users)?;
+    println!("Binary size: {} bytes", encoded.len());
+    
+    // Write binary data to file
+    std::fs::write("users.bin", &amp;encoded)?;
+    
+    // Read binary data from file
+    let binary_data = std::fs::read("users.bin")?;
+    let decoded_users: Vec&lt;User&gt; = bincode::deserialize(&amp;binary_data)?;
+    
+    println!("Decoded users: {:#?}", decoded_users);
+    
+    // Compare sizes
+    let json_size = serde_json::to_string(&amp;users)?.len();
+    println!("JSON size: {} bytes, Binary size: {} bytes", json_size, encoded.len());
+    
+    Ok(())
+}
+
+// Custom serialization with serde attributes
+#[derive(Serialize, Deserialize, Debug)]
+struct CustomSerialization {
+    #[serde(rename = "customName")]
+    name: String,
+    
+    #[serde(with = "timestamp_format")]
+    created_at: std::time::SystemTime,
+    
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    tags: Vec&lt;String&gt;,
+    
+    #[serde(flatten)]
+    extra: HashMap&lt;String, serde_json::Value&gt;,
+}
+
+mod timestamp_format {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use std::time::SystemTime;
+    
+    pub fn serialize&lt;S&gt;(time: &amp;SystemTime, serializer: S) -&gt; Result&lt;S::Ok, S::Error&gt;
+    where
+        S: Serializer,
+    {
+        let duration = time.duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(serde::ser::Error::custom)?;
+        serializer.serialize_u64(duration.as_secs())
+    }
+    
+    pub fn deserialize&lt;'de, D&gt;(deserializer: D) -&gt; Result&lt;SystemTime, D::Error&gt;
+    where
+        D: Deserializer&lt;'de&gt;,
+    {
+        let timestamp = u64::deserialize(deserializer)?;
+        Ok(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(timestamp))
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="command-line-interfaces-with-clap"><a class="header" href="#command-line-interfaces-with-clap">Command Line Interfaces with Clap</a></h2>
+<p>Building robust CLI applications:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use clap::{Parser, Subcommand, ArgGroup};
+use std::path::PathBuf;
+
+// Main CLI structure
+#[derive(Parser, Debug)]
+#[command(name = "file-manager")]
+#[command(about = "A comprehensive file management tool")]
+#[command(version = "1.0.0")]
+struct Cli {
+    /// Enable verbose output
+    #[arg(short, long)]
+    verbose: bool,
+    
+    /// Configuration file path
+    #[arg(short, long, value_name = "FILE")]
+    config: Option&lt;PathBuf&gt;,
+    
+    /// Output format
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Json)]
+    format: OutputFormat,
+    
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Copy files or directories
+    Copy {
+        /// Source path
+        source: PathBuf,
+        /// Destination path
+        destination: PathBuf,
+        /// Copy recursively for directories
+        #[arg(short, long)]
+        recursive: bool,
+        /// Overwrite existing files
+        #[arg(short, long)]
+        force: bool,
+    },
+    /// Find files matching criteria
+    Find {
+        /// Directory to search in
+        #[arg(default_value = ".")]
+        path: PathBuf,
+        /// File name pattern
+        #[arg(short, long)]
+        name: Option&lt;String&gt;,
+        /// File extension filter
+        #[arg(short, long)]
+        extension: Option&lt;String&gt;,
+        /// Minimum file size in bytes
+        #[arg(long)]
+        min_size: Option&lt;u64&gt;,
+        /// Maximum file size in bytes
+        #[arg(long)]
+        max_size: Option&lt;u64&gt;,
+        /// Maximum search depth
+        #[arg(short, long, default_value_t = 10)]
+        depth: usize,
+    },
+    /// Convert between file formats
+    Convert {
+        /// Input file
+        input: PathBuf,
+        /// Output file (optional, derives from input if not provided)
+        output: Option&lt;PathBuf&gt;,
+        /// Source format (auto-detected if not specified)
+        #[arg(long)]
+        from: Option&lt;Format&gt;,
+        /// Target format
+        #[arg(long)]
+        to: Format,
+    },
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum OutputFormat {
+    Json,
+    Yaml,
+    Table,
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum Format {
+    Json,
+    Toml,
+    Yaml,
+    Csv,
+}
+
+// CLI implementation
+fn run_cli() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let cli = Cli::parse();
+    
+    if cli.verbose {
+        println!("Verbose mode enabled");
+    }
+    
+    if let Some(config_path) = &amp;cli.config {
+        println!("Using config file: {}", config_path.display());
+        // Load configuration
+    }
+    
+    match &amp;cli.command {
+        Commands::Copy { source, destination, recursive, force } =&gt; {
+            copy_command(source, destination, *recursive, *force)?;
+        }
+        Commands::Find { path, name, extension, min_size, max_size, depth } =&gt; {
+            find_command(path, name.as_deref(), extension.as_deref(), 
+                        *min_size, *max_size, *depth, &amp;cli.format)?;
+        }
+        Commands::Convert { input, output, from, to } =&gt; {
+            convert_command(input, output.as_ref(), from.as_ref(), to)?;
+        }
+    }
+    
+    Ok(())
+}
+
+// Command implementations
+fn copy_command(
+    source: &amp;PathBuf,
+    dest: &amp;PathBuf,
+    recursive: bool,
+    force: bool,
+) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    println!("Copying {} to {} (recursive: {}, force: {})",
+             source.display(), dest.display(), recursive, force);
+    
+    if !source.exists() {
+        return Err(format!("Source path does not exist: {}", source.display()).into());
+    }
+    
+    if dest.exists() &amp;&amp; !force {
+        return Err("Destination exists and --force not specified".into());
+    }
+    
+    if source.is_file() {
+        fs::copy(source, dest)?;
+        println!("File copied successfully");
+    } else if source.is_dir() &amp;&amp; recursive {
+        copy_dir_recursive(source, dest)?;
+        println!("Directory copied successfully");
+    } else {
+        return Err("Use --recursive flag to copy directories".into());
+    }
+    
+    Ok(())
+}
+
+fn copy_dir_recursive(src: &amp;Path, dst: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    fs::create_dir_all(dst)?;
+    
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        
+        if src_path.is_file() {
+            fs::copy(&amp;src_path, &amp;dst_path)?;
+        } else if src_path.is_dir() {
+            copy_dir_recursive(&amp;src_path, &amp;dst_path)?;
+        }
+    }
+    
+    Ok(())
+}
+
+fn find_command(
+    path: &amp;PathBuf,
+    name_pattern: Option&lt;&amp;str&gt;,
+    extension: Option&lt;&amp;str&gt;,
+    min_size: Option&lt;u64&gt;,
+    max_size: Option&lt;u64&gt;,
+    max_depth: usize,
+    output_format: &amp;OutputFormat,
+) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let mut results = Vec::new();
+    find_files_recursive(path, name_pattern, extension, min_size, max_size, 
+                        max_depth, 0, &amp;mut results)?;
+    
+    match output_format {
+        OutputFormat::Json =&gt; {
+            let json = serde_json::to_string_pretty(&amp;results)?;
+            println!("{}", json);
+        }
+        OutputFormat::Table =&gt; {
+            println!("{:&lt;50} {:&lt;10} {:&lt;20}", "Path", "Size", "Modified");
+            println!("{:-&lt;80}", "");
+            for result in results {
+                println!("{:&lt;50} {:&lt;10} {:&lt;20}", result.path, result.size, result.modified);
+            }
+        }
+        OutputFormat::Yaml =&gt; {
+            let yaml = serde_yaml::to_string(&amp;results)?;
+            println!("{}", yaml);
+        }
+    }
+    
+    Ok(())
+}
+
+#[derive(Serialize, Debug)]
+struct FindResult {
+    path: String,
+    size: u64,
+    modified: String,
+    is_file: bool,
+}
+
+fn find_files_recursive(
+    dir: &amp;Path,
+    name_pattern: Option&lt;&amp;str&gt;,
+    extension: Option&lt;&amp;str&gt;,
+    min_size: Option&lt;u64&gt;,
+    max_size: Option&lt;u64&gt;,
+    max_depth: usize,
+    current_depth: usize,
+    results: &amp;mut Vec&lt;FindResult&gt;,
+) -&gt; io::Result&lt;()&gt; {
+    if current_depth &gt; max_depth {
+        return Ok(());
+    }
+    
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let metadata = entry.metadata()?;
+        
+        let matches = check_file_criteria(&amp;path, &amp;metadata, name_pattern, extension, min_size, max_size);
+        
+        if matches {
+            results.push(FindResult {
+                path: path.display().to_string(),
+                size: metadata.len(),
+                modified: format!("{:?}", metadata.modified().unwrap_or(std::time::UNIX_EPOCH)),
+                is_file: path.is_file(),
+            });
+        }
+        
+        if path.is_dir() {
+            find_files_recursive(&amp;path, name_pattern, extension, min_size, max_size,
+                               max_depth, current_depth + 1, results)?;
+        }
+    }
+    
+    Ok(())
+}
+
+fn check_file_criteria(
+    path: &amp;Path,
+    metadata: &amp;fs::Metadata,
+    name_pattern: Option&lt;&amp;str&gt;,
+    extension: Option&lt;&amp;str&gt;,
+    min_size: Option&lt;u64&gt;,
+    max_size: Option&lt;u64&gt;,
+) -&gt; bool {
+    // Check name pattern
+    if let Some(pattern) = name_pattern {
+        if let Some(filename) = path.file_name() {
+            let filename_str = filename.to_string_lossy();
+            if !filename_str.contains(pattern) {
+                return false;
+            }
+        }
+    }
+    
+    // Check extension
+    if let Some(ext) = extension {
+        if let Some(file_ext) = path.extension() {
+            if file_ext != ext {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    
+    // Check file size
+    let file_size = metadata.len();
+    if let Some(min) = min_size {
+        if file_size &lt; min {
+            return false;
+        }
+    }
+    
+    if let Some(max) = max_size {
+        if file_size &gt; max {
+            return false;
+        }
+    }
+    
+    true
+}
+
+fn convert_command(
+    input: &amp;PathBuf,
+    output: Option&lt;&amp;PathBuf&gt;,
+    _from: Option&lt;&amp;Format&gt;,
+    to: &amp;Format,
+) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let output_path = match output {
+        Some(path) =&gt; path.clone(),
+        None =&gt; {
+            let mut path = input.clone();
+            let new_ext = match to {
+                Format::Json =&gt; "json",
+                Format::Toml =&gt; "toml",
+                Format::Yaml =&gt; "yaml",
+                Format::Csv =&gt; "csv",
+            };
+            path.set_extension(new_ext);
+            path
+        }
+    };
+    
+    println!("Converting {} to {} (format: {:?})",
+             input.display(), output_path.display(), to);
+    
+    // Implementation would depend on the specific formats
+    // This is a simplified example
+    let content = fs::read_to_string(input)?;
+    
+    match to {
+        Format::Json =&gt; {
+            // Convert to JSON format
+            fs::write(&amp;output_path, format!("{{\"content\": \"{}\"}}", content))?;
+        }
+        Format::Yaml =&gt; {
+            // Convert to YAML format
+            fs::write(&amp;output_path, format!("content: |\n  {}", content))?;
+        }
+        _ =&gt; {
+            return Err("Conversion format not implemented".into());
+        }
+    }
+    
+    println!("Conversion complete: {}", output_path.display());
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="async-file-io"><a class="header" href="#async-file-io">Async File I/O</a></h2>
+<p>Using tokio for asynchronous file operations:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use tokio::fs;
+use tokio::io::{AsyncReadExt, AsyncWriteExt, AsyncBufReadExt, BufReader};
+
+// Async file operations
+async fn async_file_operations() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Read entire file asynchronously
+    let content = fs::read_to_string("example.txt").await?;
+    println!("File content: {}", content);
+    
+    // Write file asynchronously
+    fs::write("output.txt", "Hello from async Rust!").await?;
+    
+    // Line-by-line reading for large files
+    let file = fs::File::open("large_file.txt").await?;
+    let reader = BufReader::new(file);
+    let mut lines = reader.lines();
+    
+    let mut line_count = 0;
+    while let Some(line) = lines.next_line().await? {
+        line_count += 1;
+        if line_count &lt;= 5 {
+            println!("Line {}: {}", line_count, line);
+        }
+    }
+    println!("Total lines: {}", line_count);
+    
+    Ok(())
+}
+
+// Concurrent file processing
+async fn concurrent_file_processing(file_paths: Vec&lt;&amp;str&gt;) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let tasks = file_paths.into_iter().map(|path| {
+        tokio::spawn(async move {
+            match fs::read_to_string(path).await {
+                Ok(content) =&gt; (path, Ok(content.len())),
+                Err(e) =&gt; (path, Err(e)),
+            }
+        })
+    });
+    
+    let results = futures::future::join_all(tasks).await;
+    
+    for result in results {
+        match result? {
+            (path, Ok(size)) =&gt; println!("File {}: {} bytes", path, size),
+            (path, Err(e)) =&gt; println!("Error reading {}: {}", path, e),
+        }
+    }
+    
+    Ok(())
+}
+
+// Async vs Sync performance comparison
+async fn performance_comparison() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    use std::time::Instant;
+    
+    let files = vec!["file1.txt", "file2.txt", "file3.txt"];
+    
+    // Sync version
+    let start = Instant::now();
+    for file in &amp;files {
+        let _ = std::fs::read_to_string(file);
+    }
+    let sync_duration = start.elapsed();
+    
+    // Async version
+    let start = Instant::now();
+    let tasks = files.iter().map(|file| fs::read_to_string(file));
+    let _ = futures::future::join_all(tasks).await;
+    let async_duration = start.elapsed();
+    
+    println!("Sync duration: {:?}", sync_duration);
+    println!("Async duration: {:?}", async_duration);
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="common-pitfalls-and-solutions"><a class="header" href="#common-pitfalls-and-solutions">Common Pitfalls and Solutions</a></h2>
+<h3 id="1-buffer-management"><a class="header" href="#1-buffer-management">1. Buffer Management</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// BAD: Reading entire file into memory
+fn bad_large_file_processing(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let content = fs::read_to_string(path)?; // Could exhaust memory
+    for line in content.lines() {
+        process_line(line);
+    }
+    Ok(())
+}
+
+// GOOD: Streaming file processing
+fn good_large_file_processing(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    
+    for line in reader.lines() {
+        let line = line?;
+        process_line(&amp;line);
+    }
+    Ok(())
+}
+
+fn process_line(_line: &amp;str) {
+    // Process individual line
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="2-path-handling"><a class="header" href="#2-path-handling">2. Path Handling</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// BAD: String concatenation for paths
+fn bad_path_construction() {
+    let path = "/home/user".to_string() + "/" + "documents" + "/" + "file.txt";
+    // This breaks on Windows and doesn't handle edge cases
+}
+
+// GOOD: Using Path and PathBuf
+fn good_path_construction() {
+    let base = Path::new("/home/user");
+    let full_path = base.join("documents").join("file.txt");
+    println!("Path: {}", full_path.display());
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<h3 id="exercise-1-log-file-analyzer"><a class="header" href="#exercise-1-log-file-analyzer">Exercise 1: Log File Analyzer</a></h3>
+<p>Create a log file analyzer that processes large log files efficiently:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+use std::path::Path;
+
+#[derive(Debug)]
+struct LogEntry {
+    timestamp: String,
+    level: String,
+    message: String,
+}
+
+#[derive(Debug)]
+struct LogAnalysis {
+    total_lines: usize,
+    level_counts: HashMap&lt;String, usize&gt;,
+    error_messages: Vec&lt;String&gt;,
+    unique_ips: std::collections::HashSet&lt;String&gt;,
+}
+
+struct LogAnalyzer;
+
+impl LogAnalyzer {
+    pub fn new() -&gt; Self {
+        LogAnalyzer
+    }
+    
+    pub fn analyze_file(&amp;self, path: &amp;Path) -&gt; io::Result&lt;LogAnalysis&gt; {
+        // TODO: Implement log file analysis
+        // - Read file line by line (don't load entire file into memory)
+        // - Parse each log entry
+        // - Count entries by log level
+        // - Extract error messages
+        // - Find unique IP addresses in the logs
+        unimplemented!()
+    }
+    
+    fn parse_log_entry(&amp;self, line: &amp;str) -&gt; Option&lt;LogEntry&gt; {
+        // TODO: Parse log entry from line
+        // Format: "2023-12-01 10:30:45 [INFO] User 192.168.1.100 logged in"
+        unimplemented!()
+    }
+    
+    pub async fn analyze_file_async(&amp;self, path: &amp;Path) -&gt; Result&lt;LogAnalysis, Box&lt;dyn std::error::Error&gt;&gt; {
+        // TODO: Implement async version
+        unimplemented!()
+    }
+}
+
+// Test your implementation
+fn test_log_analyzer() -&gt; io::Result&lt;()&gt; {
+    let analyzer = LogAnalyzer::new();
+    let analysis = analyzer.analyze_file(Path::new("server.log"))?;
+    
+    println!("Log Analysis Results:");
+    println!("Total lines: {}", analysis.total_lines);
+    println!("Level counts: {:#?}", analysis.level_counts);
+    println!("Error messages: {}", analysis.error_messages.len());
+    println!("Unique IPs: {}", analysis.unique_ips.len());
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="exercise-2-configuration-manager"><a class="header" href="#exercise-2-configuration-manager">Exercise 2: Configuration Manager</a></h3>
+<p>Build a configuration manager that handles multiple formats:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AppConfig {
+    server: ServerConfig,
+    database: DatabaseConfig,
+    logging: LoggingConfig,
+    features: Vec&lt;String&gt;,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ServerConfig {
+    host: String,
+    port: u16,
+    workers: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct DatabaseConfig {
+    url: String,
+    max_connections: u32,
+    timeout_seconds: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct LoggingConfig {
+    level: String,
+    file_path: Option&lt;String&gt;,
+    max_file_size: u64,
+}
+
+struct ConfigManager {
+    config_path: PathBuf,
+}
+
+impl ConfigManager {
+    pub fn new(config_path: PathBuf) -&gt; Self {
+        ConfigManager { config_path }
+    }
+    
+    pub fn load(&amp;self) -&gt; Result&lt;AppConfig, Box&lt;dyn std::error::Error&gt;&gt; {
+        // TODO: Load configuration from file
+        // - Detect format from file extension
+        // - Support JSON, TOML, and YAML
+        // - Handle missing files with default config
+        unimplemented!()
+    }
+    
+    pub fn save(&amp;self, config: &amp;AppConfig) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+        // TODO: Save configuration to file
+        // - Use same format as original file
+        // - Create backup before overwriting
+        unimplemented!()
+    }
+    
+    pub fn merge_from_env(&amp;self, config: &amp;mut AppConfig) {
+        // TODO: Override config values from environment variables
+        // - Use naming convention like: APP_SERVER_PORT=8080
+        unimplemented!()
+    }
+    
+    pub fn validate(&amp;self, config: &amp;AppConfig) -&gt; Result&lt;(), String&gt; {
+        // TODO: Validate configuration values
+        // - Check port ranges
+        // - Validate database URL format
+        // - Ensure required fields are present
+        unimplemented!()
+    }
+}
+
+// Test your implementation
+fn test_config_manager() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let manager = ConfigManager::new(PathBuf::from("config.toml"));
+    
+    let mut config = manager.load()?;
+    manager.merge_from_env(&amp;mut config);
+    manager.validate(&amp;config)?;
+    
+    println!("Loaded config: {:#?}", config);
+    
+    // Modify and save
+    config.server.port = 9090;
+    manager.save(&amp;config)?;
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="exercise-3-file-synchronizer"><a class="header" href="#exercise-3-file-synchronizer">Exercise 3: File Synchronizer</a></h3>
+<p>Create a file synchronization tool:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Debug, Clone)]
+struct SyncStats {
+    files_copied: usize,
+    files_updated: usize,
+    files_deleted: usize,
+    bytes_transferred: u64,
+}
+
+struct FileSynchronizer {
+    source: PathBuf,
+    destination: PathBuf,
+}
+
+impl FileSynchronizer {
+    pub fn new(source: PathBuf, destination: PathBuf) -&gt; Self {
+        FileSynchronizer { source, destination }
+    }
+    
+    pub fn sync(&amp;self, dry_run: bool) -&gt; Result&lt;SyncStats, Box&lt;dyn std::error::Error&gt;&gt; {
+        // TODO: Implement file synchronization
+        // - Compare source and destination directories
+        // - Identify new, modified, and deleted files
+        // - Copy/update/delete files as needed
+        // - If dry_run is true, only report what would be done
+        unimplemented!()
+    }
+    
+    pub async fn sync_async(&amp;self, dry_run: bool) -&gt; Result&lt;SyncStats, Box&lt;dyn std::error::Error&gt;&gt; {
+        // TODO: Implement async version with progress reporting
+        unimplemented!()
+    }
+    
+    fn compare_files(&amp;self, source: &amp;Path, dest: &amp;Path) -&gt; Result&lt;bool, Box&lt;dyn std::error::Error&gt;&gt; {
+        // TODO: Compare files to determine if sync is needed
+        // - Check modification time
+        // - Compare file sizes
+        // - Optionally compute checksums for content comparison
+        unimplemented!()
+    }
+    
+    fn copy_with_progress(&amp;self, source: &amp;Path, dest: &amp;Path) -&gt; Result&lt;u64, Box&lt;dyn std::error::Error&gt;&gt; {
+        // TODO: Copy file with progress reporting
+        unimplemented!()
+    }
+}
+
+// Test your implementation
+async fn test_file_synchronizer() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let syncer = FileSynchronizer::new(
+        PathBuf::from("source_folder"),
+        PathBuf::from("backup_folder"),
+    );
+    
+    // Dry run first
+    let stats = syncer.sync(true)?;
+    println!("Dry run results: {:#?}", stats);
+    
+    // Actually sync
+    let stats = syncer.sync_async(false).await?;
+    println!("Sync completed: {:#?}", stats);
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
+<ol>
+<li><strong>Use Buffered I/O</strong>: Always use <code>BufReader</code>/<code>BufWriter</code> for better performance with small reads/writes</li>
+<li><strong>Handle Errors Properly</strong>: File operations can fail; use proper error handling with <code>Result&lt;T, E&gt;</code></li>
+<li><strong>Cross-Platform Paths</strong>: Use <code>Path</code> and <code>PathBuf</code> instead of string concatenation for file paths</li>
+<li><strong>Memory Management</strong>: Process large files line-by-line instead of loading everything into memory</li>
+<li><strong>Choose the Right Format</strong>: JSON for web APIs, TOML for configuration, binary for performance</li>
+<li><strong>Async for I/O Bound</strong>: Use async file operations when dealing with many files or network storage</li>
+<li><strong>CLI Best Practices</strong>: Use clap for robust argument parsing and proper help messages</li>
+<li><strong>Validate Input</strong>: Always validate file paths and configuration values before processing</li>
+</ol>
+<p><strong>Next</strong>: In Chapter 16, we'll explore no_std programming for embedded systems and performance-critical applications.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../day3/15_async.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../day3/17_no_std.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../day3/15_async.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../day3/17_no_std.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

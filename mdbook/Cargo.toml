@@ -1,7 +1,6 @@
 [package]
-name = "rust-roche"
+name = "mdbook"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-mdbook = "0.4.52"

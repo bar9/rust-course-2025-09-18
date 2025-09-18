@@ -15,7 +15,7 @@ cargo install mdbook
 
 Run the development server with live reload:
 ```bash
-mdbook serve
+cd mdbook && mdbook serve
 ```
 
 The course will be available at `http://localhost:3000`
@@ -24,7 +24,7 @@ The course will be available at `http://localhost:3000`
 
 Generate the static site:
 ```bash
-mdbook build
+cd mdbook && mdbook build
 ```
 
 The built course will be in the `book/` directory.
@@ -43,3 +43,7 @@ The CI/CD pipeline:
 3. Publishes it to GitLab Pages
 
 No additional configuration needed - just push to `main` and the course will be deployed automatically.
+
+## Exercises
+For each course day, generate a cargo crate with e.g. `cargo init day2`. Use the pattern from `day` and use test assertions to check your solutions.
+For bigger exercises such as the capstone exercise on day 3, you can init a separate crate just for
