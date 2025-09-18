@@ -45,5 +45,5 @@ The CI/CD pipeline:
 No additional configuration needed - just push to `main` and the course will be deployed automatically.
 
 ## Exercises
-For each course day, generate a cargo crate with e.g. `cargo init day2`. Use the pattern from `day` and use test assertions to check your solutions.
+For each course day, generate a cargo crate with e.g. `cargo init day1-02`. Use the pattern from `day1-example` and use test assertions to check your solutions.
 For bigger exercises such as the capstone exercise on day 3, you can init a separate crate just for
