@@ -150,12 +150,493 @@ fn square_root(x: f64) -> Result<f64, MathError> {
 
 ---
 
+## Error Conversion and Chaining
+
+### The From Trait for Error Conversion
+
+```rust
+use std::fs::File;
+use std::io;
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum AppError {
+    Io(io::Error),
+    Parse(ParseIntError),
+    Custom(String),
+}
+
+// Automatic conversion from io::Error
+impl From<io::Error> for AppError {
+    fn from(error: io::Error) -> Self {
+        AppError::Io(error)
+    }
+}
+
+// Automatic conversion from ParseIntError
+impl From<ParseIntError> for AppError {
+    fn from(error: ParseIntError) -> Self {
+        AppError::Parse(error)
+    }
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AppError::Io(e) => write!(f, "IO error: {}", e),
+            AppError::Parse(e) => write!(f, "Parse error: {}", e),
+            AppError::Custom(msg) => write!(f, "Error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for AppError {}
+
+// Now ? operator works seamlessly
+fn read_number_from_file(filename: &str) -> Result<i32, AppError> {
+    let contents = std::fs::read_to_string(filename)?; // io::Error -> AppError
+    let number = contents.trim().parse::<i32>()?;       // ParseIntError -> AppError
+    
+    if number < 0 {
+        return Err(AppError::Custom("Number must be positive".to_string()));
+    }
+    
+    Ok(number)
+}
+```
+
+### Chaining Multiple Operations
+
+```rust
+use std::path::Path;
+
+fn process_config_file(path: &Path) -> Result<Config, AppError> {
+    std::fs::read_to_string(path)?
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(|line| parse_config_line(line))
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .fold(Config::default(), |mut cfg, (key, value)| {
+            cfg.set(&key, value);
+            cfg
+        })
+        .validate()
+        .map_err(|e| AppError::Custom(e))
+}
+
+struct Config {
+    settings: HashMap<String, String>,
+}
+
+impl Config {
+    fn default() -> Self {
+        Config { settings: HashMap::new() }
+    }
+    
+    fn set(&mut self, key: &str, value: String) {
+        self.settings.insert(key.to_string(), value);
+    }
+    
+    fn validate(self) -> Result<Config, String> {
+        if self.settings.is_empty() {
+            Err("Configuration is empty".to_string())
+        } else {
+            Ok(self)
+        }
+    }
+}
+
+fn parse_config_line(line: &str) -> Result<(String, String), AppError> {
+    let parts: Vec<&str> = line.splitn(2, '=').collect();
+    if parts.len() != 2 {
+        return Err(AppError::Custom(format!("Invalid config line: {}", line)));
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
+```
+
+---
+
+## Working with External Error Libraries
+
+### Using anyhow for Applications
+
+```rust
+use anyhow::{Context, Result, bail};
+
+// anyhow::Result is Result<T, anyhow::Error>
+fn load_config(path: &str) -> Result<Config> {
+    let contents = std::fs::read_to_string(path)
+        .context("Failed to read config file")?;
+    
+    let config: Config = serde_json::from_str(&contents)
+        .context("Failed to parse JSON config")?;
+    
+    if config.port == 0 {
+        bail!("Invalid port: 0");
+    }
+    
+    Ok(config)
+}
+
+fn main() -> Result<()> {
+    let config = load_config("app.json")?;
+    
+    // Chain multiple operations with context
+    let server = create_server(&config)
+        .context("Failed to create server")?;
+    
+    server.run()
+        .context("Server failed during execution")?;
+    
+    Ok(())
+}
+```
+
+### Using thiserror for Libraries
+
+```rust
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum DataStoreError {
+    #[error("data not found")]
+    NotFound,
+    
+    #[error("permission denied: {0}")]
+    PermissionDenied(String),
+    
+    #[error("invalid input: {msg}")]
+    InvalidInput { msg: String },
+    
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+    
+    #[error("serialization error")]
+    Serialization(#[from] serde_json::Error),
+    
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+// Use in library code
+fn get_user(id: u64) -> Result<User, DataStoreError> {
+    if id == 0 {
+        return Err(DataStoreError::InvalidInput { 
+            msg: "ID cannot be 0".to_string() 
+        });
+    }
+    
+    let user = db::query_user(id)?; // Automatic conversion from sqlx::Error
+    Ok(user)
+}
+```
+
+---
+
+## Error Handling Patterns
+
+### Early Returns with ?
+
+```rust
+fn process_data(input: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let parsed = parse_input(input)?;
+    let validated = validate(parsed)?;
+    let processed = transform(validated)?;
+    Ok(format_output(processed))
+}
+
+// Compare with nested match statements (avoid this!)
+fn process_data_verbose(input: &str) -> Result<String, Box<dyn std::error::Error>> {
+    match parse_input(input) {
+        Ok(parsed) => {
+            match validate(parsed) {
+                Ok(validated) => {
+                    match transform(validated) {
+                        Ok(processed) => Ok(format_output(processed)),
+                        Err(e) => Err(e.into()),
+                    }
+                },
+                Err(e) => Err(e.into()),
+            }
+        },
+        Err(e) => Err(e.into()),
+    }
+}
+```
+
+### Collecting Results
+
+```rust
+fn process_files(paths: &[&str]) -> Result<Vec<String>, io::Error> {
+    paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect::<Result<Vec<_>, _>>()
+}
+
+// Handle partial success
+fn process_files_partial(paths: &[&str]) -> (Vec<String>, Vec<io::Error>) {
+    let results: Vec<Result<String, io::Error>> = paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect();
+    
+    let mut successes = Vec::new();
+    let mut failures = Vec::new();
+    
+    for result in results {
+        match result {
+            Ok(content) => successes.push(content),
+            Err(e) => failures.push(e),
+        }
+    }
+    
+    (successes, failures)
+}
+```
+
+---
+
+## Testing Error Cases
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_division_by_zero() {
+        let result = divide(10.0, 0.0);
+        assert!(result.is_err());
+        
+        match result {
+            Err(MathError::DivisionByZero) => (),
+            _ => panic!("Expected DivisionByZero error"),
+        }
+    }
+    
+    #[test]
+    fn test_file_not_found() {
+        let result = read_file_contents("nonexistent.txt");
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    fn test_panic_condition() {
+        assert!(false, "assertion failed");
+    }
+}
+```
+
+---
+
+## Exercises
+
+### Exercise 1: Build a Configuration Parser
+
+Create a robust configuration parser with proper error handling:
+
+```rust
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+#[derive(Debug)]
+enum ConfigError {
+    IoError(std::io::Error),
+    ParseError(String),
+    ValidationError(String),
+}
+
+// TODO: Implement Display and Error traits for ConfigError
+// TODO: Implement From<std::io::Error> for automatic conversion
+
+struct Config {
+    settings: HashMap<String, String>,
+}
+
+impl Config {
+    fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {
+        // TODO: Read file, parse lines, handle comments (#)
+        // TODO: Parse key=value pairs
+        // TODO: Validate required keys exist
+        todo!()
+    }
+    
+    fn get(&self, key: &str) -> Option<&String> {
+        self.settings.get(key)
+    }
+    
+    fn get_required(&self, key: &str) -> Result<&String, ConfigError> {
+        // TODO: Return error if key doesn't exist
+        todo!()
+    }
+    
+    fn get_int(&self, key: &str) -> Result<i32, ConfigError> {
+        // TODO: Get value and parse as integer
+        todo!()
+    }
+}
+
+fn main() -> Result<(), ConfigError> {
+    let config = Config::from_file("app.conf")?;
+    let port = config.get_int("port")?;
+    let host = config.get_required("host")?;
+    
+    println!("Starting server on {}:{}", host, port);
+    Ok(())
+}
+```
+
+### Exercise 2: Multi-Error Handler
+
+Build a system that can handle multiple error types elegantly:
+
+```rust
+use std::fs::File;
+use std::io::{self, Read};
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum ProcessError {
+    FileError { path: String, error: io::Error },
+    ParseError { line: usize, error: ParseIntError },
+    ValidationError(String),
+}
+
+// TODO: Implement Display and Error traits
+
+struct DataProcessor {
+    errors: Vec<ProcessError>,
+}
+
+impl DataProcessor {
+    fn new() -> Self {
+        DataProcessor { errors: Vec::new() }
+    }
+    
+    fn process_file(&mut self, path: &str) -> Result<Vec<i32>, ProcessError> {
+        // TODO: Read file, parse each line as integer
+        // TODO: Collect all errors instead of failing on first
+        // TODO: Validate all numbers are positive
+        todo!()
+    }
+    
+    fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+    
+    fn report_errors(&self) {
+        // TODO: Print all collected errors
+        todo!()
+    }
+}
+
+fn main() {
+    let mut processor = DataProcessor::new();
+    
+    match processor.process_file("numbers.txt") {
+        Ok(numbers) => println!("Processed {} numbers", numbers.len()),
+        Err(e) => eprintln!("Fatal error: {}", e),
+    }
+    
+    if processor.has_errors() {
+        processor.report_errors();
+    }
+}
+```
+
+### Exercise 3: Result Chain Builder
+
+Create a builder pattern that properly handles errors at each step:
+
+```rust
+#[derive(Debug)]
+struct EmailBuilder {
+    to: Option<String>,
+    from: Option<String>,
+    subject: Option<String>,
+    body: Option<String>,
+}
+
+#[derive(Debug)]
+enum EmailError {
+    MissingField(&'static str),
+    InvalidEmail(String),
+}
+
+// TODO: Implement builder methods that return Result
+impl EmailBuilder {
+    fn new() -> Self {
+        EmailBuilder {
+            to: None,
+            from: None,
+            subject: None,
+            body: None,
+        }
+    }
+    
+    fn to(mut self, email: &str) -> Result<Self, EmailError> {
+        // TODO: Validate email format
+        todo!()
+    }
+    
+    fn from(mut self, email: &str) -> Result<Self, EmailError> {
+        // TODO: Validate email format
+        todo!()
+    }
+    
+    fn subject(mut self, subject: &str) -> Result<Self, EmailError> {
+        // TODO: Ensure subject is not empty
+        todo!()
+    }
+    
+    fn body(mut self, body: &str) -> Result<Self, EmailError> {
+        // TODO: Set body
+        todo!()
+    }
+    
+    fn build(self) -> Result<Email, EmailError> {
+        // TODO: Ensure all required fields are set
+        todo!()
+    }
+}
+
+struct Email {
+    to: String,
+    from: String,
+    subject: String,
+    body: String,
+}
+
+fn main() {
+    let email_result = EmailBuilder::new()
+        .to("user@example.com")?
+        .from("sender@example.com")?
+        .subject("Hello")?
+        .body("This is the email body")?
+        .build();
+    
+    match email_result {
+        Ok(email) => println!("Email created successfully"),
+        Err(e) => eprintln!("Failed to create email: {:?}", e),
+    }
+}
+```
+
+---
+
 ## Key Takeaways
 
 1. **Use Result<T, E>** for recoverable errors, panic! for unrecoverable ones
 2. **The ? operator** makes error propagation clean and efficient
 3. **Custom error types** should implement Display and Error traits
-4. **Test error cases** as thoroughly as success cases
-5. **Zero-cost abstractions** - proper error handling is fast
+4. **Error conversion** with From trait enables seamless ? usage
+5. **anyhow** is great for applications, **thiserror** for libraries
+6. **Chain operations** with Result for clean error handling
+7. **Test error cases** as thoroughly as success cases
+8. **Collect multiple errors** when appropriate instead of failing fast
 
 **Next Up:** In Chapter 11, we'll explore iterators and closures - Rust's functional programming features that make data processing both efficient and expressive.

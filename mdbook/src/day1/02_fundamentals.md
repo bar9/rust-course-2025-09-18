@@ -145,6 +145,85 @@ let byte_value: u8 = b'A';    // ASCII byte
 let unicode_char: char = 'A'; // Unicode character
 ```
 
+### Tuples: Fixed-Size Heterogeneous Collections
+
+Tuples group values of different types into a compound type. They have a fixed size once declared:
+
+```rust
+// Creating tuples
+let tup: (i32, f64, u8) = (500, 6.4, 1);
+let tup = (500, 6.4, 1);  // Type inference works too
+
+// Destructuring
+let (x, y, z) = tup;
+println!("The value of y is: {}", y);
+
+// Direct access using dot notation
+let five_hundred = tup.0;
+let six_point_four = tup.1;
+let one = tup.2;
+
+// Empty tuple (unit type)
+let unit = ();  // Type () - represents no meaningful value
+
+// Common use: returning multiple values from functions
+fn get_coordinates() -> (f64, f64) {
+    (37.7749, -122.4194)  // San Francisco coordinates
+}
+
+let (lat, lon) = get_coordinates();
+```
+
+**Comparison with C++/C#:**
+- C++: `std::tuple<int, double, char>` or `std::pair<T1, T2>`
+- C#: `(int, double, byte)` value tuples or `Tuple<int, double, byte>`
+- Rust: `(i32, f64, u8)` - simpler syntax, built into the language
+
+### Arrays: Fixed-Size Homogeneous Collections
+
+Arrays in Rust have a fixed size known at compile time and store elements of the same type:
+
+```rust
+// Creating arrays
+let months = ["January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December"];
+
+let a: [i32; 5] = [1, 2, 3, 4, 5];  // Type annotation: [type; length]
+let a = [1, 2, 3, 4, 5];            // Type inference
+
+// Initialize with same value
+let zeros = [0; 100];  // Creates array with 100 zeros
+
+// Accessing elements
+let first = months[0];   // "January"
+let second = months[1];  // "February"
+
+// Array slicing
+let slice = &months[0..3];  // ["January", "February", "March"]
+
+// Iterating over arrays
+for month in &months {
+    println!("{}", month);
+}
+
+// Arrays vs Vectors comparison
+let arr = [1, 2, 3];        // Stack-allocated, fixed size
+let vec = vec![1, 2, 3];    // Heap-allocated, growable
+```
+
+**Key Differences from Vectors:**
+| Feature | Array `[T; N]` | Vector `Vec<T>` |
+|---------|----------------|-----------------|
+| Size | Fixed at compile time | Growable at runtime |
+| Memory | Stack-allocated | Heap-allocated |
+| Performance | Faster for small, fixed data | Better for dynamic data |
+| Use case | Known size, performance critical | Unknown or changing size |
+
+**Comparison with C++/C#:**
+- C++: `int arr[5]` or `std::array<int, 5>`
+- C#: `int[] arr = new int[5]` (heap) or `Span<int>` (stack)
+- Rust: `let arr: [i32; 5]` - size is part of the type
+
 ---
 
 ## Functions: The Building Blocks
@@ -205,6 +284,165 @@ fn main() {
     take_ownership(message);       // ✅ Transfers ownership
     
     // println!("{}", message);    // ❌ Error: value moved
+}
+```
+
+---
+
+## Control Flow: Making Decisions and Repeating
+
+Rust provides familiar control flow constructs with some unique features that enhance safety and expressiveness.
+
+### if Expressions
+
+In Rust, `if` is an expression, not just a statement - it returns a value:
+
+```rust
+// Basic if/else
+let number = 7;
+if number < 5 {
+    println!("Less than 5");
+} else if number == 5 {
+    println!("Equal to 5");
+} else {
+    println!("Greater than 5");
+}
+
+// if as an expression returning values
+let condition = true;
+let number = if condition { 5 } else { 10 };  // number = 5
+
+// Must have same type in both branches
+// let value = if condition { 5 } else { "ten" }; // ❌ Type mismatch!
+```
+
+### Loops: Three Flavors
+
+Rust offers three loop constructs, each with specific use cases:
+
+#### loop - Infinite Loop with Break
+
+```rust
+// Infinite loop - must break explicitly
+let mut counter = 0;
+let result = loop {
+    counter += 1;
+    
+    if counter == 10 {
+        break counter * 2;  // loop can return a value!
+    }
+};
+println!("Result: {}", result);  // Prints: Result: 20
+
+// Loop labels for nested loops
+'outer: loop {
+    println!("Entered outer loop");
+    
+    'inner: loop {
+        println!("Entered inner loop");
+        break 'outer;  // Break the outer loop
+    }
+    
+    println!("This won't execute");
+}
+```
+
+#### while - Conditional Loop
+
+```rust
+// Standard while loop
+let mut number = 3;
+while number != 0 {
+    println!("{}!", number);
+    number -= 1;
+}
+println!("LIFTOFF!!!");
+
+// Common pattern: checking conditions
+let mut stack = vec![1, 2, 3];
+while !stack.is_empty() {
+    let value = stack.pop();
+    println!("Popped: {:?}", value);
+}
+```
+
+#### for - Iterator Loop
+
+The `for` loop is the most idiomatic way to iterate in Rust:
+
+```rust
+// Iterate over a collection
+let numbers = vec![1, 2, 3, 4, 5];
+for num in &numbers {
+    println!("{}", num);
+}
+
+// Range syntax (exclusive end)
+for i in 0..5 {
+    println!("{}", i);  // Prints 0, 1, 2, 3, 4
+}
+
+// Inclusive range
+for i in 1..=5 {
+    println!("{}", i);  // Prints 1, 2, 3, 4, 5
+}
+
+// Enumerate for index and value
+let items = vec!["a", "b", "c"];
+for (index, value) in items.iter().enumerate() {
+    println!("{}: {}", index, value);
+}
+
+// Reverse iteration
+for i in (1..=3).rev() {
+    println!("{}", i);  // Prints 3, 2, 1
+}
+```
+
+### Comparison with C++/.NET
+
+| Feature | C++ | C#/.NET | Rust |
+|---------|-----|---------|------|
+| for-each | `for (auto& x : vec)` | `foreach (var x in list)` | `for x in &vec` |
+| Index loop | `for (int i = 0; i < n; i++)` | `for (int i = 0; i < n; i++)` | `for i in 0..n` |
+| Infinite | `while (true)` | `while (true)` | `loop` |
+| Break with value | Not supported | Not supported | `break value` |
+
+### Control Flow Best Practices
+
+```rust
+// Prefer iterators over index loops
+// ❌ Not idiomatic
+let vec = vec![1, 2, 3];
+let mut i = 0;
+while i < vec.len() {
+    println!("{}", vec[i]);
+    i += 1;
+}
+
+// ✅ Idiomatic
+for item in &vec {
+    println!("{}", item);
+}
+
+// Use if-let for simple pattern matching
+let optional = Some(5);
+
+// Verbose match
+match optional {
+    Some(value) => println!("Got: {}", value),
+    None => {},
+}
+
+// Cleaner if-let
+if let Some(value) = optional {
+    println!("Got: {}", value);
+}
+
+// while-let for repeated pattern matching
+let mut stack = vec![1, 2, 3];
+while let Some(top) = stack.pop() {
+    println!("Popped: {}", top);
 }
 ```
 

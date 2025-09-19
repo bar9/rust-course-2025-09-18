@@ -656,6 +656,10 @@ fn main() {
 
 ### Exercise 3: State Machine for a Traffic Light
 
+<!-- TODO: Fix this exercise - remove durations from enum variants (redundant with timer field).
+     Better approach: use enum variants without data, external ticks_remaining field, 
+     and demonstrate struct update syntax. Focus on working with enum variants as core concept. -->
+
 Implement a traffic light state machine:
 
 ```rust
