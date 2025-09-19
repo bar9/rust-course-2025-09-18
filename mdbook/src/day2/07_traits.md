@@ -251,14 +251,293 @@ impl Iterator for Counter {
 
 ---
 
+## Operator Overloading with Traits
+
+### Implementing Standard Operators
+
+```rust
+use std::ops::{Add, Mul};
+
+#[derive(Debug, Clone, Copy)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+// Implement addition for Point
+impl Add for Point {
+    type Output = Point;
+    
+    fn add(self, other: Point) -> Point {
+        Point {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+// Implement scalar multiplication
+impl Mul<f64> for Point {
+    type Output = Point;
+    
+    fn mul(self, scalar: f64) -> Point {
+        Point {
+            x: self.x * scalar,
+            y: self.y * scalar,
+        }
+    }
+}
+
+fn main() {
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = Point { x: 3.0, y: 4.0 };
+    
+    let p3 = p1 + p2;  // Uses Add trait
+    let p4 = p1 * 2.5; // Uses Mul trait
+    
+    println!("p1 + p2 = {:?}", p3);
+    println!("p1 * 2.5 = {:?}", p4);
+}
+```
+
+---
+
+## Supertraits and Trait Inheritance
+
+```rust
+// Supertrait example
+trait Person {
+    fn name(&self) -> &str;
+}
+
+// Student requires Person
+trait Student: Person {
+    fn university(&self) -> &str;
+}
+
+// Must implement both traits
+struct GradStudent {
+    name: String,
+    uni: String,
+}
+
+impl Person for GradStudent {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl Student for GradStudent {
+    fn university(&self) -> &str {
+        &self.uni
+    }
+}
+
+// Function requiring multiple traits
+fn print_student_info<T: Student + Debug>(student: &T) {
+    println!("Name: {}", student.name());
+    println!("University: {}", student.university());
+    println!("Debug: {:?}", student);
+}
+```
+
+---
+
+## Common Trait Patterns
+
+### The From and Into Traits
+
+```rust
+use std::convert::From;
+
+#[derive(Debug)]
+struct Millimeters(u32);
+
+#[derive(Debug)]
+struct Meters(f64);
+
+impl From<Meters> for Millimeters {
+    fn from(m: Meters) -> Self {
+        Millimeters((m.0 * 1000.0) as u32)
+    }
+}
+
+// Into is automatically implemented!
+fn main() {
+    let m = Meters(1.5);
+    let mm: Millimeters = m.into(); // Uses Into (automatic from From)
+    println!("{:?}", mm); // Millimeters(1500)
+    
+    let m2 = Meters(2.0);
+    let mm2 = Millimeters::from(m2); // Direct From usage
+    println!("{:?}", mm2); // Millimeters(2000)
+}
+```
+
+---
+
+## Exercises
+
+### Exercise 1: Implement a Comparable Trait
+
+Create a custom trait for comparison and implement it for different types:
+
+```rust
+trait Comparable {
+    fn compare(&self, other: &Self) -> Ordering;
+    
+    // Provide default implementations
+    fn is_greater(&self, other: &Self) -> bool {
+        matches!(self.compare(other), Ordering::Greater)
+    }
+    
+    fn is_less(&self, other: &Self) -> bool {
+        matches!(self.compare(other), Ordering::Less)
+    }
+}
+
+use std::cmp::Ordering;
+
+struct Person {
+    name: String,
+    age: u32,
+}
+
+impl Comparable for Person {
+    fn compare(&self, other: &Self) -> Ordering {
+        // TODO: Implement - compare by age, then by name
+    }
+}
+
+struct Product {
+    name: String,
+    price: f64,
+}
+
+impl Comparable for Product {
+    fn compare(&self, other: &Self) -> Ordering {
+        // TODO: Implement - compare by price
+    }
+}
+
+fn main() {
+    let p1 = Person { name: "Alice".to_string(), age: 30 };
+    let p2 = Person { name: "Bob".to_string(), age: 25 };
+    
+    println!("Is Alice older than Bob? {}", p1.is_greater(&p2));
+}
+```
+
+### Exercise 2: Trait Objects with Multiple Behaviors
+
+Build a plugin system using trait objects:
+
+```rust
+trait Plugin {
+    fn name(&self) -> &str;
+    fn execute(&self);
+}
+
+trait Configurable {
+    fn configure(&mut self, config: &str);
+}
+
+// Create different plugin types
+struct LogPlugin {
+    name: String,
+    level: String,
+}
+
+struct MetricsPlugin {
+    name: String,
+    interval: u32,
+}
+
+// TODO: Implement Plugin and Configurable for both types
+
+struct PluginManager {
+    plugins: Vec<Box<dyn Plugin>>,
+}
+
+impl PluginManager {
+    fn new() -> Self {
+        PluginManager { plugins: Vec::new() }
+    }
+    
+    fn register(&mut self, plugin: Box<dyn Plugin>) {
+        // TODO: Add plugin to the list
+    }
+    
+    fn run_all(&self) {
+        // TODO: Execute all plugins
+    }
+}
+
+fn main() {
+    let mut manager = PluginManager::new();
+    
+    // TODO: Create and register plugins
+    // manager.register(Box::new(...));
+    
+    manager.run_all();
+}
+```
+
+### Exercise 3: Custom Iterator Trait Implementation
+
+Create a trait that extends Iterator functionality:
+
+```rust
+trait FilterMap: Iterator {
+    fn filter_map_custom<B, F>(self, f: F) -> FilterMapCustom<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Option<B>,
+    {
+        FilterMapCustom { iter: self, f }
+    }
+}
+
+struct FilterMapCustom<I, F> {
+    iter: I,
+    f: F,
+}
+
+// TODO: Implement Iterator for FilterMapCustom
+
+// Implement FilterMap for all iterators
+impl<I: Iterator> FilterMap for I {}
+
+fn main() {
+    let numbers = vec![1, 2, 3, 4, 5, 6];
+    
+    // Use the custom filter_map
+    let result: Vec<i32> = numbers
+        .into_iter()
+        .filter_map_custom(|x| {
+            if x % 2 == 0 {
+                Some(x * x)
+            } else {
+                None
+            }
+        })
+        .collect();
+    
+    println!("Even squares: {:?}", result);
+}
+```
+
+---
+
 ## Key Takeaways
 
 1. **Traits define shared behavior** across different types
 2. **Static dispatch** (generics) is faster but increases code size
 3. **Dynamic dispatch** (trait objects) enables runtime polymorphism
 4. **Associated types** provide cleaner APIs than generic parameters
-5. **Coherence rules** prevent conflicting implementations
-6. **Default implementations** reduce boilerplate code
-7. **Trait bounds** should be as minimal as possible
+5. **Operator overloading** is done through standard traits
+6. **Supertraits** allow building trait hierarchies
+7. **From/Into** traits enable type conversions
+8. **Default implementations** reduce boilerplate code
 
 **Next Up:** In Chapter 8, we'll explore generics - Rust's powerful system for writing flexible, reusable code with type parameters.
