@@ -750,6 +750,9 @@ fn main() {
     println!("5 + 3.14 = {}", result.display());
 }</code></pre></pre>
 <h3 id="exercise-3-state-machine-for-a-traffic-light"><a class="header" href="#exercise-3-state-machine-for-a-traffic-light">Exercise 3: State Machine for a Traffic Light</a></h3>
+<!-- TODO: Fix this exercise - remove durations from enum variants (redundant with timer field).
+     Better approach: use enum variants without data, external ticks_remaining field, 
+     and demonstrate struct update syntax. Focus on working with enum variants as core concept. -->
 <p>Implement a traffic light state machine:</p>
 <pre><pre class="playground"><code class="language-rust">struct TrafficLight {
     current_state: LightState,
@@ -825,22 +828,6 @@ fn main() {
 
         </div>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
 

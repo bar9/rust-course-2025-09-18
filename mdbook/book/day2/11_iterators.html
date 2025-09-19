@@ -153,944 +153,434 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="chapter-11-iterators-and-functional-programming"><a class="header" href="#chapter-11-iterators-and-functional-programming">Chapter 11: Iterators and Functional Programming</a></h1>
-<h2 id="iterator-trait-closures-and-lazy-evaluation-in-rust"><a class="header" href="#iterator-trait-closures-and-lazy-evaluation-in-rust">Iterator Trait, Closures, and Lazy Evaluation in Rust</a></h2>
+<h2 id="efficient-data-processing-with-rusts-iterator-pattern"><a class="header" href="#efficient-data-processing-with-rusts-iterator-pattern">Efficient Data Processing with Rust's Iterator Pattern</a></h2>
 <h3 id="learning-objectives"><a class="header" href="#learning-objectives">Learning Objectives</a></h3>
 <p>By the end of this chapter, you'll be able to:</p>
 <ul>
-<li>Understand the Iterator trait and implement custom iterators</li>
-<li>Use iterator adaptors like map, filter, fold, and collect effectively</li>
-<li>Write and use closures with proper capture semantics</li>
-<li>Leverage lazy evaluation for performance</li>
-<li>Choose between imperative loops and functional iterator chains</li>
-<li>Handle iterator errors and edge cases</li>
-<li>Write efficient, readable functional-style Rust code</li>
+<li>Use iterator adaptors like map, filter, fold effectively</li>
+<li>Understand lazy evaluation and its performance benefits</li>
+<li>Write closures with proper capture semantics</li>
+<li>Choose between loops and iterator chains</li>
+<li>Convert between collections using collect()</li>
+<li>Handle iterator errors gracefully</li>
 </ul>
 <hr />
-<h2 id="iterator-trait-vs-other-languages"><a class="header" href="#iterator-trait-vs-other-languages">Iterator Trait vs Other Languages</a></h2>
-<h3 id="comparison-with-other-languages"><a class="header" href="#comparison-with-other-languages">Comparison with Other Languages</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>C++ STL</th><th>C# LINQ</th><th>Java Streams</th><th>Rust Iterators</th></tr></thead><tbody>
-<tr><td>Lazy evaluation</td><td>Partial</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-<tr><td>Zero-cost</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
-<tr><td>Chaining</td><td>Limited</td><td>Extensive</td><td>Extensive</td><td>Extensive</td></tr>
-<tr><td>Error handling</td><td>Exceptions</td><td>Exceptions</td><td>Exceptions</td><td>Result&lt;T, E&gt;</td></tr>
-<tr><td>Memory safety</td><td>No</td><td>GC</td><td>GC</td><td>Compile-time</td></tr>
-<tr><td>Parallel processing</td><td>Limited</td><td>PLINQ</td><td>Parallel streams</td><td>Rayon</td></tr>
-</tbody></table>
-</div>
-<h3 id="the-iterator-trait"><a class="header" href="#the-iterator-trait">The Iterator Trait</a></h3>
-<pre><pre class="playground"><code class="language-rust">trait Iterator {
+<h2 id="the-iterator-trait"><a class="header" href="#the-iterator-trait">The Iterator Trait</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>trait Iterator {
     type Item;
     
-    // Required method
     fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;
     
-    // Many default implementations built on next()
-    fn collect&lt;B: FromIterator&lt;Self::Item&gt;&gt;(self) -&gt; B { ... }
-    fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt; { ... }
-    fn filter&lt;P&gt;(self, predicate: P) -&gt; Filter&lt;Self, P&gt; { ... }
-    // ... and many more
+    // 70+ provided methods like map, filter, fold, etc.
 }
-
-// Example: Custom iterator
-struct Counter {
-    current: u32,
-    max: u32,
-}
-
-impl Counter {
-    fn new(max: u32) -&gt; Counter {
-        Counter { current: 0, max }
-    }
-}
-
-impl Iterator for Counter {
-    type Item = u32;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        if self.current &lt; self.max {
-            let current = self.current;
-            self.current += 1;
-            Some(current)
-        } else {
-            None
-        }
-    }
-}
-
-fn main() {
-    let counter = Counter::new(5);
-    for n in counter {
-        println!("{}", n); // 0, 1, 2, 3, 4
-    }
-}</code></pre></pre>
+<span class="boring">}</span></code></pre></pre>
+<h3 id="key-concepts"><a class="header" href="#key-concepts">Key Concepts</a></h3>
+<ul>
+<li><strong>Lazy evaluation</strong>: Operations don't execute until consumed</li>
+<li><strong>Zero-cost abstraction</strong>: Compiles to same code as hand-written loops</li>
+<li><strong>Composable</strong>: Chain multiple operations cleanly</li>
+</ul>
 <hr />
 <h2 id="creating-iterators"><a class="header" href="#creating-iterators">Creating Iterators</a></h2>
-<h3 id="from-collections"><a class="header" href="#from-collections">From Collections</a></h3>
-<pre><pre class="playground"><code class="language-rust">fn main() {
-    let vec = vec![1, 2, 3, 4, 5];
-    
-    // iter() - borrows elements
-    for item in vec.iter() {
-        println!("Borrowed: {}", item); // item is &amp;i32
-    }
-    
-    // into_iter() - takes ownership
-    for item in vec.into_iter() {
-        println!("Owned: {}", item); // item is i32
-    }
-    // vec is no longer accessible here
-    
-    let mut vec = vec![1, 2, 3, 4, 5];
-    
-    // iter_mut() - mutable borrows
-    for item in vec.iter_mut() {
-        *item *= 2; // item is &amp;mut i32
-    }
-    println!("{:?}", vec); // [2, 4, 6, 8, 10]
-}
-
-// Range iterators
-fn range_examples() {
-    // Inclusive range
-    for i in 0..=5 {
-        println!("{}", i); // 0, 1, 2, 3, 4, 5
-    }
-    
-    // Exclusive range
-    let squares: Vec&lt;i32&gt; = (1..6)
-        .map(|x| x * x)
-        .collect();
-    println!("{:?}", squares); // [1, 4, 9, 16, 25]
-    
-    // Step by
-    let evens: Vec&lt;i32&gt; = (0..10)
-        .step_by(2)
-        .collect();
-    println!("{:?}", evens); // [0, 2, 4, 6, 8]
-}</code></pre></pre>
-<h3 id="custom-iterator-implementation"><a class="header" href="#custom-iterator-implementation">Custom Iterator Implementation</a></h3>
-<pre><pre class="playground"><code class="language-rust">// Fibonacci iterator
-struct Fibonacci {
-    current: u64,
-    next: u64,
-}
-
-impl Fibonacci {
-    fn new() -&gt; Self {
-        Fibonacci { current: 0, next: 1 }
-    }
-}
-
-impl Iterator for Fibonacci {
-    type Item = u64;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        let current = self.current;
-        self.current = self.next;
-        self.next = current + self.next;
-        
-        // Prevent overflow
-        if self.current &gt; u64::MAX / 2 {
-            None
-        } else {
-            Some(current)
-        }
-    }
-}
-
-// File line iterator
-use std::fs::File;
-use std::io::{BufRead, BufReader, Lines};
-
-struct FileLines {
-    lines: Lines&lt;BufReader&lt;File&gt;&gt;,
-}
-
-impl FileLines {
-    fn new(file: File) -&gt; Self {
-        let reader = BufReader::new(file);
-        FileLines {
-            lines: reader.lines(),
-        }
-    }
-}
-
-impl Iterator for FileLines {
-    type Item = Result&lt;String, std::io::Error&gt;;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        self.lines.next()
-    }
-}
-
-fn main() {
-    // Fibonacci sequence
-    let fib: Vec&lt;u64&gt; = Fibonacci::new()
-        .take(10)
-        .collect();
-    println!("Fibonacci: {:?}", fib);
-    
-    // File processing (if file exists)
-    if let Ok(file) = File::open("data.txt") {
-        for line_result in FileLines::new(file) {
-            match line_result {
-                Ok(line) =&gt; println!("Line: {}", line),
-                Err(e) =&gt; eprintln!("Error reading line: {}", e),
-            }
-        }
-    }
-}</code></pre></pre>
-<hr />
-<h2 id="iterator-adaptors"><a class="header" href="#iterator-adaptors">Iterator Adaptors</a></h2>
-<h3 id="map-filter-and-collect"><a class="header" href="#map-filter-and-collect">Map, Filter, and Collect</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>fn basic_adaptors() {
-    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+</span>fn iterator_sources() {
+    // From collections
+    let vec = vec![1, 2, 3];
+    vec.iter();       // &amp;T - borrows
+    vec.into_iter();  // T - takes ownership
+    vec.iter_mut();   // &amp;mut T - mutable borrow
     
-    // Chain multiple operations
-    let result: Vec&lt;i32&gt; = numbers
-        .iter()
-        .filter(|&amp;x| x % 2 == 0)  // Keep even numbers
-        .map(|x| x * x)           // Square them
-        .collect();               // Collect into Vec
-    println!("Even squares: {:?}", result); // [4, 16, 36, 64, 100]
+    // From ranges
+    (0..10)           // 0 to 9
+    (0..=10)          // 0 to 10 inclusive
     
-    // Different collection types
-    use std::collections::HashSet;
+    // Infinite iterators
+    std::iter::repeat(5)      // 5, 5, 5, ...
+    (0..).step_by(2)          // 0, 2, 4, 6, ...
     
-    let unique_lengths: HashSet&lt;usize&gt; = vec!["hello", "world", "rust", "is", "awesome"]
-        .iter()
-        .map(|s| s.len())
-        .collect();
-    println!("Unique lengths: {:?}", unique_lengths);
-    
-    // Collect to String
-    let concatenated: String = vec!["Hello", " ", "world", "!"]
-        .iter()
-        .cloned()
-        .collect();
-    println!("{}", concatenated); // Hello world!
+    // From functions
+    std::iter::from_fn(|| Some(rand::random::&lt;u32&gt;()))
 }
-
-// Working with Results
-fn process_with_results() -&gt; Result&lt;Vec&lt;i32&gt;, std::num::ParseIntError&gt; {
-    let strings = vec!["1", "2", "3", "4", "not_a_number", "6"];
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="essential-iterator-adaptors"><a class="header" href="#essential-iterator-adaptors">Essential Iterator Adaptors</a></h2>
+<h3 id="transform-map-flat_map"><a class="header" href="#transform-map-flat_map">Transform: map, flat_map</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn transformations() {
+    let numbers = vec![1, 2, 3, 4];
     
-    // This will short-circuit on first error
-    let numbers: Result&lt;Vec&lt;i32&gt;, _&gt; = strings
+    // Simple transformation
+    let doubled: Vec&lt;i32&gt; = numbers.iter()
+        .map(|x| x * 2)
+        .collect();  // [2, 4, 6, 8]
+    
+    // Parse strings to numbers, handling errors
+    let strings = vec!["1", "2", "3"];
+    let parsed: Result&lt;Vec&lt;i32&gt;, _&gt; = strings
         .iter()
         .map(|s| s.parse::&lt;i32&gt;())
-        .collect();
-    
-    numbers
-}
-
-fn process_filtering_errors() -&gt; Vec&lt;i32&gt; {
-    let strings = vec!["1", "2", "3", "4", "not_a_number", "6"];
-    
-    // Filter out errors, keep only successful parses
-    strings
-        .iter()
-        .filter_map(|s| s.parse::&lt;i32&gt;().ok())
-        .collect()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="enumerate-zip-and-take"><a class="header" href="#enumerate-zip-and-take">Enumerate, Zip, and Take</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn advanced_adaptors() {
-    let names = vec!["Alice", "Bob", "Charlie", "Diana"];
-    let ages = vec![25, 30, 35, 28];
-    
-    // Enumerate - add indices
-    for (index, name) in names.iter().enumerate() {
-        println!("{}: {}", index, name);
-    }
-    
-    // Zip - combine two iterators
-    let people: Vec&lt;(&amp;&amp;str, &amp;i32)&gt; = names
-        .iter()
-        .zip(ages.iter())
-        .collect();
-    
-    for (name, age) in people {
-        println!("{} is {} years old", name, age);
-    }
-    
-    // Take and skip
-    let first_three: Vec&lt;&amp;str&gt; = names
-        .iter()
-        .take(3)
-        .cloned()
-        .collect();
-    println!("First three: {:?}", first_three);
-    
-    let skip_first_two: Vec&lt;&amp;str&gt; = names
-        .iter()
-        .skip(2)
-        .cloned()
-        .collect();
-    println!("Skip first two: {:?}", skip_first_two);
-    
-    // Take while predicate is true
-    let numbers = vec![1, 3, 5, 8, 9, 11];
-    let odds_until_even: Vec&lt;i32&gt; = numbers
-        .iter()
-        .take_while(|&amp;&amp;x| x % 2 == 1)
-        .cloned()
-        .collect();
-    println!("Odds until even: {:?}", odds_until_even); // [1, 3, 5]
-}
-
-// Chain and flatten
-fn combining_iterators() {
-    let vec1 = vec![1, 2, 3];
-    let vec2 = vec![4, 5, 6];
-    
-    // Chain iterators
-    let combined: Vec&lt;i32&gt; = vec1
-        .iter()
-        .chain(vec2.iter())
-        .cloned()
-        .collect();
-    println!("Combined: {:?}", combined); // [1, 2, 3, 4, 5, 6]
+        .collect();  // Collects into Result&lt;Vec&lt;_&gt;, _&gt;
     
     // Flatten nested structures
-    let nested = vec![vec![1, 2], vec![3, 4, 5], vec![6]];
-    let flattened: Vec&lt;i32&gt; = nested
-        .iter()
-        .flatten()
-        .cloned()
-        .collect();
-    println!("Flattened: {:?}", flattened); // [1, 2, 3, 4, 5, 6]
+    let nested = vec![vec![1, 2], vec![3, 4]];
+    let flat: Vec&lt;i32&gt; = nested
+        .into_iter()
+        .flat_map(|v| v.into_iter())
+        .collect();  // [1, 2, 3, 4]
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="filter-and-search"><a class="header" href="#filter-and-search">Filter and Search</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn filtering() {
+    let numbers = vec![1, 2, 3, 4, 5, 6];
     
-    // flat_map - map then flatten
-    let words = vec!["hello world", "rust programming"];
-    let all_words: Vec&lt;&amp;str&gt; = words
-        .iter()
-        .flat_map(|s| s.split_whitespace())
-        .collect();
-    println!("All words: {:?}", all_words); // ["hello", "world", "rust", "programming"]
+    // Keep only even numbers
+    let evens: Vec&lt;_&gt; = numbers.iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .cloned()
+        .collect();  // [2, 4, 6]
+    
+    // Find first match
+    let first_even = numbers.iter()
+        .find(|&amp;&amp;x| x % 2 == 0);  // Some(&amp;2)
+    
+    // Check conditions
+    let all_positive = numbers.iter().all(|&amp;x| x &gt; 0);  // true
+    let has_seven = numbers.iter().any(|&amp;x| x == 7);    // false
+    
+    // Position of element
+    let pos = numbers.iter().position(|&amp;x| x == 4);  // Some(3)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="reduce-fold-reduce-sum"><a class="header" href="#reduce-fold-reduce-sum">Reduce: fold, reduce, sum</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn reductions() {
+    let numbers = vec![1, 2, 3, 4, 5];
+    
+    // Sum all elements
+    let sum: i32 = numbers.iter().sum();  // 15
+    
+    // Product of all elements
+    let product: i32 = numbers.iter().product();  // 120
+    
+    // Custom reduction with fold
+    let result = numbers.iter()
+        .fold(0, |acc, x| acc + x * x);  // Sum of squares: 55
+    
+    // Build a string
+    let words = vec!["Hello", "World"];
+    let sentence = words.iter()
+        .fold(String::new(), |mut acc, word| {
+            if !acc.is_empty() { acc.push(' '); }
+            acc.push_str(word);
+            acc
+        });  // "Hello World"
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="take-and-skip"><a class="header" href="#take-and-skip">Take and Skip</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn slicing_iterators() {
+    let numbers = 0..100;
+    
+    // Take first n elements
+    let first_five: Vec&lt;_&gt; = numbers.clone()
+        .take(5)
+        .collect();  // [0, 1, 2, 3, 4]
+    
+    // Skip first n elements
+    let after_ten: Vec&lt;_&gt; = numbers.clone()
+        .skip(10)
+        .take(5)
+        .collect();  // [10, 11, 12, 13, 14]
+    
+    // Take while condition is true
+    let until_ten: Vec&lt;_&gt; = numbers.clone()
+        .take_while(|&amp;x| x &lt; 10)
+        .collect();  // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 }
 <span class="boring">}</span></code></pre></pre>
 <hr />
-<h2 id="closures-and-capture"><a class="header" href="#closures-and-capture">Closures and Capture</a></h2>
-<h3 id="closure-syntax-and-types"><a class="header" href="#closure-syntax-and-types">Closure Syntax and Types</a></h3>
+<h2 id="closures-anonymous-functions"><a class="header" href="#closures-anonymous-functions">Closures: Anonymous Functions</a></h2>
+<h3 id="closure-syntax-and-captures"><a class="header" href="#closure-syntax-and-captures">Closure Syntax and Captures</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>fn closure_basics() {
-    let numbers = vec![1, 2, 3, 4, 5];
+    let x = 10;
     
-    // Different closure syntaxes
-    let add_one = |x| x + 1;
-    let add_two = |x: i32| -&gt; i32 { x + 2 };
-    let add_three = |x: i32| {
-        let result = x + 3;
-        result
+    // Closure that borrows
+    let add_x = |y| x + y;
+    println!("{}", add_x(5));  // 15
+    
+    // Closure that mutates
+    let mut count = 0;
+    let mut increment = || {
+        count += 1;
+        count
     };
+    println!("{}", increment());  // 1
+    println!("{}", increment());  // 2
     
-    // Using closures with iterators
-    let incremented: Vec&lt;i32&gt; = numbers
-        .iter()
-        .map(|&amp;x| add_one(x))
-        .collect();
-    println!("Incremented: {:?}", incremented);
-    
-    // Inline closures
-    let evens: Vec&lt;i32&gt; = numbers
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .cloned()
-        .collect();
-    println!("Evens: {:?}", evens);
-}
-
-// Capture modes
-fn capture_modes() {
-    let multiplier = 10;
-    let mut counter = 0;
-    let mut data = vec![1, 2, 3];
-    
-    // Fn - immutable borrow
-    let multiply_by = |x| x * multiplier;
-    println!("5 * {} = {}", multiplier, multiply_by(5));
-    
-    // FnMut - mutable borrow
-    let mut count_calls = || {
-        counter += 1;
-        counter
-    };
-    println!("Call count: {}", count_calls());
-    println!("Call count: {}", count_calls());
-    
-    // FnOnce - takes ownership
-    let consume_data = || {
-        let owned_data = data; // Takes ownership
-        owned_data.len()
-    };
-    println!("Data length: {}", consume_data());
-    // data is no longer accessible
-    
-    // Move keyword forces ownership
-    let value = 42;
-    let thread_closure = move || {
-        println!("Value in thread: {}", value);
-    };
-    // value is moved into closure
-    
-    std::thread::spawn(thread_closure).join().unwrap();
+    // Move closure - takes ownership
+    let message = String::from("Hello");
+    let print_message = move || println!("{}", message);
+    print_message();
+    // message is no longer accessible here
 }
 <span class="boring">}</span></code></pre></pre>
-<h3 id="advanced-closure-patterns"><a class="header" href="#advanced-closure-patterns">Advanced Closure Patterns</a></h3>
-<pre><pre class="playground"><code class="language-rust">// Higher-order functions
-fn apply_twice&lt;F&gt;(f: F, x: i32) -&gt; i32 
-where 
-    F: Fn(i32) -&gt; i32,
+<h3 id="fn-fnmut-fnonce-traits"><a class="header" href="#fn-fnmut-fnonce-traits">Fn, FnMut, FnOnce Traits</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Fn: Can be called multiple times, borrows values
+fn apply_twice&lt;F&gt;(f: F) -&gt; i32 
+where F: Fn(i32) -&gt; i32 
 {
-    f(f(x))
+    f(f(5))
 }
 
-fn create_multiplier(factor: i32) -&gt; impl Fn(i32) -&gt; i32 {
-    move |x| x * factor
+// FnMut: Can be called multiple times, mutates values
+fn apply_mut&lt;F&gt;(mut f: F) 
+where F: FnMut() 
+{
+    f();
+    f();
 }
 
-fn conditional_processor&lt;F, G&gt;(
-    condition: bool,
-    true_fn: F,
-    false_fn: G,
-) -&gt; Box&lt;dyn Fn(i32) -&gt; i32&gt;
-where
-    F: Fn(i32) -&gt; i32 + 'static,
-    G: Fn(i32) -&gt; i32 + 'static,
+// FnOnce: Can only be called once, consumes values
+fn apply_once&lt;F&gt;(f: F) 
+where F: FnOnce() 
 {
-    if condition {
-        Box::new(true_fn)
-    } else {
-        Box::new(false_fn)
+    f();
+    // f(); // Error: f was consumed
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="common-patterns"><a class="header" href="#common-patterns">Common Patterns</a></h2>
+<h3 id="processing-collections"><a class="header" href="#processing-collections">Processing Collections</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+fn collection_processing() {
+    let text = "hello world hello rust";
+    
+    // Word frequency counter
+    let word_counts: HashMap&lt;&amp;str, usize&gt; = text
+        .split_whitespace()
+        .fold(HashMap::new(), |mut map, word| {
+            *map.entry(word).or_insert(0) += 1;
+            map
+        });
+    
+    // Find most common word
+    let most_common = word_counts
+        .iter()
+        .max_by_key(|(_, &amp;count)| count)
+        .map(|(&amp;word, _)| word);
+    
+    println!("Most common: {:?}", most_common);  // Some("hello")
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="error-handling-with-iterators"><a class="header" href="#error-handling-with-iterators">Error Handling with Iterators</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn parse_numbers(input: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;i32&gt;, std::num::ParseIntError&gt; {
+    input.iter()
+        .map(|s| s.parse::&lt;i32&gt;())
+        .collect()  // Collects into Result&lt;Vec&lt;_&gt;, _&gt;
+}
+
+fn process_files(paths: &amp;[&amp;str]) -&gt; Vec&lt;Result&lt;String, std::io::Error&gt;&gt; {
+    paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect()  // Collects all results, both Ok and Err
+}
+
+// Partition successes and failures
+fn partition_results&lt;T, E&gt;(results: Vec&lt;Result&lt;T, E&gt;&gt;) -&gt; (Vec&lt;T&gt;, Vec&lt;E&gt;) {
+    let (oks, errs): (Vec&lt;_&gt;, Vec&lt;_&gt;) = results
+        .into_iter()
+        .partition(|r| r.is_ok());
+    
+    let values = oks.into_iter().map(|r| r.unwrap()).collect();
+    let errors = errs.into_iter().map(|r| r.unwrap_err()).collect();
+    
+    (values, errors)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="infinite-iterators-and-lazy-evaluation"><a class="header" href="#infinite-iterators-and-lazy-evaluation">Infinite Iterators and Lazy Evaluation</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn lazy_evaluation() {
+    // Generate Fibonacci numbers lazily
+    let mut fib = (0u64, 1u64);
+    let fibonacci = std::iter::from_fn(move || {
+        let next = fib.0;
+        fib = (fib.1, fib.0 + fib.1);
+        Some(next)
+    });
+    
+    // Take only what we need
+    let first_10: Vec&lt;_&gt; = fibonacci
+        .take(10)
+        .collect();
+    
+    println!("First 10 Fibonacci: {:?}", first_10);
+    
+    // Find first Fibonacci &gt; 1000
+    let mut fib2 = (0u64, 1u64);
+    let first_large = std::iter::from_fn(move || {
+        let next = fib2.0;
+        fib2 = (fib2.1, fib2.0 + fib2.1);
+        Some(next)
+    })
+    .find(|&amp;n| n &gt; 1000);
+    
+    println!("First &gt; 1000: {:?}", first_large);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="performance-iterators-vs-loops"><a class="header" href="#performance-iterators-vs-loops">Performance: Iterators vs Loops</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// These compile to identical machine code!
+
+fn sum_squares_loop(nums: &amp;[i32]) -&gt; i32 {
+    let mut sum = 0;
+    for &amp;n in nums {
+        sum += n * n;
+    }
+    sum
+}
+
+fn sum_squares_iter(nums: &amp;[i32]) -&gt; i32 {
+    nums.iter()
+        .map(|&amp;n| n * n)
+        .sum()
+}
+
+// Iterator version is:
+// - More concise
+// - Harder to introduce bugs
+// - Easier to modify (add filter, take, etc.)
+// - Same performance!
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="exercise-data-pipeline"><a class="header" href="#exercise-data-pipeline">Exercise: Data Pipeline</a></h2>
+<p>Build a log analysis pipeline using iterators:</p>
+<pre><pre class="playground"><code class="language-rust">#[derive(Debug)]
+struct LogEntry {
+    timestamp: u64,
+    level: LogLevel,
+    message: String,
+}
+
+#[derive(Debug, PartialEq)]
+enum LogLevel {
+    Debug,
+    Info,
+    Warning,
+    Error,
+}
+
+impl LogEntry {
+    fn parse(line: &amp;str) -&gt; Option&lt;LogEntry&gt; {
+        // Format: "timestamp|level|message"
+        let parts: Vec&lt;&amp;str&gt; = line.split('|').collect();
+        if parts.len() != 3 {
+            return None;
+        }
+        
+        let timestamp = parts[0].parse().ok()?;
+        let level = match parts[1] {
+            "DEBUG" =&gt; LogLevel::Debug,
+            "INFO" =&gt; LogLevel::Info,
+            "WARNING" =&gt; LogLevel::Warning,
+            "ERROR" =&gt; LogLevel::Error,
+            _ =&gt; return None,
+        };
+        
+        Some(LogEntry {
+            timestamp,
+            level,
+            message: parts[2].to_string(),
+        })
+    }
+}
+
+struct LogAnalyzer&lt;'a&gt; {
+    lines: &amp;'a [String],
+}
+
+impl&lt;'a&gt; LogAnalyzer&lt;'a&gt; {
+    fn new(lines: &amp;'a [String]) -&gt; Self {
+        LogAnalyzer { lines }
+    }
+    
+    fn parse_entries(&amp;self) -&gt; impl Iterator&lt;Item = LogEntry&gt; + '_ {
+        // TODO: Parse lines into LogEntry, skip invalid lines
+        self.lines.iter()
+            .filter_map(|line| LogEntry::parse(line))
+    }
+    
+    fn errors_only(&amp;self) -&gt; impl Iterator&lt;Item = LogEntry&gt; + '_ {
+        // TODO: Return only ERROR level entries
+        todo!()
+    }
+    
+    fn in_time_range(&amp;self, start: u64, end: u64) -&gt; impl Iterator&lt;Item = LogEntry&gt; + '_ {
+        // TODO: Return entries within time range
+        todo!()
+    }
+    
+    fn count_by_level(&amp;self) -&gt; HashMap&lt;LogLevel, usize&gt; {
+        // TODO: Count entries by log level
+        todo!()
+    }
+    
+    fn most_recent(&amp;self, n: usize) -&gt; Vec&lt;LogEntry&gt; {
+        // TODO: Return n most recent entries (highest timestamps)
+        todo!()
     }
 }
 
 fn main() {
-    // Using higher-order functions
-    let double = |x| x * 2;
-    let result = apply_twice(double, 5);
-    println!("Applied twice: {}", result); // 20
-    
-    // Factory functions
-    let triple = create_multiplier(3);
-    println!("Triple of 7: {}", triple(7)); // 21
-    
-    // Dynamic closure selection
-    let processor = conditional_processor(
-        true,
-        |x| x * 2,
-        |x| x + 10,
-    );
-    println!("Processed: {}", processor(5)); // 10
-}
-
-// Closure performance considerations
-fn performance_comparison() {
-    let data = (0..1_000_000).collect::&lt;Vec&lt;i32&gt;&gt;();
-    
-    // Functional style (often optimizes well)
-    let start = std::time::Instant::now();
-    let sum1: i32 = data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .map(|&amp;x| x * x)
-        .sum();
-    let duration1 = start.elapsed();
-    
-    // Imperative style
-    let start = std::time::Instant::now();
-    let mut sum2 = 0;
-    for &amp;x in &amp;data {
-        if x % 2 == 0 {
-            sum2 += x * x;
-        }
-    }
-    let duration2 = start.elapsed();
-    
-    println!("Functional: {} in {:?}", sum1, duration1);
-    println!("Imperative: {} in {:?}", sum2, duration2);
-}</code></pre></pre>
-<hr />
-<h2 id="reduction-operations"><a class="header" href="#reduction-operations">Reduction Operations</a></h2>
-<h3 id="fold-reduce-and-sum"><a class="header" href="#fold-reduce-and-sum">Fold, Reduce, and Sum</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn reduction_operations() {
-    let numbers = vec![1, 2, 3, 4, 5];
-    
-    // sum() - built-in reduction
-    let sum: i32 = numbers.iter().sum();
-    println!("Sum: {}", sum); // 15
-    
-    // fold() - with initial value
-    let product = numbers
-        .iter()
-        .fold(1, |acc, &amp;x| acc * x);
-    println!("Product: {}", product); // 120
-    
-    // reduce() - no initial value (returns Option)
-    let max = numbers
-        .iter()
-        .reduce(|acc, x| if acc &gt; x { acc } else { x });
-    println!("Max: {:?}", max); // Some(5)
-    
-    // Complex fold example: word frequency
-    let text = "hello world hello rust world";
-    let word_count = text
-        .split_whitespace()
-        .fold(std::collections::HashMap::new(), |mut acc, word| {
-            *acc.entry(word).or_insert(0) += 1;
-            acc
-        });
-    println!("Word count: {:?}", word_count);
-}
-
-fn advanced_reductions() {
-    use std::collections::HashMap;
-    
-    #[derive(Debug)]
-    struct Sale {
-        product: String,
-        amount: f64,
-        region: String,
-    }
-    
-    let sales = vec![
-        Sale { product: "Widget".to_string(), amount: 100.0, region: "North".to_string() },
-        Sale { product: "Gadget".to_string(), amount: 150.0, region: "South".to_string() },
-        Sale { product: "Widget".to_string(), amount: 200.0, region: "North".to_string() },
-        Sale { product: "Gadget".to_string(), amount: 175.0, region: "North".to_string() },
+    let log_lines = vec![
+        "1000|INFO|Server started".to_string(),
+        "1001|DEBUG|Connection received".to_string(),
+        "1002|ERROR|Failed to connect to database".to_string(),
+        "invalid line".to_string(),
+        "1003|WARNING|High memory usage".to_string(),
+        "1004|INFO|Request processed".to_string(),
+        "1005|ERROR|Timeout error".to_string(),
     ];
     
-    // Group sales by region
-    let sales_by_region = sales
-        .iter()
-        .fold(HashMap::new(), |mut acc, sale| {
-            acc.entry(&amp;sale.region)
-                .or_insert(Vec::new())
-                .push(sale);
-            acc
-        });
+    let analyzer = LogAnalyzer::new(&amp;log_lines);
     
-    // Calculate totals by region
-    let totals_by_region: HashMap&lt;&amp;String, f64&gt; = sales_by_region
-        .iter()
-        .map(|(region, sales)| {
-            let total = sales.iter().map(|s| s.amount).sum();
-            (*region, total)
-        })
-        .collect();
-    
-    println!("Sales by region: {:?}", totals_by_region);
-    
-    // Find highest sale
-    let highest_sale = sales
-        .iter()
-        .max_by(|a, b| a.amount.partial_cmp(&amp;b.amount).unwrap());
-    println!("Highest sale: {:?}", highest_sale);
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="lazy-evaluation-and-performance"><a class="header" href="#lazy-evaluation-and-performance">Lazy Evaluation and Performance</a></h2>
-<h3 id="understanding-lazy-evaluation"><a class="header" href="#understanding-lazy-evaluation">Understanding Lazy Evaluation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn lazy_evaluation_demo() {
-    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    
-    // This creates iterator adaptors but doesn't process anything yet
-    let iter = numbers
-        .iter()
-        .inspect(|&amp;x| println!("Processing: {}", x))  // Debug what's happening
-        .filter(|&amp;&amp;x| {
-            println!("Filtering: {}", x);
-            x % 2 == 0
-        })
-        .map(|&amp;x| {
-            println!("Mapping: {}", x);
-            x * x
-        });
-    
-    println!("Iterator created, but nothing processed yet!");
-    
-    // Only now does processing happen
-    let result: Vec&lt;i32&gt; = iter.take(2).collect();
-    println!("Result: {:?}", result);
-    // Notice: Only processes elements until it gets 2 results
-}
-
-// Performance benefits
-fn performance_benefits() {
-    let large_data = (0..1_000_000).collect::&lt;Vec&lt;i32&gt;&gt;();
-    
-    // Early termination with lazy evaluation
-    let start = std::time::Instant::now();
-    let first_large_even = large_data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .filter(|&amp;&amp;x| x &gt; 100_000)
-        .next();  // Stops at first match!
-    let duration = start.elapsed();
-    
-    println!("First large even: {:?} in {:?}", first_large_even, duration);
-    
-    // Compare with eager evaluation (collect before next)
-    let start = std::time::Instant::now();
-    let all_evens: Vec&lt;_&gt; = large_data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .collect();  // Processes ALL elements
-    let first_large = all_evens
-        .iter()
-        .find(|&amp;&amp;&amp;x| x &gt; 100_000);
-    let duration_eager = start.elapsed();
-    
-    println!("Eager approach: {:?} in {:?}", first_large, duration_eager);
-}
-
-// Memory efficiency
-fn memory_efficiency() {
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
-    
-    // Process large file without loading everything into memory
-    fn process_large_file(filename: &amp;str) -&gt; std::io::Result&lt;usize&gt; {
-        let file = File::open(filename)?;
-        let reader = BufReader::new(file);
-        
-        let long_lines_count = reader
-            .lines()
-            .map(|line| line.unwrap_or_default())
-            .filter(|line| line.len() &gt; 100)
-            .count();
-        
-        Ok(long_lines_count)
-    }
-    
-    // This is memory-efficient: processes one line at a time
-    match process_large_file("large_file.txt") {
-        Ok(count) =&gt; println!("Long lines: {}", count),
-        Err(e) =&gt; println!("Error: {}", e),
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="error-handling-with-iterators"><a class="header" href="#error-handling-with-iterators">Error Handling with Iterators</a></h2>
-<h3 id="handling-results-in-iterator-chains"><a class="header" href="#handling-results-in-iterator-chains">Handling Results in Iterator Chains</a></h3>
-<pre><pre class="playground"><code class="language-rust">fn error_handling_patterns() {
-    let inputs = vec!["1", "2", "invalid", "4", "5"];
-    
-    // Pattern 1: Collect results, short-circuit on error
-    let results: Result&lt;Vec&lt;i32&gt;, _&gt; = inputs
-        .iter()
-        .map(|s| s.parse::&lt;i32&gt;())
-        .collect();
-    
-    match results {
-        Ok(numbers) =&gt; println!("All parsed: {:?}", numbers),
-        Err(e) =&gt; println!("Parse error: {}", e),
-    }
-    
-    // Pattern 2: Filter out errors, keep successful results
-    let successful_parses: Vec&lt;i32&gt; = inputs
-        .iter()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    println!("Successful parses: {:?}", successful_parses);
-    
-    // Pattern 3: Partition results
-    let (successes, errors): (Vec&lt;_&gt;, Vec&lt;_&gt;) = inputs
-        .iter()
-        .map(|s| s.parse::&lt;i32&gt;())
-        .partition(Result::is_ok);
-    
-    let successes: Vec&lt;i32&gt; = successes.into_iter().map(Result::unwrap).collect();
-    let errors: Vec&lt;_&gt; = errors.into_iter().map(Result::unwrap_err).collect();
-    
-    println!("Successes: {:?}", successes);
-    println!("Errors: {:?}", errors);
-}
-
-// Custom error handling
-#[derive(Debug)]
-struct ProcessingError {
-    input: String,
-    reason: String,
-}
-
-fn process_with_custom_errors(inputs: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;i32&gt;, Vec&lt;ProcessingError&gt;&gt; {
-    let mut successes = Vec::new();
-    let mut errors = Vec::new();
-    
-    for &amp;input in inputs {
-        match input.parse::&lt;i32&gt;() {
-            Ok(num) if num &gt;= 0 =&gt; successes.push(num),
-            Ok(_) =&gt; errors.push(ProcessingError {
-                input: input.to_string(),
-                reason: "Negative numbers not allowed".to_string(),
-            }),
-            Err(_) =&gt; errors.push(ProcessingError {
-                input: input.to_string(),
-                reason: "Invalid number format".to_string(),
-            }),
-        }
-    }
-    
-    if errors.is_empty() {
-        Ok(successes)
-    } else {
-        Err(errors)
-    }
-}
-
-fn main() {
-    let inputs = vec!["1", "2", "-3", "invalid", "5"];
-    
-    match process_with_custom_errors(&amp;inputs) {
-        Ok(numbers) =&gt; println!("Processed: {:?}", numbers),
-        Err(errors) =&gt; {
-            println!("Errors occurred:");
-            for error in errors {
-                println!("  {}: {}", error.input, error.reason);
-            }
-        }
-    }
+    // Test the methods
+    println!("Valid entries: {}", analyzer.parse_entries().count());
+    println!("Errors: {:?}", analyzer.errors_only().collect::&lt;Vec&lt;_&gt;&gt;());
+    println!("Count by level: {:?}", analyzer.count_by_level());
+    println!("Most recent 3: {:?}", analyzer.most_recent(3));
 }</code></pre></pre>
-<hr />
-<h2 id="common-pitfalls-and-best-practices"><a class="header" href="#common-pitfalls-and-best-practices">Common Pitfalls and Best Practices</a></h2>
-<h3 id="pitfall-1-forgetting-to-consume-iterators"><a class="header" href="#pitfall-1-forgetting-to-consume-iterators">Pitfall 1: Forgetting to Consume Iterators</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn pitfall_unused_iterators() {
-    let numbers = vec![1, 2, 3, 4, 5];
-    
-    // BAD: This does nothing! Iterator adaptors are lazy
-    numbers
-        .iter()
-        .map(|x| x * 2)
-        .filter(|&amp;&amp;x| x &gt; 5); // Warning: unused iterator that must be used
-    
-    // GOOD: Consume the iterator
-    let result: Vec&lt;i32&gt; = numbers
-        .iter()
-        .map(|x| x * 2)
-        .filter(|&amp;&amp;x| x &gt; 5)
-        .cloned()
-        .collect();
-    
-    println!("Result: {:?}", result);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="pitfall-2-inefficient-cloning"><a class="header" href="#pitfall-2-inefficient-cloning">Pitfall 2: Inefficient Cloning</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn avoid_unnecessary_cloning() {
-    let strings = vec!["hello".to_string(), "world".to_string()];
-    
-    // BAD: Clones every string
-    let lengths: Vec&lt;usize&gt; = strings
-        .iter()
-        .cloned()  // Expensive!
-        .map(|s| s.len())
-        .collect();
-    
-    // GOOD: Work with references
-    let lengths: Vec&lt;usize&gt; = strings
-        .iter()
-        .map(|s| s.len())  // s is &amp;String
-        .collect();
-    
-    println!("Lengths: {:?}", lengths);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// 1. Use iterator methods over manual loops when appropriate
-fn best_practices() {
-    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    
-    // Good: Functional style for complex transformations
-    let processed: Vec&lt;String&gt; = numbers
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .map(|&amp;x| x * x)
-        .map(|x| format!("Square: {}", x))
-        .collect();
-    
-    // Good: Use specific methods when available
-    let sum: i32 = numbers.iter().sum();
-    let max = numbers.iter().max();
-    
-    // Good: Early termination
-    let first_large = numbers
-        .iter()
-        .find(|&amp;&amp;x| x &gt; 5);
-    
-    // Good: Use for_each for side effects without collecting
-    numbers
-        .iter()
-        .filter(|&amp;&amp;x| x % 3 == 0)
-        .for_each(|x| println!("Divisible by 3: {}", x));
-}
-
-// 2. Choose the right level of functional vs imperative
-fn choose_appropriate_style() {
-    let data = vec![1, 2, 3, 4, 5];
-    
-    // Simple case: iterator is cleaner
-    let doubled: Vec&lt;i32&gt; = data.iter().map(|x| x * 2).collect();
-    
-    // Complex case: imperative might be clearer
-    fn complex_processing(data: &amp;[i32]) -&gt; Vec&lt;String&gt; {
-        let mut results = Vec::new();
-        
-        for &amp;item in data {
-            if item % 2 == 0 {
-                let processed = item * item;
-                if processed &gt; 10 {
-                    results.push(format!("Large square: {}", processed));
-                } else {
-                    results.push(format!("Small square: {}", processed));
-                }
-            }
-        }
-        
-        results
-    }
-    
-    // vs functional (might be less readable for complex logic)
-    let functional_result: Vec&lt;String&gt; = data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .map(|&amp;x| x * x)
-        .map(|x| {
-            if x &gt; 10 {
-                format!("Large square: {}", x)
-            } else {
-                format!("Small square: {}", x)
-            }
-        })
-        .collect();
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
-<h3 id="exercise-1-data-processing-pipeline"><a class="header" href="#exercise-1-data-processing-pipeline">Exercise 1: Data Processing Pipeline</a></h3>
-<p>Create a data processing pipeline that handles a list of employee records:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[derive(Debug, Clone)]
-struct Employee {
-    name: String,
-    department: String,
-    salary: f64,
-    years_of_service: u32,
-}
-
-// TODO: Implement these functions using iterators
-fn high_earners(employees: &amp;[Employee], threshold: f64) -&gt; Vec&lt;Employee&gt; {
-    // Return employees earning more than threshold, sorted by salary (highest first)
-    todo!()
-}
-
-fn department_stats(employees: &amp;[Employee]) -&gt; std::collections::HashMap&lt;String, (usize, f64)&gt; {
-    // Return (count, average_salary) for each department
-    todo!()
-}
-
-fn senior_employees_by_dept(employees: &amp;[Employee], min_years: u32) -&gt; std::collections::HashMap&lt;String, Vec&lt;String&gt;&gt; {
-    // Return employee names grouped by department for employees with &gt;= min_years service
-    todo!()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-2-text-processing"><a class="header" href="#exercise-2-text-processing">Exercise 2: Text Processing</a></h3>
-<p>Process a text file and extract various statistics:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// TODO: Implement these text processing functions
-fn word_frequency(text: &amp;str) -&gt; std::collections::HashMap&lt;String, usize&gt; {
-    // Return word frequency map (case-insensitive, ignore punctuation)
-    todo!()
-}
-
-fn longest_words(text: &amp;str, n: usize) -&gt; Vec&lt;String&gt; {
-    // Return n longest unique words
-    todo!()
-}
-
-fn sentences_with_word(text: &amp;str, target_word: &amp;str) -&gt; Vec&lt;String&gt; {
-    // Return sentences containing target_word (case-insensitive)
-    // Split on ., !, or ?
-    todo!()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-3-number-sequence-processing"><a class="header" href="#exercise-3-number-sequence-processing">Exercise 3: Number Sequence Processing</a></h3>
-<p>Work with mathematical sequences:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// TODO: Implement a custom iterator for prime numbers
-struct PrimeIterator {
-    current: u64,
-}
-
-impl PrimeIterator {
-    fn new() -&gt; Self {
-        // Start from 2 (first prime)
-        todo!()
-    }
-    
-    fn is_prime(n: u64) -&gt; bool {
-        // Helper function to check if number is prime
-        todo!()
-    }
-}
-
-impl Iterator for PrimeIterator {
-    type Item = u64;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        // Return next prime number
-        todo!()
-    }
-}
-
-// TODO: Use the iterator to solve these problems
-fn sum_of_primes_below(limit: u64) -&gt; u64 {
-    // Sum all prime numbers below limit
-    todo!()
-}
-
-fn nth_prime(n: usize) -&gt; Option&lt;u64&gt; {
-    // Return the nth prime number (1-indexed)
-    todo!()
-}
-
-fn prime_gaps(limit: u64) -&gt; Vec&lt;u64&gt; {
-    // Return gaps between consecutive primes below limit
-    // e.g., for primes 2,3,5,7,11: gaps are [1,2,2,4]
-    todo!()
-}
-<span class="boring">}</span></code></pre></pre>
 <hr />
 <h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
 <ol>
-<li><strong>Lazy evaluation</strong> makes iterators memory-efficient and fast</li>
-<li><strong>Zero-cost abstractions</strong> mean functional style can be as fast as imperative</li>
-<li><strong>Closure capture</strong> has three modes: Fn, FnMut, and FnOnce</li>
-<li><strong>Iterator adaptors</strong> are composable and chainable</li>
-<li><strong>Error handling</strong> in iterator chains requires careful consideration</li>
-<li><strong>Choose the right tool</strong> - iterators for transformations, loops for complex control flow</li>
-<li><strong>Early termination</strong> with find() and take() can provide significant performance benefits</li>
-<li><strong>Memory efficiency</strong> comes from processing one item at a time, not collecting unnecessarily</li>
+<li><strong>Iterators are lazy</strong> - nothing happens until you consume them</li>
+<li><strong>Zero-cost abstraction</strong> - same performance as hand-written loops</li>
+<li><strong>Composable</strong> - chain operations for clean, readable code</li>
+<li><strong>collect() is powerful</strong> - converts to any collection type</li>
+<li><strong>Closures capture environment</strong> - be aware of borrowing vs moving</li>
+<li><strong>Error handling</strong> - Result&lt;Vec<T>, E&gt; vs Vec&lt;Result&lt;T, E&gt;&gt;</li>
+<li><strong>Prefer iterators</strong> over manual loops for clarity and safety</li>
 </ol>
-<p><strong>Next Up:</strong> In Chapter 12, we'll explore testing - how to write reliable tests for your Rust code with unit tests, integration tests, and documentation tests.</p>
+<p><strong>Next Up:</strong> In Chapter 12, we'll explore modules and visibility - essential for organizing larger Rust projects and creating clean APIs.</p>
 
                     </main>
 
@@ -1100,7 +590,7 @@ fn prime_gaps(limit: u64) -&gt; Vec&lt;u64&gt; {
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../day2/12_macros.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../day2/12_modules_visibility.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -1114,29 +604,13 @@ fn prime_gaps(limit: u64) -&gt; Vec&lt;u64&gt; {
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../day2/12_macros.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../day2/12_modules_visibility.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
 
         </div>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
 
