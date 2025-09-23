@@ -513,6 +513,83 @@ let emoji: char = '🦀';  // 4-byte Unicode scalar value
 let byte_value: u8 = b'A';    // ASCII byte
 let unicode_char: char = 'A'; // Unicode character
 <span class="boring">}</span></code></pre></pre>
+<h3 id="tuples-fixed-size-heterogeneous-collections"><a class="header" href="#tuples-fixed-size-heterogeneous-collections">Tuples: Fixed-Size Heterogeneous Collections</a></h3>
+<p>Tuples group values of different types into a compound type. They have a fixed size once declared:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Creating tuples
+let tup: (i32, f64, u8) = (500, 6.4, 1);
+let tup = (500, 6.4, 1);  // Type inference works too
+
+// Destructuring
+let (x, y, z) = tup;
+println!("The value of y is: {}", y);
+
+// Direct access using dot notation
+let five_hundred = tup.0;
+let six_point_four = tup.1;
+let one = tup.2;
+
+// Empty tuple (unit type)
+let unit = ();  // Type () - represents no meaningful value
+
+// Common use: returning multiple values from functions
+fn get_coordinates() -&gt; (f64, f64) {
+    (37.7749, -122.4194)  // San Francisco coordinates
+}
+
+let (lat, lon) = get_coordinates();
+<span class="boring">}</span></code></pre></pre>
+<p><strong>Comparison with C++/C#:</strong></p>
+<ul>
+<li>C++: <code>std::tuple&lt;int, double, char&gt;</code> or <code>std::pair&lt;T1, T2&gt;</code></li>
+<li>C#: <code>(int, double, byte)</code> value tuples or <code>Tuple&lt;int, double, byte&gt;</code></li>
+<li>Rust: <code>(i32, f64, u8)</code> - simpler syntax, built into the language</li>
+</ul>
+<h3 id="arrays-fixed-size-homogeneous-collections"><a class="header" href="#arrays-fixed-size-homogeneous-collections">Arrays: Fixed-Size Homogeneous Collections</a></h3>
+<p>Arrays in Rust have a fixed size known at compile time and store elements of the same type:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Creating arrays
+let months = ["January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December"];
+
+let a: [i32; 5] = [1, 2, 3, 4, 5];  // Type annotation: [type; length]
+let a = [1, 2, 3, 4, 5];            // Type inference
+
+// Initialize with same value
+let zeros = [0; 100];  // Creates array with 100 zeros
+
+// Accessing elements
+let first = months[0];   // "January"
+let second = months[1];  // "February"
+
+// Array slicing
+let slice = &amp;months[0..3];  // ["January", "February", "March"]
+
+// Iterating over arrays
+for month in &amp;months {
+    println!("{}", month);
+}
+
+// Arrays vs Vectors comparison
+let arr = [1, 2, 3];        // Stack-allocated, fixed size
+let vec = vec![1, 2, 3];    // Heap-allocated, growable
+<span class="boring">}</span></code></pre></pre>
+<p><strong>Key Differences from Vectors:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Array <code>[T; N]</code></th><th>Vector <code>Vec&lt;T&gt;</code></th></tr></thead><tbody>
+<tr><td>Size</td><td>Fixed at compile time</td><td>Growable at runtime</td></tr>
+<tr><td>Memory</td><td>Stack-allocated</td><td>Heap-allocated</td></tr>
+<tr><td>Performance</td><td>Faster for small, fixed data</td><td>Better for dynamic data</td></tr>
+<tr><td>Use case</td><td>Known size, performance critical</td><td>Unknown or changing size</td></tr>
+</tbody></table>
+</div>
+<p><strong>Comparison with C++/C#:</strong></p>
+<ul>
+<li>C++: <code>int arr[5]</code> or <code>std::array&lt;int, 5&gt;</code></li>
+<li>C#: <code>int[] arr = new int[5]</code> (heap) or <code>Span&lt;int&gt;</code> (stack)</li>
+<li>Rust: <code>let arr: [i32; 5]</code> - size is part of the type</li>
+</ul>
 <hr />
 <h2 id="functions-the-building-blocks"><a class="header" href="#functions-the-building-blocks">Functions: The Building Blocks</a></h2>
 <h3 id="function-syntax"><a class="header" href="#function-syntax">Function Syntax</a></h3>
@@ -568,6 +645,152 @@ fn main() {
     
     // println!("{}", message);    // ❌ Error: value moved
 }</code></pre></pre>
+<hr />
+<h2 id="control-flow-making-decisions-and-repeating"><a class="header" href="#control-flow-making-decisions-and-repeating">Control Flow: Making Decisions and Repeating</a></h2>
+<p>Rust provides familiar control flow constructs with some unique features that enhance safety and expressiveness.</p>
+<h3 id="if-expressions"><a class="header" href="#if-expressions">if Expressions</a></h3>
+<p>In Rust, <code>if</code> is an expression, not just a statement - it returns a value:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Basic if/else
+let number = 7;
+if number &lt; 5 {
+    println!("Less than 5");
+} else if number == 5 {
+    println!("Equal to 5");
+} else {
+    println!("Greater than 5");
+}
+
+// if as an expression returning values
+let condition = true;
+let number = if condition { 5 } else { 10 };  // number = 5
+
+// Must have same type in both branches
+// let value = if condition { 5 } else { "ten" }; // ❌ Type mismatch!
+<span class="boring">}</span></code></pre></pre>
+<h3 id="loops-three-flavors"><a class="header" href="#loops-three-flavors">Loops: Three Flavors</a></h3>
+<p>Rust offers three loop constructs, each with specific use cases:</p>
+<h4 id="loop---infinite-loop-with-break"><a class="header" href="#loop---infinite-loop-with-break">loop - Infinite Loop with Break</a></h4>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Infinite loop - must break explicitly
+let mut counter = 0;
+let result = loop {
+    counter += 1;
+    
+    if counter == 10 {
+        break counter * 2;  // loop can return a value!
+    }
+};
+println!("Result: {}", result);  // Prints: Result: 20
+
+// Loop labels for nested loops
+'outer: loop {
+    println!("Entered outer loop");
+    
+    'inner: loop {
+        println!("Entered inner loop");
+        break 'outer;  // Break the outer loop
+    }
+    
+    println!("This won't execute");
+}
+<span class="boring">}</span></code></pre></pre>
+<h4 id="while---conditional-loop"><a class="header" href="#while---conditional-loop">while - Conditional Loop</a></h4>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Standard while loop
+let mut number = 3;
+while number != 0 {
+    println!("{}!", number);
+    number -= 1;
+}
+println!("LIFTOFF!!!");
+
+// Common pattern: checking conditions
+let mut stack = vec![1, 2, 3];
+while !stack.is_empty() {
+    let value = stack.pop();
+    println!("Popped: {:?}", value);
+}
+<span class="boring">}</span></code></pre></pre>
+<h4 id="for---iterator-loop"><a class="header" href="#for---iterator-loop">for - Iterator Loop</a></h4>
+<p>The <code>for</code> loop is the most idiomatic way to iterate in Rust:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Iterate over a collection
+let numbers = vec![1, 2, 3, 4, 5];
+for num in &amp;numbers {
+    println!("{}", num);
+}
+
+// Range syntax (exclusive end)
+for i in 0..5 {
+    println!("{}", i);  // Prints 0, 1, 2, 3, 4
+}
+
+// Inclusive range
+for i in 1..=5 {
+    println!("{}", i);  // Prints 1, 2, 3, 4, 5
+}
+
+// Enumerate for index and value
+let items = vec!["a", "b", "c"];
+for (index, value) in items.iter().enumerate() {
+    println!("{}: {}", index, value);
+}
+
+// Reverse iteration
+for i in (1..=3).rev() {
+    println!("{}", i);  // Prints 3, 2, 1
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="comparison-with-cnet"><a class="header" href="#comparison-with-cnet">Comparison with C++/.NET</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>C++</th><th>C#/.NET</th><th>Rust</th></tr></thead><tbody>
+<tr><td>for-each</td><td><code>for (auto&amp; x : vec)</code></td><td><code>foreach (var x in list)</code></td><td><code>for x in &amp;vec</code></td></tr>
+<tr><td>Index loop</td><td><code>for (int i = 0; i &lt; n; i++)</code></td><td><code>for (int i = 0; i &lt; n; i++)</code></td><td><code>for i in 0..n</code></td></tr>
+<tr><td>Infinite</td><td><code>while (true)</code></td><td><code>while (true)</code></td><td><code>loop</code></td></tr>
+<tr><td>Break with value</td><td>Not supported</td><td>Not supported</td><td><code>break value</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="control-flow-best-practices"><a class="header" href="#control-flow-best-practices">Control Flow Best Practices</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Prefer iterators over index loops
+// ❌ Not idiomatic
+let vec = vec![1, 2, 3];
+let mut i = 0;
+while i &lt; vec.len() {
+    println!("{}", vec[i]);
+    i += 1;
+}
+
+// ✅ Idiomatic
+for item in &amp;vec {
+    println!("{}", item);
+}
+
+// Use if-let for simple pattern matching
+let optional = Some(5);
+
+// Verbose match
+match optional {
+    Some(value) =&gt; println!("Got: {}", value),
+    None =&gt; {},
+}
+
+// Cleaner if-let
+if let Some(value) = optional {
+    println!("Got: {}", value);
+}
+
+// while-let for repeated pattern matching
+let mut stack = vec![1, 2, 3];
+while let Some(top) = stack.pop() {
+    println!("Popped: {}", top);
+}
+<span class="boring">}</span></code></pre></pre>
 <hr />
 <h2 id="strings-the-complex-topic"><a class="header" href="#strings-the-complex-topic">Strings: The Complex Topic</a></h2>
 <p>Strings in Rust are more complex than C++/.NET due to UTF-8 handling and ownership.</p>
@@ -947,7 +1170,7 @@ let person = Person {
 println!("Name: {}", person.name);
 println!("Age: {}", person.age);
 <span class="boring">}</span></code></pre></pre>
-<h3 id="comparison-with-cnet"><a class="header" href="#comparison-with-cnet">Comparison with C++/.NET</a></h3>
+<h3 id="comparison-with-cnet-1"><a class="header" href="#comparison-with-cnet-1">Comparison with C++/.NET</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>C++</th><th>C#/.NET</th><th>Rust</th></tr></thead><tbody>
 <tr><td>Definition</td><td><code>struct Person { std::string name; };</code></td><td><code>class Person { public string Name; }</code></td><td><code>struct Person { name: String }</code></td></tr>
 <tr><td>Instantiation</td><td><code>Person p{"Alice"};</code></td><td><code>var p = new Person { Name = "Alice" };</code></td><td><code>Person { name: "Alice".to_string() }</code></td></tr>
@@ -1509,6 +1732,9 @@ fn main() {
     println!("5 + 3.14 = {}", result.display());
 }</code></pre></pre>
 <h3 id="exercise-3-state-machine-for-a-traffic-light"><a class="header" href="#exercise-3-state-machine-for-a-traffic-light">Exercise 3: State Machine for a Traffic Light</a></h3>
+<!-- TODO: Fix this exercise - remove durations from enum variants (redundant with timer field).
+     Better approach: use enum variants without data, external ticks_remaining field, 
+     and demonstrate struct update syntax. Focus on working with enum variants as core concept. -->
 <p>Implement a traffic light state machine:</p>
 <pre><pre class="playground"><code class="language-rust">struct TrafficLight {
     current_state: LightState,
@@ -2243,7 +2469,7 @@ fn main() {
 <tr><td>Runtime overhead</td><td>None</td><td>Some (depends on type)</td></tr>
 </tbody></table>
 </div>
-<h3 id="comparison-with-cnet-1"><a class="header" href="#comparison-with-cnet-1">Comparison with C++/.NET</a></h3>
+<h3 id="comparison-with-cnet-2"><a class="header" href="#comparison-with-cnet-2">Comparison with C++/.NET</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Rust</th><th>C++ Equivalent</th><th>C#/.NET Equivalent</th></tr></thead><tbody>
 <tr><td><code>Box&lt;T&gt;</code></td><td><code>std::unique_ptr&lt;T&gt;</code></td><td>No direct equivalent</td></tr>
 <tr><td><code>Rc&lt;T&gt;</code></td><td><code>std::shared_ptr&lt;T&gt;</code></td><td>Reference counting GC</td></tr>
@@ -3030,208 +3256,58 @@ fn main() {
     println!("Final observer count: {}", subject.observer_count());
 }</code></pre></pre>
 <p><strong>Next Up:</strong> In Day 2, we'll explore collections, traits, and generics - the tools that make Rust code both safe and expressive.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-6-collections---your-data-structure-toolkit"><a class="header" href="#chapter-6-collections---your-data-structure-toolkit">Chapter 6: Collections - Your Data Structure Toolkit</a></h1>
-<h2 id="vec-hashmap-hashset-and-when-to-use-each"><a class="header" href="#vec-hashmap-hashset-and-when-to-use-each">Vec, HashMap, HashSet, and When to Use Each</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-6-collections-beyond-vec"><a class="header" href="#chapter-6-collections-beyond-vec">Chapter 6: Collections Beyond Vec</a></h1>
+<h2 id="hashmap-and-hashset-for-real-world-applications"><a class="header" href="#hashmap-and-hashset-for-real-world-applications">HashMap and HashSet for Real-World Applications</a></h2>
 <h3 id="learning-objectives-4"><a class="header" href="#learning-objectives-4">Learning Objectives</a></h3>
 <p>By the end of this chapter, you'll be able to:</p>
 <ul>
-<li>Master Vec<T> for dynamic arrays and sequences</li>
 <li>Use HashMap&lt;K, V&gt; efficiently for key-value storage</li>
 <li>Apply HashSet<T> for unique value collections</li>
-<li>Choose the right collection for different use cases</li>
-<li>Understand performance characteristics and trade-offs</li>
-<li>Work with collection iterators and common operations</li>
-<li>Handle edge cases and avoid common pitfalls</li>
+<li>Master the Entry API for efficient map operations</li>
+<li>Choose between HashMap, BTreeMap, and other collections</li>
+<li>Work with custom types as keys</li>
 </ul>
 <hr />
-<h2 id="collection-overview"><a class="header" href="#collection-overview">Collection Overview</a></h2>
-<h3 id="rusts-standard-collections-vs-cnet"><a class="header" href="#rusts-standard-collections-vs-cnet">Rust's Standard Collections vs C++/.NET</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Rust Collection</th><th>C++ Equivalent</th><th>C#/.NET Equivalent</th><th>Use Case</th></tr></thead><tbody>
-<tr><td><code>Vec&lt;T&gt;</code></td><td><code>std::vector&lt;T&gt;</code></td><td><code>List&lt;T&gt;</code></td><td>Dynamic arrays</td></tr>
-<tr><td><code>HashMap&lt;K,V&gt;</code></td><td><code>std::unordered_map&lt;K,V&gt;</code></td><td><code>Dictionary&lt;K,V&gt;</code></td><td>Key-value pairs</td></tr>
-<tr><td><code>HashSet&lt;T&gt;</code></td><td><code>std::unordered_set&lt;T&gt;</code></td><td><code>HashSet&lt;T&gt;</code></td><td>Unique values</td></tr>
-<tr><td><code>BTreeMap&lt;K,V&gt;</code></td><td><code>std::map&lt;K,V&gt;</code></td><td><code>SortedDictionary&lt;K,V&gt;</code></td><td>Sorted key-value</td></tr>
-<tr><td><code>BTreeSet&lt;T&gt;</code></td><td><code>std::set&lt;T&gt;</code></td><td><code>SortedSet&lt;T&gt;</code></td><td>Sorted unique values</td></tr>
-<tr><td><code>VecDeque&lt;T&gt;</code></td><td><code>std::deque&lt;T&gt;</code></td><td><code>LinkedList&lt;T&gt;</code></td><td>Double-ended queue</td></tr>
+<h2 id="quick-collection-reference"><a class="header" href="#quick-collection-reference">Quick Collection Reference</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Collection</th><th>Use When You Need</th><th>Performance</th></tr></thead><tbody>
+<tr><td><code>Vec&lt;T&gt;</code></td><td>Ordered sequence, index access</td><td>O(1) index, O(n) search</td></tr>
+<tr><td><code>HashMap&lt;K,V&gt;</code></td><td>Fast key-value lookups</td><td>O(1) average all operations</td></tr>
+<tr><td><code>HashSet&lt;T&gt;</code></td><td>Unique values, fast membership test</td><td>O(1) average all operations</td></tr>
+<tr><td><code>BTreeMap&lt;K,V&gt;</code></td><td>Sorted keys, range queries</td><td>O(log n) all operations</td></tr>
 </tbody></table>
 </div>
-<h3 id="performance-characteristics-1"><a class="header" href="#performance-characteristics-1">Performance Characteristics</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Collection</th><th>Access</th><th>Search</th><th>Insert</th><th>Delete</th><th>Memory</th></tr></thead><tbody>
-<tr><td><code>Vec&lt;T&gt;</code></td><td>O(1)</td><td>O(n)</td><td>O(1) amortized*</td><td>O(n)</td><td>Contiguous</td></tr>
-<tr><td><code>HashMap&lt;K,V&gt;</code></td><td>O(1) average</td><td>O(1) average</td><td>O(1) average</td><td>O(1) average</td><td>Hash table</td></tr>
-<tr><td><code>HashSet&lt;T&gt;</code></td><td>N/A</td><td>O(1) average</td><td>O(1) average</td><td>O(1) average</td><td>Hash table</td></tr>
-<tr><td><code>BTreeMap&lt;K,V&gt;</code></td><td>O(log n)</td><td>O(log n)</td><td>O(log n)</td><td>O(log n)</td><td>Tree</td></tr>
-</tbody></table>
-</div>
-<p>*Insert at end is O(1) amortized, O(n) at arbitrary position</p>
 <hr />
-<h2 id="vec-the-workhorse-dynamic-array"><a class="header" href="#vec-the-workhorse-dynamic-array">Vec<T>: The Workhorse Dynamic Array</a></h2>
-<h3 id="creation-and-basic-operations"><a class="header" href="#creation-and-basic-operations">Creation and Basic Operations</a></h3>
-<pre><pre class="playground"><code class="language-rust">fn main() {
-    // Creation methods
-    let mut vec1 = Vec::new();              // Empty vector
-    let mut vec2: Vec&lt;i32&gt; = Vec::new();    // With type annotation
-    let vec3 = vec![1, 2, 3, 4, 5];        // vec! macro
-    let vec4 = Vec::with_capacity(10);      // Pre-allocated capacity
-    
-    // Adding elements
-    vec1.push(1);
-    vec1.push(2);
-    vec1.extend([3, 4, 5]);                 // Add multiple elements
-    
-    // Accessing elements
-    let first = vec1[0];                    // Panics if out of bounds
-    let first_safe = vec1.get(0);           // Returns Option&lt;&amp;T&gt;
-    let last = vec1.last();                 // Returns Option&lt;&amp;T&gt;
-    
-    // Safe element access
-    match vec1.get(10) {
-        Some(value) =&gt; println!("Value: {}", value),
-        None =&gt; println!("Index out of bounds"),
-    }
-    
-    println!("Vec: {:?}", vec1);
-    println!("Length: {}, Capacity: {}", vec1.len(), vec1.capacity());
-}</code></pre></pre>
-<h3 id="iteration-patterns"><a class="header" href="#iteration-patterns">Iteration Patterns</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn iteration_examples() {
-    let vec = vec![1, 2, 3, 4, 5];
-    
-    // Immutable iteration (borrowing)
-    for item in &amp;vec {
-        println!("Item: {}", item);
-    }
-    // vec is still usable here
-    
-    // Mutable iteration (borrowing mutably)
-    let mut vec_mut = vec![1, 2, 3, 4, 5];
-    for item in &amp;mut vec_mut {
-        *item *= 2;  // Modify in place
-    }
-    println!("Doubled: {:?}", vec_mut);
-    
-    // Consuming iteration (takes ownership)
-    for item in vec {  // vec is moved here
-        println!("Owned item: {}", item);
-    }
-    // vec is no longer usable
-    
-    // Index-based iteration
-    let vec2 = vec![10, 20, 30];
-    for (index, value) in vec2.iter().enumerate() {
-        println!("Index {}: {}", index, value);
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="common-vec-operations"><a class="header" href="#common-vec-operations">Common Vec Operations</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn vec_operations() {
-    let mut numbers = vec![1, 2, 3, 4, 5];
-    
-    // Insertion
-    numbers.insert(0, 0);               // Insert at beginning (expensive)
-    numbers.insert(numbers.len(), 6);   // Insert at end (like push)
-    
-    // Removal
-    let popped = numbers.pop();         // Remove last: Some(6)
-    let removed = numbers.remove(0);    // Remove at index (expensive): 0
-    
-    // Slicing
-    let slice = &amp;numbers[1..4];         // Slice: [2, 3, 4]
-    let first_three = &amp;numbers[..3];    // First three elements
-    let last_two = &amp;numbers[numbers.len()-2..];  // Last two elements
-    
-    // Searching
-    if numbers.contains(&amp;3) {
-        println!("Found 3!");
-    }
-    
-    let position = numbers.iter().position(|&amp;x| x == 4);
-    println!("Position of 4: {:?}", position);
-    
-    // Sorting and deduplication
-    let mut words = vec!["banana", "apple", "cherry", "apple"];
-    words.sort();                       // Sort in place
-    words.dedup();                      // Remove consecutive duplicates
-    
-    println!("Sorted unique words: {:?}", words);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="advanced-vec-techniques"><a class="header" href="#advanced-vec-techniques">Advanced Vec Techniques</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn advanced_vec_techniques() {
-    // Pre-sizing for performance
-    let mut vec = Vec::with_capacity(1000);
-    for i in 0..1000 {
-        vec.push(i);  // No reallocations needed
-    }
-    
-    // Splitting and joining
-    let mut data = vec![1, 2, 3, 4, 5, 6];
-    let (left, right) = data.split_at_mut(3);
-    left[0] = 10;
-    right[0] = 40;
-    println!("Split and modified: {:?}", data);  // [10, 2, 3, 40, 5, 6]
-    
-    // Retain elements matching condition
-    let mut numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    numbers.retain(|&amp;x| x % 2 == 0);    // Keep only even numbers
-    println!("Even numbers: {:?}", numbers);
-    
-    // Convert between Vec and other collections
-    let vec_from_iter: Vec&lt;i32&gt; = (0..5).collect();
-    let string_from_chars: String = vec!['H', 'e', 'l', 'l', 'o'].into_iter().collect();
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="hashmapk-v-key-value-storage-1"><a class="header" href="#hashmapk-v-key-value-storage-1">HashMap&lt;K, V&gt;: Key-Value Storage</a></h2>
-<h3 id="creation-and-basic-operations-1"><a class="header" href="#creation-and-basic-operations-1">Creation and Basic Operations</a></h3>
+<h2 id="hashmapk-v-the-swiss-army-knife"><a class="header" href="#hashmapk-v-the-swiss-army-knife">HashMap&lt;K, V&gt;: The Swiss Army Knife</a></h2>
+<h3 id="basic-operations"><a class="header" href="#basic-operations">Basic Operations</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashMap;
 
 fn hashmap_basics() {
-    // Creation methods
+    // Creation
     let mut scores = HashMap::new();
-    scores.insert("Alice".to_string(), 100);
-    scores.insert("Bob".to_string(), 85);
-    scores.insert("Carol".to_string(), 92);
+    scores.insert("Alice", 100);
+    scores.insert("Bob", 85);
     
     // From iterator
-    let teams = vec!["Blue", "Yellow", "Red"];
-    let initial_scores = vec![10, 50, 25];
-    let team_scores: HashMap&lt;_, _&gt; = teams
-        .into_iter()
-        .zip(initial_scores.into_iter())
+    let teams = vec!["Blue", "Red"];
+    let points = vec![10, 50];
+    let team_scores: HashMap&lt;_, _&gt; = teams.into_iter()
+        .zip(points.into_iter())
         .collect();
     
     // Accessing values
-    let alice_score = scores.get("Alice");
-    match alice_score {
-        Some(score) =&gt; println!("Alice's score: {}", score),
-        None =&gt; println!("Alice not found"),
+    if let Some(score) = scores.get("Alice") {
+        println!("Alice's score: {}", score);
     }
     
-    // Direct access (panics if key doesn't exist)
-    // let bob_score = scores["Bob"];  // Risky!
-    
-    // Safe access with default
-    let charlie_score = scores.get("Charlie").unwrap_or(&amp;0);
-    println!("Charlie's score: {}", charlie_score);
-    
-    // Check if key exists
+    // Check existence
     if scores.contains_key("Alice") {
         println!("Alice is in the map");
     }
-    
-    println!("All scores: {:?}", scores);
 }
 <span class="boring">}</span></code></pre></pre>
-<h3 id="the-entry-api-powerful-key-value-operations"><a class="header" href="#the-entry-api-powerful-key-value-operations">The Entry API: Powerful Key-Value Operations</a></h3>
+<h3 id="the-entry-api-powerful-and-efficient"><a class="header" href="#the-entry-api-powerful-and-efficient">The Entry API: Powerful and Efficient</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashMap;
@@ -3240,739 +3316,271 @@ fn entry_api_examples() {
     let mut word_count = HashMap::new();
     let text = "the quick brown fox jumps over the lazy dog the";
     
-    // Count words using entry API
+    // Count words efficiently
     for word in text.split_whitespace() {
-        let count = word_count.entry(word.to_string()).or_insert(0);
-        *count += 1;
+        *word_count.entry(word).or_insert(0) += 1;
     }
     
-    println!("Word counts: {:?}", word_count);
-    
-    // Entry patterns
-    let mut player_scores = HashMap::new();
-    
-    // Insert if not present
-    player_scores.entry("Alice".to_string()).or_insert(0);
-    
-    // Insert with computed value if not present
-    player_scores.entry("Bob".to_string()).or_insert_with(|| {
-        // Expensive computation here
-        42
+    // Insert if absent
+    let mut cache = HashMap::new();
+    cache.entry("key").or_insert_with(|| {
+        // Expensive computation only runs if key doesn't exist
+        expensive_calculation()
     });
     
-    // Modify existing or insert new
-    *player_scores.entry("Alice".to_string()).or_insert(0) += 10;
-    
-    // Pattern: update or set default
-    let alice_entry = player_scores.entry("Alice".to_string());
-    match alice_entry {
-        std::collections::hash_map::Entry::Occupied(mut e) =&gt; {
-            *e.get_mut() *= 2;  // Double existing score
-        }
-        std::collections::hash_map::Entry::Vacant(e) =&gt; {
-            e.insert(100);      // New player starts with 100
-        }
-    }
-    
-    println!("Player scores: {:?}", player_scores);
+    // Modify or insert
+    let mut scores = HashMap::new();
+    scores.entry("Alice")
+        .and_modify(|score| *score += 10)
+        .or_insert(100);
+}
+
+fn expensive_calculation() -&gt; String {
+    "computed_value".to_string()
 }
 <span class="boring">}</span></code></pre></pre>
-<h3 id="hashmap-iteration-and-operations"><a class="header" href="#hashmap-iteration-and-operations">HashMap Iteration and Operations</a></h3>
+<h3 id="hashmap-with-custom-keys"><a class="header" href="#hashmap-with-custom-keys">HashMap with Custom Keys</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashMap;
 
-fn hashmap_operations() {
-    let mut inventory = HashMap::new();
-    inventory.insert("apples", 10);
-    inventory.insert("bananas", 5);
-    inventory.insert("oranges", 8);
-    
-    // Iterate over key-value pairs
-    for (item, quantity) in &amp;inventory {
-        println!("{}: {}", item, quantity);
-    }
-    
-    // Iterate over keys only
-    for item in inventory.keys() {
-        println!("Item: {}", item);
-    }
-    
-    // Iterate over values only
-    for quantity in inventory.values() {
-        println!("Quantity: {}", quantity);
-    }
-    
-    // Mutable iteration over values
-    for quantity in inventory.values_mut() {
-        *quantity *= 2;  // Double all quantities
-    }
-    
-    // Remove elements
-    if let Some(removed) = inventory.remove("bananas") {
-        println!("Removed {} bananas", removed);
-    }
-    
-    // Bulk operations
-    let total_items: i32 = inventory.values().sum();
-    println!("Total items: {}", total_items);
-    
-    // Retain only items matching condition
-    inventory.retain(|&amp;item, &amp;mut quantity| quantity &gt; 10);
-    println!("High quantity items: {:?}", inventory);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="custom-keys-and-hash-implementation"><a class="header" href="#custom-keys-and-hash-implementation">Custom Keys and Hash Implementation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+#[derive(Debug, Eq, PartialEq, Hash)]
+struct UserId(u64);
 
-#[derive(Debug, Eq, PartialEq)]
-struct Person {
-    name: String,
-    age: u32,
-}
-
-// Custom hash implementation - only hash by name
-impl Hash for Person {
-    fn hash&lt;H: Hasher&gt;(&amp;self, state: &amp;mut H) {
-        self.name.hash(state);  // Only hash the name
-    }
+#[derive(Debug, Eq, PartialEq, Hash)]
+struct CompositeKey {
+    category: String,
+    id: u32,
 }
 
 fn custom_keys() {
-    let mut people_scores = HashMap::new();
+    let mut user_data = HashMap::new();
+    user_data.insert(UserId(1001), "Alice");
+    user_data.insert(UserId(1002), "Bob");
     
-    let alice = Person { 
-        name: "Alice".to_string(), 
-        age: 30 
-    };
-    let bob = Person { 
-        name: "Bob".to_string(), 
-        age: 25 
-    };
+    let mut composite_map = HashMap::new();
+    composite_map.insert(
+        CompositeKey { category: "user".to_string(), id: 1 },
+        "User One"
+    );
     
-    people_scores.insert(alice, 100);
-    people_scores.insert(bob, 85);
-    
-    // Lookup by creating temporary Person
-    let lookup_alice = Person { 
-        name: "Alice".to_string(), 
-        age: 999  // Age doesn't matter for hash/equality
-    };
-    
-    if let Some(score) = people_scores.get(&amp;lookup_alice) {
-        println!("Alice's score: {}", score);
+    // Access with custom key
+    if let Some(name) = user_data.get(&amp;UserId(1001)) {
+        println!("Found user: {}", name);
     }
-    
-    println!("People scores: {:?}", people_scores);
 }
 <span class="boring">}</span></code></pre></pre>
 <hr />
 <h2 id="hashset-unique-value-collections"><a class="header" href="#hashset-unique-value-collections">HashSet<T>: Unique Value Collections</a></h2>
-<h3 id="basic-operations"><a class="header" href="#basic-operations">Basic Operations</a></h3>
+<h3 id="basic-operations-and-set-theory"><a class="header" href="#basic-operations-and-set-theory">Basic Operations and Set Theory</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::collections::HashSet;
 
-fn hashset_basics() {
-    // Creation
-    let mut set1 = HashSet::new();
-    set1.insert("apple");
-    set1.insert("banana");
-    set1.insert("cherry");
-    set1.insert("apple");  // Duplicate - won't be added
+fn hashset_operations() {
+    // Create and populate
+    let mut set1: HashSet&lt;i32&gt; = vec![1, 2, 3, 2, 4].into_iter().collect();
+    let set2: HashSet&lt;i32&gt; = vec![3, 4, 5, 6].into_iter().collect();
     
-    // From iterator
-    let set2: HashSet&lt;i32&gt; = vec![1, 2, 3, 2, 4, 3, 5].into_iter().collect();
-    println!("Unique numbers: {:?}", set2);  // {1, 2, 3, 4, 5}
+    // Set operations
+    let union: HashSet&lt;_&gt; = set1.union(&amp;set2).cloned().collect();
+    let intersection: HashSet&lt;_&gt; = set1.intersection(&amp;set2).cloned().collect();
+    let difference: HashSet&lt;_&gt; = set1.difference(&amp;set2).cloned().collect();
+    
+    println!("Union: {:?}", union);           // {1, 2, 3, 4, 5, 6}
+    println!("Intersection: {:?}", intersection); // {3, 4}
+    println!("Difference: {:?}", difference);     // {1, 2}
     
     // Check membership
-    if set1.contains("apple") {
-        println!("Set contains apple");
+    if set1.contains(&amp;3) {
+        println!("Set contains 3");
     }
     
-    // Remove elements
-    set1.remove("banana");
-    
-    // Iteration
-    for item in &amp;set1 {
-        println!("Item: {}", item);
+    // Insert returns bool indicating if value was new
+    if set1.insert(10) {
+        println!("10 was added (wasn't present before)");
     }
-    
-    println!("Fruits: {:?}", set1);
-    println!("Set length: {}", set1.len());
 }
-<span class="boring">}</span></code></pre></pre>
-<h3 id="set-operations"><a class="header" href="#set-operations">Set Operations</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::HashSet;
 
-fn set_operations() {
-    let set_a: HashSet&lt;i32&gt; = vec![1, 2, 3, 4, 5].into_iter().collect();
-    let set_b: HashSet&lt;i32&gt; = vec![4, 5, 6, 7, 8].into_iter().collect();
-    
-    // Union: all elements from both sets
-    let union: HashSet&lt;i32&gt; = set_a.union(&amp;set_b).cloned().collect();
-    println!("Union: {:?}", union);  // {1, 2, 3, 4, 5, 6, 7, 8}
-    
-    // Intersection: common elements
-    let intersection: HashSet&lt;i32&gt; = set_a.intersection(&amp;set_b).cloned().collect();
-    println!("Intersection: {:?}", intersection);  // {4, 5}
-    
-    // Difference: elements in A but not B
-    let difference: HashSet&lt;i32&gt; = set_a.difference(&amp;set_b).cloned().collect();
-    println!("Difference (A - B): {:?}", difference);  // {1, 2, 3}
-    
-    // Symmetric difference: elements in A or B but not both
-    let sym_diff: HashSet&lt;i32&gt; = set_a.symmetric_difference(&amp;set_b).cloned().collect();
-    println!("Symmetric difference: {:?}", sym_diff);  // {1, 2, 3, 6, 7, 8}
-    
-    // Subset/superset checks
-    let subset: HashSet&lt;i32&gt; = vec![2, 3].into_iter().collect();
-    println!("Is {2, 3} subset of A? {}", subset.is_subset(&amp;set_a));
-    println!("Is A superset of {2, 3}? {}", set_a.is_superset(&amp;subset));
-    
-    // Disjoint check
-    let disjoint_set: HashSet&lt;i32&gt; = vec![10, 11, 12].into_iter().collect();
-    println!("Are A and {10, 11, 12} disjoint? {}", set_a.is_disjoint(&amp;disjoint_set));
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="practical-hashset-examples"><a class="header" href="#practical-hashset-examples">Practical HashSet Examples</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::HashSet;
-
-fn practical_hashset_examples() {
-    // Remove duplicates from a vector
-    let numbers = vec![1, 2, 2, 3, 3, 3, 4, 4, 4, 4];
-    let unique: HashSet&lt;i32&gt; = numbers.into_iter().collect();
-    let deduped: Vec&lt;i32&gt; = unique.into_iter().collect();
-    println!("Deduplicated: {:?}", deduped);
-    
+fn practical_hashset_use() {
     // Track visited items
-    let mut visited_pages = HashSet::new();
-    let pages_to_visit = vec![
-        "home", "about", "contact", "home", "products", "about"
-    ];
+    let mut visited = HashSet::new();
+    let items = vec!["home", "about", "home", "contact", "about"];
     
-    for page in pages_to_visit {
-        if visited_pages.insert(page) {
-            println!("First visit to: {}", page);
+    for item in items {
+        if visited.insert(item) {
+            println!("First visit to: {}", item);
         } else {
-            println!("Already visited: {}", page);
+            println!("Already visited: {}", item);
+        }
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="when-to-use-btreemapbtreeset"><a class="header" href="#when-to-use-btreemapbtreeset">When to Use BTreeMap/BTreeSet</a></h2>
+<p>Use <strong>BTreeMap/BTreeSet</strong> when you need:</p>
+<ul>
+<li>Keys/values in sorted order</li>
+<li>Range queries (<code>map.range("a".."c")</code>)</li>
+<li>Consistent iteration order</li>
+<li>No hash function available for keys</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::BTreeMap;
+
+// Example: Leaderboard that needs sorted scores
+let mut leaderboard = BTreeMap::new();
+leaderboard.insert(95, "Alice");
+leaderboard.insert(87, "Bob");
+leaderboard.insert(92, "Charlie");
+
+// Iterate in score order (ascending)
+for (score, name) in &amp;leaderboard {
+    println!("{}: {}", name, score);
+}
+
+// Get top 3 scores
+let top_scores: Vec&lt;_&gt; = leaderboard
+    .iter()
+    .rev()  // Reverse for descending order
+    .take(3)
+    .collect();
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="common-pitfalls"><a class="header" href="#common-pitfalls">Common Pitfalls</a></h2>
+<h3 id="hashmap-key-requirements"><a class="header" href="#hashmap-key-requirements">HashMap Key Requirements</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+// ❌ f64 doesn't implement Eq (NaN issues)
+// let mut map: HashMap&lt;f64, String&gt; = HashMap::new();
+
+// ✅ Use ordered wrapper or integer representation
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct OrderedFloat(i64); // Store as integer representation
+
+impl From&lt;f64&gt; for OrderedFloat {
+    fn from(f: f64) -&gt; Self {
+        OrderedFloat(f.to_bits() as i64)
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="borrowing-during-iteration"><a class="header" href="#borrowing-during-iteration">Borrowing During Iteration</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// ❌ Can't modify while iterating
+// for (key, value) in &amp;map {
+//     map.insert(new_key, new_value); // Error!
+// }
+
+// ✅ Collect changes first, apply after
+let changes: Vec&lt;_&gt; = map.iter()
+    .filter(|(_, &amp;v)| v &gt; threshold)
+    .map(|(k, v)| (format!("new_{}", k), v * 2))
+    .collect();
+
+for (key, value) in changes {
+    map.insert(key, value);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="exercise-build-a-cache-system"><a class="header" href="#exercise-build-a-cache-system">Exercise: Build a Cache System</a></h2>
+<p>Create an LRU (Least Recently Used) cache with expiration:</p>
+<pre><pre class="playground"><code class="language-rust">use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, Instant};
+
+struct CacheEntry&lt;V&gt; {
+    value: V,
+    last_accessed: Instant,
+    expires_at: Option&lt;Instant&gt;,
+}
+
+struct LRUCache&lt;K: Clone + Eq + std::hash::Hash, V&gt; {
+    capacity: usize,
+    cache: HashMap&lt;K, CacheEntry&lt;V&gt;&gt;,
+    access_order: VecDeque&lt;K&gt;,
+}
+
+impl&lt;K: Clone + Eq + std::hash::Hash, V: Clone&gt; LRUCache&lt;K, V&gt; {
+    fn new(capacity: usize) -&gt; Self {
+        LRUCache {
+            capacity,
+            cache: HashMap::new(),
+            access_order: VecDeque::new(),
         }
     }
     
-    // Find unique words in text
-    let text = "the quick brown fox jumps over the lazy dog";
-    let words: HashSet&lt;&amp;str&gt; = text.split_whitespace().collect();
-    println!("Unique words: {:?}", words);
-    println!("Unique word count: {}", words.len());
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="other-important-collections"><a class="header" href="#other-important-collections">Other Important Collections</a></h2>
-<h3 id="btreemap-and-btreeset-sorted-collections"><a class="header" href="#btreemap-and-btreeset-sorted-collections">BTreeMap and BTreeSet: Sorted Collections</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::{BTreeMap, BTreeSet};
-
-fn sorted_collections() {
-    // BTreeMap keeps keys sorted
-    let mut scores = BTreeMap::new();
-    scores.insert("Charlie", 85);
-    scores.insert("Alice", 92);
-    scores.insert("Bob", 78);
-    
-    println!("Sorted scores:");
-    for (name, score) in &amp;scores {
-        println!("{}: {}", name, score);  // Prints in alphabetical order
+    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
+        // TODO: Check if key exists
+        // TODO: Check if entry is expired (remove if expired)
+        // TODO: Update last_accessed time
+        // TODO: Move key to end of access_order (most recently used)
+        // TODO: Return the value
+        todo!()
     }
     
-    // Range queries
-    let range: BTreeMap&lt;&amp;str, i32&gt; = scores
-        .range("Alice".."Charlie")  // From Alice to Charlie (exclusive)
-        .map(|(&amp;k, &amp;v)| (k, v))
-        .collect();
-    println!("Range A-C: {:?}", range);
-    
-    // BTreeSet for sorted unique values
-    let mut numbers = BTreeSet::new();
-    numbers.insert(5);
-    numbers.insert(2);
-    numbers.insert(8);
-    numbers.insert(2);  // Duplicate ignored
-    
-    println!("Sorted numbers: {:?}", numbers);  // {2, 5, 8}
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="vecdeque-double-ended-queue"><a class="header" href="#vecdeque-double-ended-queue">VecDeque: Double-Ended Queue</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::VecDeque;
-
-fn vecdeque_example() {
-    let mut deque = VecDeque::new();
-    
-    // Add to both ends efficiently
-    deque.push_back(1);     // Add to back: [1]
-    deque.push_front(2);    // Add to front: [2, 1]
-    deque.push_back(3);     // Add to back: [2, 1, 3]
-    
-    println!("Deque: {:?}", deque);
-    
-    // Remove from both ends
-    let front = deque.pop_front();  // Some(2), deque: [1, 3]
-    let back = deque.pop_back();    // Some(3), deque: [1]
-    
-    println!("Removed front: {:?}, back: {:?}", front, back);
-    println!("Remaining: {:?}", deque);
-    
-    // Use as a queue (FIFO)
-    let mut queue = VecDeque::new();
-    queue.push_back("first");
-    queue.push_back("second");
-    queue.push_back("third");
-    
-    while let Some(item) = queue.pop_front() {
-        println!("Processing: {}", item);
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="collection-performance-and-when-to-use-each"><a class="header" href="#collection-performance-and-when-to-use-each">Collection Performance and When to Use Each</a></h2>
-<h3 id="performance-guide"><a class="header" href="#performance-guide">Performance Guide</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet, VecDeque};
-
-fn performance_examples() {
-    // Vec&lt;T&gt; - Use when:
-    // - You need indexed access
-    // - You're iterating in order frequently
-    // - Memory usage is critical (most compact)
-    let mut data_list = Vec::new();
-    for i in 0..1000 {
-        data_list.push(i);  // O(1) amortized
-    }
-    let tenth_item = data_list[9];  // O(1) access
-    
-    // HashMap&lt;K,V&gt; - Use when:
-    // - You need fast key-based lookups
-    // - Order doesn't matter
-    // - Keys implement Hash + Eq
-    let mut user_data = HashMap::new();
-    user_data.insert("user123", "Alice");  // O(1) average
-    let user = user_data.get("user123");   // O(1) average
-    
-    // BTreeMap&lt;K,V&gt; - Use when:
-    // - You need sorted iteration
-    // - You need range queries
-    // - Keys implement Ord
-    let mut sorted_data = BTreeMap::new();
-    sorted_data.insert(10, "ten");
-    sorted_data.insert(5, "five");
-    // Iteration is in sorted order
-    
-    // HashSet&lt;T&gt; - Use when:
-    // - You need to track unique items
-    // - Membership testing is primary operation
-    // - Order doesn't matter
-    let mut unique_ids = HashSet::new();
-    unique_ids.insert(123);
-    let is_present = unique_ids.contains(&amp;123);  // O(1) average
-    
-    // VecDeque&lt;T&gt; - Use when:
-    // - You need efficient operations at both ends
-    // - Implementing queues or double-ended operations
-    let mut buffer = VecDeque::new();
-    buffer.push_back("data");   // O(1)
-    buffer.push_front("data");  // O(1)
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="collection-selection-decision-tree"><a class="header" href="#collection-selection-decision-tree">Collection Selection Decision Tree</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Decision helper function
-fn choose_collection_advice() {
-    println!("Collection Selection Guide:");
-    println!("
-    Need indexed access (arr[i])? 
-    ├─ Yes → Vec&lt;T&gt;
-    └─ No
-       ├─ Key-value pairs?
-       │  ├─ Need sorted keys? → BTreeMap&lt;K,V&gt;
-       │  └─ Fast lookup priority? → HashMap&lt;K,V&gt;
-       └─ Just unique values?
-          ├─ Need sorted values? → BTreeSet&lt;T&gt;
-          ├─ Fast membership testing? → HashSet&lt;T&gt;
-          └─ Operations at both ends? → VecDeque&lt;T&gt;
-    ");
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="common-pitfalls-and-best-practices"><a class="header" href="#common-pitfalls-and-best-practices">Common Pitfalls and Best Practices</a></h2>
-<h3 id="pitfall-1-inefficient-vec-operations"><a class="header" href="#pitfall-1-inefficient-vec-operations">Pitfall 1: Inefficient Vec Operations</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn vec_performance_pitfalls() {
-    let mut vec = vec![1, 2, 3, 4, 5];
-    
-    // ❌ Inefficient: frequent insertions at beginning
-    // Each insert shifts all elements
-    for i in 0..1000 {
-        vec.insert(0, i);  // O(n) operation
+    fn insert(&amp;mut self, key: K, value: V, ttl: Option&lt;Duration&gt;) {
+        // TODO: If at capacity, remove least recently used item
+        // TODO: Create cache entry with expiration if ttl provided
+        // TODO: Add to cache and access_order
+        todo!()
     }
     
-    // ✅ Better: collect in reverse order or use VecDeque
-    let mut efficient_vec = Vec::new();
-    for i in 0..1000 {
-        efficient_vec.push(i);  // O(1) amortized
+    fn remove(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        // TODO: Remove from cache and access_order
+        // TODO: Return the value if it existed
+        todo!()
     }
-    efficient_vec.reverse();    // O(n) but only once
     
-    // ✅ Or use VecDeque for frequent front insertions
-    let mut deque = std::collections::VecDeque::new();
-    for i in 0..1000 {
-        deque.push_front(i);  // O(1) operation
+    fn clear_expired(&amp;mut self) {
+        // TODO: Remove all expired entries
+        todo!()
     }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="pitfall-2-hashmap-key-requirements"><a class="header" href="#pitfall-2-hashmap-key-requirements">Pitfall 2: HashMap Key Requirements</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::HashMap;
-
-// ❌ This won't work - f64 doesn't implement Eq
-// let mut float_map: HashMap&lt;f64, String&gt; = HashMap::new();
-
-// ✅ Use ordered float wrapper or avoid floats as keys
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
-#[derive(Debug)]
-struct OrderedFloat(f64);
-
-impl PartialEq for OrderedFloat {
-    fn eq(&amp;self, other: &amp;Self) -&gt; bool {
-        self.0.to_bits() == other.0.to_bits()
+    
+    fn stats(&amp;self) -&gt; (usize, usize) {
+        // Return (current_size, capacity)
+        (self.cache.len(), self.capacity)
     }
 }
 
-impl Eq for OrderedFloat {}
-
-impl Hash for OrderedFloat {
-    fn hash&lt;H: Hasher&gt;(&amp;self, state: &amp;mut H) {
-        self.0.to_bits().hash(state);
-    }
-}
-
-fn float_key_solution() {
-    let mut float_map = HashMap::new();
-    float_map.insert(OrderedFloat(3.14), "pi".to_string());
-    float_map.insert(OrderedFloat(2.71), "e".to_string());
+fn main() {
+    let mut cache = LRUCache::new(3);
     
-    println!("Float map: {:?}", float_map);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="pitfall-3-borrowing-during-iteration"><a class="header" href="#pitfall-3-borrowing-during-iteration">Pitfall 3: Borrowing During Iteration</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use std::collections::HashMap;
-
-fn borrowing_pitfalls() {
-    let mut scores = HashMap::new();
-    scores.insert("Alice", 100);
-    scores.insert("Bob", 85);
+    // Test basic operations
+    cache.insert("user:1", "Alice", Some(Duration::from_secs(60)));
+    cache.insert("user:2", "Bob", None);  // No expiration
+    cache.insert("user:3", "Charlie", Some(Duration::from_secs(5)));
     
-    // ❌ Can't modify while borrowing immutably
-    // for (name, score) in &amp;scores {
-    //     if *score &lt; 90 {
-    //         scores.insert("bonus_" + name, 10);  // Borrow checker error!
-    //     }
-    // }
+    // Access user:1 to make it most recently used
+    println!("Got: {:?}", cache.get(&amp;"user:1"));
     
-    // ✅ Solution 1: Collect keys first
-    let low_scorers: Vec&lt;String&gt; = scores
-        .iter()
-        .filter(|(_, &amp;score)| score &lt; 90)
-        .map(|(name, _)| format!("bonus_{}", name))
-        .collect();
+    // Add one more - should evict user:2 (least recently used)
+    cache.insert("user:4", "David", None);
     
-    for bonus_name in low_scorers {
-        scores.insert(bonus_name, 10);
-    }
+    // Try to get user:2 - should be None (evicted)
+    println!("User 2 (should be evicted): {:?}", cache.get(&amp;"user:2"));
     
-    // ✅ Solution 2: Use entry API when possible
-    let name = "Charlie";
-    scores.entry(name.to_string()).and_modify(|score| *score += 5).or_insert(80);
-    
-    println!("Updated scores: {:?}", scores);
-}
-<span class="boring">}</span></code></pre></pre>
+    let (size, capacity) = cache.stats();
+    println!("Cache stats - Size: {}/{}", size, capacity);
+}</code></pre></pre>
+<p><strong>Hints:</strong></p>
+<ul>
+<li>Use <code>VecDeque::retain()</code> to keep only non-expired keys</li>
+<li>HashMap's <code>entry()</code> API is useful for get-or-insert patterns</li>
+<li>Remember to update both the HashMap and VecDeque when modifying</li>
+</ul>
 <hr />
 <h2 id="key-takeaways-5"><a class="header" href="#key-takeaways-5">Key Takeaways</a></h2>
 <ol>
-<li><strong>Vec<T></strong> is your default choice for sequences and lists</li>
-<li><strong>HashMap&lt;K,V&gt;</strong> for fast key-value lookups when order doesn't matter</li>
-<li><strong>HashSet<T></strong> for unique value collections and membership testing</li>
-<li><strong>BTreeMap/BTreeSet</strong> when you need sorted iteration or range queries</li>
-<li><strong>VecDeque<T></strong> for efficient operations at both ends</li>
-<li><strong>Consider performance characteristics</strong> when choosing collections</li>
-<li><strong>Use iterators</strong> instead of index-based loops for better performance and safety</li>
+<li><strong>HashMap&lt;K,V&gt;</strong> for fast key-value lookups with the Entry API for efficiency</li>
+<li><strong>HashSet<T></strong> for unique values and set operations</li>
+<li><strong>BTreeMap/BTreeSet</strong> when you need sorted data or range queries</li>
+<li><strong>Custom keys</strong> must implement Hash + Eq (or Ord for BTree*)</li>
+<li><strong>Can't modify while iterating</strong> - collect changes first</li>
+<li><strong>Entry API</strong> prevents redundant lookups and improves performance</li>
 </ol>
-<hr />
-<h2 id="exercises-5"><a class="header" href="#exercises-5">Exercises</a></h2>
-<h3 id="exercise-1-word-frequency-counter"><a class="header" href="#exercise-1-word-frequency-counter">Exercise 1: Word Frequency Counter</a></h3>
-<p>Build a comprehensive text analysis tool:</p>
-<pre><pre class="playground"><code class="language-rust">use std::collections::HashMap;
-
-struct TextAnalyzer {
-    word_counts: HashMap&lt;String, usize&gt;,
-    total_words: usize,
-}
-
-impl TextAnalyzer {
-    fn new() -&gt; Self {
-        // Implement
-    }
-    
-    fn add_text(&amp;mut self, text: &amp;str) {
-        // Implement: add words from text to counter
-        // Handle punctuation and case normalization
-    }
-    
-    fn most_common(&amp;self, n: usize) -&gt; Vec&lt;(String, usize)&gt; {
-        // Implement: return n most common words with counts
-    }
-    
-    fn unique_words(&amp;self) -&gt; usize {
-        // Implement: return number of unique words
-    }
-    
-    fn word_frequency(&amp;self, word: &amp;str) -&gt; f64 {
-        // Implement: return frequency of word as percentage
-    }
-    
-    fn words_starting_with(&amp;self, prefix: &amp;str) -&gt; Vec&lt;String&gt; {
-        // Implement: return words starting with prefix
-    }
-}
-
-fn main() {
-    let mut analyzer = TextAnalyzer::new();
-    
-    analyzer.add_text("The quick brown fox jumps over the lazy dog");
-    analyzer.add_text("The dog was really lazy, but the fox was quick");
-    
-    println!("Most common words: {:?}", analyzer.most_common(3));
-    println!("Unique words: {}", analyzer.unique_words());
-    println!("Frequency of 'the': {:.2}%", analyzer.word_frequency("the"));
-    println!("Words starting with 'th': {:?}", analyzer.words_starting_with("th"));
-}</code></pre></pre>
-<h3 id="exercise-2-set-based-permission-system"><a class="header" href="#exercise-2-set-based-permission-system">Exercise 2: Set-Based Permission System</a></h3>
-<p>Implement a role-based permission system:</p>
-<pre><pre class="playground"><code class="language-rust">use std::collections::{HashMap, HashSet};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum Permission {
-    Read,
-    Write,
-    Delete,
-    Admin,
-    Execute,
-}
-
-struct User {
-    name: String,
-    permissions: HashSet&lt;Permission&gt;,
-}
-
-struct PermissionManager {
-    users: HashMap&lt;String, User&gt;,
-    roles: HashMap&lt;String, HashSet&lt;Permission&gt;&gt;,
-}
-
-impl PermissionManager {
-    fn new() -&gt; Self {
-        // Implement
-    }
-    
-    fn create_role(&amp;mut self, role_name: String, permissions: HashSet&lt;Permission&gt;) {
-        // Implement: create a role with given permissions
-    }
-    
-    fn add_user(&amp;mut self, username: String) {
-        // Implement: add user with no permissions
-    }
-    
-    fn assign_role(&amp;mut self, username: &amp;str, role_name: &amp;str) -&gt; Result&lt;(), String&gt; {
-        // Implement: assign role permissions to user
-    }
-    
-    fn grant_permission(&amp;mut self, username: &amp;str, permission: Permission) -&gt; Result&lt;(), String&gt; {
-        // Implement: grant specific permission to user
-    }
-    
-    fn revoke_permission(&amp;mut self, username: &amp;str, permission: Permission) -&gt; Result&lt;(), String&gt; {
-        // Implement: revoke specific permission from user
-    }
-    
-    fn has_permission(&amp;self, username: &amp;str, permission: &amp;Permission) -&gt; bool {
-        // Implement: check if user has specific permission
-    }
-    
-    fn get_user_permissions(&amp;self, username: &amp;str) -&gt; Option&lt;&amp;HashSet&lt;Permission&gt;&gt; {
-        // Implement: get all permissions for user
-    }
-    
-    fn users_with_permission(&amp;self, permission: &amp;Permission) -&gt; Vec&lt;String&gt; {
-        // Implement: get all users with specific permission
-    }
-}
-
-fn main() {
-    let mut pm = PermissionManager::new();
-    
-    // Create roles
-    pm.create_role("admin".to_string(), 
-                   [Permission::Read, Permission::Write, Permission::Delete, Permission::Admin]
-                   .into_iter().collect());
-    
-    pm.create_role("editor".to_string(),
-                   [Permission::Read, Permission::Write].into_iter().collect());
-    
-    // Add users
-    pm.add_user("alice".to_string());
-    pm.add_user("bob".to_string());
-    
-    // Assign roles
-    pm.assign_role("alice", "admin").unwrap();
-    pm.assign_role("bob", "editor").unwrap();
-    
-    // Grant additional permission
-    pm.grant_permission("bob", Permission::Execute).unwrap();
-    
-    // Test permissions
-    println!("Alice has admin? {}", pm.has_permission("alice", &amp;Permission::Admin));
-    println!("Bob has admin? {}", pm.has_permission("bob", &amp;Permission::Admin));
-    println!("Bob's permissions: {:?}", pm.get_user_permissions("bob"));
-    println!("Users with write permission: {:?}", pm.users_with_permission(&amp;Permission::Write));
-}</code></pre></pre>
-<h3 id="exercise-3-multi-collection-data-structure"><a class="header" href="#exercise-3-multi-collection-data-structure">Exercise 3: Multi-Collection Data Structure</a></h3>
-<p>Build a library catalog that efficiently supports multiple types of queries:</p>
-<pre><pre class="playground"><code class="language-rust">use std::collections::{HashMap, HashSet, BTreeMap, VecDeque};
-
-#[derive(Debug, Clone)]
-struct Book {
-    id: u32,
-    title: String,
-    author: String,
-    year: u16,
-    genres: HashSet&lt;String&gt;,
-    available: bool,
-}
-
-struct LibraryCatalog {
-    books: HashMap&lt;u32, Book&gt;,                    // Fast lookup by ID
-    by_author: HashMap&lt;String, Vec&lt;u32&gt;&gt;,         // Books by author
-    by_year: BTreeMap&lt;u16, Vec&lt;u32&gt;&gt;,            // Books by year (sorted)
-    by_genre: HashMap&lt;String, HashSet&lt;u32&gt;&gt;,      // Books by genre
-    recently_added: VecDeque&lt;u32&gt;,                // Recently added books
-    available_books: HashSet&lt;u32&gt;,                // Currently available
-}
-
-impl LibraryCatalog {
-    fn new() -&gt; Self {
-        // Implement
-    }
-    
-    fn add_book(&amp;mut self, book: Book) {
-        // Implement: add book to all appropriate collections
-    }
-    
-    fn remove_book(&amp;mut self, book_id: u32) -&gt; Option&lt;Book&gt; {
-        // Implement: remove book from all collections
-    }
-    
-    fn find_by_id(&amp;self, id: u32) -&gt; Option&lt;&amp;Book&gt; {
-        // Implement
-    }
-    
-    fn find_by_author(&amp;self, author: &amp;str) -&gt; Vec&lt;&amp;Book&gt; {
-        // Implement: return all books by author
-    }
-    
-    fn find_by_genre(&amp;self, genre: &amp;str) -&gt; Vec&lt;&amp;Book&gt; {
-        // Implement: return all books in genre
-    }
-    
-    fn find_by_year_range(&amp;self, start_year: u16, end_year: u16) -&gt; Vec&lt;&amp;Book&gt; {
-        // Implement: return books published in year range
-    }
-    
-    fn recently_added(&amp;self, count: usize) -&gt; Vec&lt;&amp;Book&gt; {
-        // Implement: return most recently added books
-    }
-    
-    fn available_in_genre(&amp;self, genre: &amp;str) -&gt; Vec&lt;&amp;Book&gt; {
-        // Implement: return available books in genre
-    }
-    
-    fn checkout_book(&amp;mut self, book_id: u32) -&gt; Result&lt;(), String&gt; {
-        // Implement: mark book as unavailable
-    }
-    
-    fn return_book(&amp;mut self, book_id: u32) -&gt; Result&lt;(), String&gt; {
-        // Implement: mark book as available
-    }
-    
-    fn statistics(&amp;self) -&gt; (usize, usize, Vec&lt;String&gt;) {
-        // Implement: return (total_books, available_books, top_genres)
-    }
-}
-
-fn main() {
-    let mut catalog = LibraryCatalog::new();
-    
-    // Add some books
-    catalog.add_book(Book {
-        id: 1,
-        title: "The Rust Programming Language".to_string(),
-        author: "Steve Klabnik".to_string(),
-        year: 2018,
-        genres: ["Programming", "Technology"].iter().map(|s| s.to_string()).collect(),
-        available: true,
-    });
-    
-    catalog.add_book(Book {
-        id: 2,
-        title: "Dune".to_string(),
-        author: "Frank Herbert".to_string(),
-        year: 1965,
-        genres: ["Science Fiction", "Adventure"].iter().map(|s| s.to_string()).collect(),
-        available: true,
-    });
-    
-    // Test various queries
-    println!("Books by Frank Herbert: {:?}", 
-             catalog.find_by_author("Frank Herbert").len());
-    println!("Programming books: {:?}", 
-             catalog.find_by_genre("Programming").len());
-    println!("Books from 1960-1970: {:?}", 
-             catalog.find_by_year_range(1960, 1970).len());
-    
-    catalog.checkout_book(1).unwrap();
-    println!("Available programming books after checkout: {:?}", 
-             catalog.available_in_genre("Programming").len());
-    
-    let (total, available, top_genres) = catalog.statistics();
-    println!("Stats - Total: {}, Available: {}, Top genres: {:?}", 
-             total, available, top_genres);
-}</code></pre></pre>
 <p><strong>Next Up:</strong> In Chapter 7, we'll explore traits - Rust's powerful system for defining shared behavior and enabling polymorphism without inheritance.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-7-traits---shared-behavior-and-polymorphism"><a class="header" href="#chapter-7-traits---shared-behavior-and-polymorphism">Chapter 7: Traits - Shared Behavior and Polymorphism</a></h1>
 <h2 id="defining-implementing-and-using-traits-in-rust"><a class="header" href="#defining-implementing-and-using-traits-in-rust">Defining, Implementing, and Using Traits in Rust</a></h2>
@@ -4199,15 +3807,263 @@ impl Iterator for Counter {
 }
 <span class="boring">}</span></code></pre></pre>
 <hr />
+<h2 id="operator-overloading-with-traits"><a class="header" href="#operator-overloading-with-traits">Operator Overloading with Traits</a></h2>
+<h3 id="implementing-standard-operators"><a class="header" href="#implementing-standard-operators">Implementing Standard Operators</a></h3>
+<pre><pre class="playground"><code class="language-rust">use std::ops::{Add, Mul};
+
+#[derive(Debug, Clone, Copy)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+// Implement addition for Point
+impl Add for Point {
+    type Output = Point;
+    
+    fn add(self, other: Point) -&gt; Point {
+        Point {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+// Implement scalar multiplication
+impl Mul&lt;f64&gt; for Point {
+    type Output = Point;
+    
+    fn mul(self, scalar: f64) -&gt; Point {
+        Point {
+            x: self.x * scalar,
+            y: self.y * scalar,
+        }
+    }
+}
+
+fn main() {
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = Point { x: 3.0, y: 4.0 };
+    
+    let p3 = p1 + p2;  // Uses Add trait
+    let p4 = p1 * 2.5; // Uses Mul trait
+    
+    println!("p1 + p2 = {:?}", p3);
+    println!("p1 * 2.5 = {:?}", p4);
+}</code></pre></pre>
+<hr />
+<h2 id="supertraits-and-trait-inheritance"><a class="header" href="#supertraits-and-trait-inheritance">Supertraits and Trait Inheritance</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Supertrait example
+trait Person {
+    fn name(&amp;self) -&gt; &amp;str;
+}
+
+// Student requires Person
+trait Student: Person {
+    fn university(&amp;self) -&gt; &amp;str;
+}
+
+// Must implement both traits
+struct GradStudent {
+    name: String,
+    uni: String,
+}
+
+impl Person for GradStudent {
+    fn name(&amp;self) -&gt; &amp;str {
+        &amp;self.name
+    }
+}
+
+impl Student for GradStudent {
+    fn university(&amp;self) -&gt; &amp;str {
+        &amp;self.uni
+    }
+}
+
+// Function requiring multiple traits
+fn print_student_info&lt;T: Student + Debug&gt;(student: &amp;T) {
+    println!("Name: {}", student.name());
+    println!("University: {}", student.university());
+    println!("Debug: {:?}", student);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="common-trait-patterns"><a class="header" href="#common-trait-patterns">Common Trait Patterns</a></h2>
+<h3 id="the-from-and-into-traits"><a class="header" href="#the-from-and-into-traits">The From and Into Traits</a></h3>
+<pre><pre class="playground"><code class="language-rust">use std::convert::From;
+
+#[derive(Debug)]
+struct Millimeters(u32);
+
+#[derive(Debug)]
+struct Meters(f64);
+
+impl From&lt;Meters&gt; for Millimeters {
+    fn from(m: Meters) -&gt; Self {
+        Millimeters((m.0 * 1000.0) as u32)
+    }
+}
+
+// Into is automatically implemented!
+fn main() {
+    let m = Meters(1.5);
+    let mm: Millimeters = m.into(); // Uses Into (automatic from From)
+    println!("{:?}", mm); // Millimeters(1500)
+    
+    let m2 = Meters(2.0);
+    let mm2 = Millimeters::from(m2); // Direct From usage
+    println!("{:?}", mm2); // Millimeters(2000)
+}</code></pre></pre>
+<hr />
+<h2 id="exercises-5"><a class="header" href="#exercises-5">Exercises</a></h2>
+<h3 id="exercise-1-implement-a-comparable-trait"><a class="header" href="#exercise-1-implement-a-comparable-trait">Exercise 1: Implement a Comparable Trait</a></h3>
+<p>Create a custom trait for comparison and implement it for different types:</p>
+<pre><pre class="playground"><code class="language-rust">trait Comparable {
+    fn compare(&amp;self, other: &amp;Self) -&gt; Ordering;
+    
+    // Provide default implementations
+    fn is_greater(&amp;self, other: &amp;Self) -&gt; bool {
+        matches!(self.compare(other), Ordering::Greater)
+    }
+    
+    fn is_less(&amp;self, other: &amp;Self) -&gt; bool {
+        matches!(self.compare(other), Ordering::Less)
+    }
+}
+
+use std::cmp::Ordering;
+
+struct Person {
+    name: String,
+    age: u32,
+}
+
+impl Comparable for Person {
+    fn compare(&amp;self, other: &amp;Self) -&gt; Ordering {
+        // TODO: Implement - compare by age, then by name
+    }
+}
+
+struct Product {
+    name: String,
+    price: f64,
+}
+
+impl Comparable for Product {
+    fn compare(&amp;self, other: &amp;Self) -&gt; Ordering {
+        // TODO: Implement - compare by price
+    }
+}
+
+fn main() {
+    let p1 = Person { name: "Alice".to_string(), age: 30 };
+    let p2 = Person { name: "Bob".to_string(), age: 25 };
+    
+    println!("Is Alice older than Bob? {}", p1.is_greater(&amp;p2));
+}</code></pre></pre>
+<h3 id="exercise-2-trait-objects-with-multiple-behaviors"><a class="header" href="#exercise-2-trait-objects-with-multiple-behaviors">Exercise 2: Trait Objects with Multiple Behaviors</a></h3>
+<p>Build a plugin system using trait objects:</p>
+<pre><pre class="playground"><code class="language-rust">trait Plugin {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn execute(&amp;self);
+}
+
+trait Configurable {
+    fn configure(&amp;mut self, config: &amp;str);
+}
+
+// Create different plugin types
+struct LogPlugin {
+    name: String,
+    level: String,
+}
+
+struct MetricsPlugin {
+    name: String,
+    interval: u32,
+}
+
+// TODO: Implement Plugin and Configurable for both types
+
+struct PluginManager {
+    plugins: Vec&lt;Box&lt;dyn Plugin&gt;&gt;,
+}
+
+impl PluginManager {
+    fn new() -&gt; Self {
+        PluginManager { plugins: Vec::new() }
+    }
+    
+    fn register(&amp;mut self, plugin: Box&lt;dyn Plugin&gt;) {
+        // TODO: Add plugin to the list
+    }
+    
+    fn run_all(&amp;self) {
+        // TODO: Execute all plugins
+    }
+}
+
+fn main() {
+    let mut manager = PluginManager::new();
+    
+    // TODO: Create and register plugins
+    // manager.register(Box::new(...));
+    
+    manager.run_all();
+}</code></pre></pre>
+<h3 id="exercise-3-custom-iterator-trait-implementation"><a class="header" href="#exercise-3-custom-iterator-trait-implementation">Exercise 3: Custom Iterator Trait Implementation</a></h3>
+<p>Create a trait that extends Iterator functionality:</p>
+<pre><pre class="playground"><code class="language-rust">trait FilterMap: Iterator {
+    fn filter_map_custom&lt;B, F&gt;(self, f: F) -&gt; FilterMapCustom&lt;Self, F&gt;
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -&gt; Option&lt;B&gt;,
+    {
+        FilterMapCustom { iter: self, f }
+    }
+}
+
+struct FilterMapCustom&lt;I, F&gt; {
+    iter: I,
+    f: F,
+}
+
+// TODO: Implement Iterator for FilterMapCustom
+
+// Implement FilterMap for all iterators
+impl&lt;I: Iterator&gt; FilterMap for I {}
+
+fn main() {
+    let numbers = vec![1, 2, 3, 4, 5, 6];
+    
+    // Use the custom filter_map
+    let result: Vec&lt;i32&gt; = numbers
+        .into_iter()
+        .filter_map_custom(|x| {
+            if x % 2 == 0 {
+                Some(x * x)
+            } else {
+                None
+            }
+        })
+        .collect();
+    
+    println!("Even squares: {:?}", result);
+}</code></pre></pre>
+<hr />
 <h2 id="key-takeaways-6"><a class="header" href="#key-takeaways-6">Key Takeaways</a></h2>
 <ol>
 <li><strong>Traits define shared behavior</strong> across different types</li>
 <li><strong>Static dispatch</strong> (generics) is faster but increases code size</li>
 <li><strong>Dynamic dispatch</strong> (trait objects) enables runtime polymorphism</li>
 <li><strong>Associated types</strong> provide cleaner APIs than generic parameters</li>
-<li><strong>Coherence rules</strong> prevent conflicting implementations</li>
+<li><strong>Operator overloading</strong> is done through standard traits</li>
+<li><strong>Supertraits</strong> allow building trait hierarchies</li>
+<li><strong>From/Into</strong> traits enable type conversions</li>
 <li><strong>Default implementations</strong> reduce boilerplate code</li>
-<li><strong>Trait bounds</strong> should be as minimal as possible</li>
 </ol>
 <p><strong>Next Up:</strong> In Chapter 8, we'll explore generics - Rust's powerful system for writing flexible, reusable code with type parameters.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-8-generics--type-safety"><a class="header" href="#chapter-8-generics--type-safety">Chapter 8: Generics &amp; Type Safety</a></h1>
@@ -4538,7 +4394,7 @@ fn send_newsletter(email: &amp;Email&lt;Validated&gt;) {
     email.send();
 }
 <span class="boring">}</span></code></pre></pre>
-<h2 id="common-pitfalls"><a class="header" href="#common-pitfalls">Common Pitfalls</a></h2>
+<h2 id="common-pitfalls-1"><a class="header" href="#common-pitfalls-1">Common Pitfalls</a></h2>
 <h3 id="1-over-constraining-generics"><a class="header" href="#1-over-constraining-generics">1. Over-constraining Generics</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -5034,7 +4890,7 @@ fn main() {
         .collect();
 }</code></pre></pre>
 <hr />
-<h2 id="common-pitfalls-and-best-practices-1"><a class="header" href="#common-pitfalls-and-best-practices-1">Common Pitfalls and Best Practices</a></h2>
+<h2 id="common-pitfalls-and-best-practices"><a class="header" href="#common-pitfalls-and-best-practices">Common Pitfalls and Best Practices</a></h2>
 <h3 id="pitfall-1-incomplete-patterns"><a class="header" href="#pitfall-1-incomplete-patterns">Pitfall 1: Incomplete Patterns</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -5365,1406 +5221,1550 @@ fn square_root(x: f64) -&gt; Result&lt;f64, MathError&gt; {
 }
 <span class="boring">}</span></code></pre></pre>
 <hr />
+<h2 id="error-conversion-and-chaining"><a class="header" href="#error-conversion-and-chaining">Error Conversion and Chaining</a></h2>
+<h3 id="the-from-trait-for-error-conversion"><a class="header" href="#the-from-trait-for-error-conversion">The From Trait for Error Conversion</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::fs::File;
+use std::io;
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum AppError {
+    Io(io::Error),
+    Parse(ParseIntError),
+    Custom(String),
+}
+
+// Automatic conversion from io::Error
+impl From&lt;io::Error&gt; for AppError {
+    fn from(error: io::Error) -&gt; Self {
+        AppError::Io(error)
+    }
+}
+
+// Automatic conversion from ParseIntError
+impl From&lt;ParseIntError&gt; for AppError {
+    fn from(error: ParseIntError) -&gt; Self {
+        AppError::Parse(error)
+    }
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        match self {
+            AppError::Io(e) =&gt; write!(f, "IO error: {}", e),
+            AppError::Parse(e) =&gt; write!(f, "Parse error: {}", e),
+            AppError::Custom(msg) =&gt; write!(f, "Error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for AppError {}
+
+// Now ? operator works seamlessly
+fn read_number_from_file(filename: &amp;str) -&gt; Result&lt;i32, AppError&gt; {
+    let contents = std::fs::read_to_string(filename)?; // io::Error -&gt; AppError
+    let number = contents.trim().parse::&lt;i32&gt;()?;       // ParseIntError -&gt; AppError
+    
+    if number &lt; 0 {
+        return Err(AppError::Custom("Number must be positive".to_string()));
+    }
+    
+    Ok(number)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="chaining-multiple-operations"><a class="header" href="#chaining-multiple-operations">Chaining Multiple Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::path::Path;
+
+fn process_config_file(path: &amp;Path) -&gt; Result&lt;Config, AppError&gt; {
+    std::fs::read_to_string(path)?
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty() &amp;&amp; !line.starts_with('#'))
+        .map(|line| parse_config_line(line))
+        .collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()?
+        .into_iter()
+        .fold(Config::default(), |mut cfg, (key, value)| {
+            cfg.set(&amp;key, value);
+            cfg
+        })
+        .validate()
+        .map_err(|e| AppError::Custom(e))
+}
+
+struct Config {
+    settings: HashMap&lt;String, String&gt;,
+}
+
+impl Config {
+    fn default() -&gt; Self {
+        Config { settings: HashMap::new() }
+    }
+    
+    fn set(&amp;mut self, key: &amp;str, value: String) {
+        self.settings.insert(key.to_string(), value);
+    }
+    
+    fn validate(self) -&gt; Result&lt;Config, String&gt; {
+        if self.settings.is_empty() {
+            Err("Configuration is empty".to_string())
+        } else {
+            Ok(self)
+        }
+    }
+}
+
+fn parse_config_line(line: &amp;str) -&gt; Result&lt;(String, String), AppError&gt; {
+    let parts: Vec&lt;&amp;str&gt; = line.splitn(2, '=').collect();
+    if parts.len() != 2 {
+        return Err(AppError::Custom(format!("Invalid config line: {}", line)));
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="working-with-external-error-libraries"><a class="header" href="#working-with-external-error-libraries">Working with External Error Libraries</a></h2>
+<h3 id="using-anyhow-for-applications"><a class="header" href="#using-anyhow-for-applications">Using anyhow for Applications</a></h3>
+<pre><pre class="playground"><code class="language-rust">use anyhow::{Context, Result, bail};
+
+// anyhow::Result is Result&lt;T, anyhow::Error&gt;
+fn load_config(path: &amp;str) -&gt; Result&lt;Config&gt; {
+    let contents = std::fs::read_to_string(path)
+        .context("Failed to read config file")?;
+    
+    let config: Config = serde_json::from_str(&amp;contents)
+        .context("Failed to parse JSON config")?;
+    
+    if config.port == 0 {
+        bail!("Invalid port: 0");
+    }
+    
+    Ok(config)
+}
+
+fn main() -&gt; Result&lt;()&gt; {
+    let config = load_config("app.json")?;
+    
+    // Chain multiple operations with context
+    let server = create_server(&amp;config)
+        .context("Failed to create server")?;
+    
+    server.run()
+        .context("Server failed during execution")?;
+    
+    Ok(())
+}</code></pre></pre>
+<h3 id="using-thiserror-for-libraries"><a class="header" href="#using-thiserror-for-libraries">Using thiserror for Libraries</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum DataStoreError {
+    #[error("data not found")]
+    NotFound,
+    
+    #[error("permission denied: {0}")]
+    PermissionDenied(String),
+    
+    #[error("invalid input: {msg}")]
+    InvalidInput { msg: String },
+    
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+    
+    #[error("serialization error")]
+    Serialization(#[from] serde_json::Error),
+    
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+// Use in library code
+fn get_user(id: u64) -&gt; Result&lt;User, DataStoreError&gt; {
+    if id == 0 {
+        return Err(DataStoreError::InvalidInput { 
+            msg: "ID cannot be 0".to_string() 
+        });
+    }
+    
+    let user = db::query_user(id)?; // Automatic conversion from sqlx::Error
+    Ok(user)
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="error-handling-patterns"><a class="header" href="#error-handling-patterns">Error Handling Patterns</a></h2>
+<h3 id="early-returns-with-"><a class="header" href="#early-returns-with-">Early Returns with ?</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn process_data(input: &amp;str) -&gt; Result&lt;String, Box&lt;dyn std::error::Error&gt;&gt; {
+    let parsed = parse_input(input)?;
+    let validated = validate(parsed)?;
+    let processed = transform(validated)?;
+    Ok(format_output(processed))
+}
+
+// Compare with nested match statements (avoid this!)
+fn process_data_verbose(input: &amp;str) -&gt; Result&lt;String, Box&lt;dyn std::error::Error&gt;&gt; {
+    match parse_input(input) {
+        Ok(parsed) =&gt; {
+            match validate(parsed) {
+                Ok(validated) =&gt; {
+                    match transform(validated) {
+                        Ok(processed) =&gt; Ok(format_output(processed)),
+                        Err(e) =&gt; Err(e.into()),
+                    }
+                },
+                Err(e) =&gt; Err(e.into()),
+            }
+        },
+        Err(e) =&gt; Err(e.into()),
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="collecting-results"><a class="header" href="#collecting-results">Collecting Results</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn process_files(paths: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;String&gt;, io::Error&gt; {
+    paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()
+}
+
+// Handle partial success
+fn process_files_partial(paths: &amp;[&amp;str]) -&gt; (Vec&lt;String&gt;, Vec&lt;io::Error&gt;) {
+    let results: Vec&lt;Result&lt;String, io::Error&gt;&gt; = paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect();
+    
+    let mut successes = Vec::new();
+    let mut failures = Vec::new();
+    
+    for result in results {
+        match result {
+            Ok(content) =&gt; successes.push(content),
+            Err(e) =&gt; failures.push(e),
+        }
+    }
+    
+    (successes, failures)
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="testing-error-cases"><a class="header" href="#testing-error-cases">Testing Error Cases</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_division_by_zero() {
+        let result = divide(10.0, 0.0);
+        assert!(result.is_err());
+        
+        match result {
+            Err(MathError::DivisionByZero) =&gt; (),
+            _ =&gt; panic!("Expected DivisionByZero error"),
+        }
+    }
+    
+    #[test]
+    fn test_file_not_found() {
+        let result = read_file_contents("nonexistent.txt");
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    fn test_panic_condition() {
+        assert!(false, "assertion failed");
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="exercises-8"><a class="header" href="#exercises-8">Exercises</a></h2>
+<h3 id="exercise-1-build-a-configuration-parser"><a class="header" href="#exercise-1-build-a-configuration-parser">Exercise 1: Build a Configuration Parser</a></h3>
+<p>Create a robust configuration parser with proper error handling:</p>
+<pre><pre class="playground"><code class="language-rust">use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+#[derive(Debug)]
+enum ConfigError {
+    IoError(std::io::Error),
+    ParseError(String),
+    ValidationError(String),
+}
+
+// TODO: Implement Display and Error traits for ConfigError
+// TODO: Implement From&lt;std::io::Error&gt; for automatic conversion
+
+struct Config {
+    settings: HashMap&lt;String, String&gt;,
+}
+
+impl Config {
+    fn from_file&lt;P: AsRef&lt;Path&gt;&gt;(path: P) -&gt; Result&lt;Self, ConfigError&gt; {
+        // TODO: Read file, parse lines, handle comments (#)
+        // TODO: Parse key=value pairs
+        // TODO: Validate required keys exist
+        todo!()
+    }
+    
+    fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;String&gt; {
+        self.settings.get(key)
+    }
+    
+    fn get_required(&amp;self, key: &amp;str) -&gt; Result&lt;&amp;String, ConfigError&gt; {
+        // TODO: Return error if key doesn't exist
+        todo!()
+    }
+    
+    fn get_int(&amp;self, key: &amp;str) -&gt; Result&lt;i32, ConfigError&gt; {
+        // TODO: Get value and parse as integer
+        todo!()
+    }
+}
+
+fn main() -&gt; Result&lt;(), ConfigError&gt; {
+    let config = Config::from_file("app.conf")?;
+    let port = config.get_int("port")?;
+    let host = config.get_required("host")?;
+    
+    println!("Starting server on {}:{}", host, port);
+    Ok(())
+}</code></pre></pre>
+<h3 id="exercise-2-multi-error-handler"><a class="header" href="#exercise-2-multi-error-handler">Exercise 2: Multi-Error Handler</a></h3>
+<p>Build a system that can handle multiple error types elegantly:</p>
+<pre><pre class="playground"><code class="language-rust">use std::fs::File;
+use std::io::{self, Read};
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum ProcessError {
+    FileError { path: String, error: io::Error },
+    ParseError { line: usize, error: ParseIntError },
+    ValidationError(String),
+}
+
+// TODO: Implement Display and Error traits
+
+struct DataProcessor {
+    errors: Vec&lt;ProcessError&gt;,
+}
+
+impl DataProcessor {
+    fn new() -&gt; Self {
+        DataProcessor { errors: Vec::new() }
+    }
+    
+    fn process_file(&amp;mut self, path: &amp;str) -&gt; Result&lt;Vec&lt;i32&gt;, ProcessError&gt; {
+        // TODO: Read file, parse each line as integer
+        // TODO: Collect all errors instead of failing on first
+        // TODO: Validate all numbers are positive
+        todo!()
+    }
+    
+    fn has_errors(&amp;self) -&gt; bool {
+        !self.errors.is_empty()
+    }
+    
+    fn report_errors(&amp;self) {
+        // TODO: Print all collected errors
+        todo!()
+    }
+}
+
+fn main() {
+    let mut processor = DataProcessor::new();
+    
+    match processor.process_file("numbers.txt") {
+        Ok(numbers) =&gt; println!("Processed {} numbers", numbers.len()),
+        Err(e) =&gt; eprintln!("Fatal error: {}", e),
+    }
+    
+    if processor.has_errors() {
+        processor.report_errors();
+    }
+}</code></pre></pre>
+<h3 id="exercise-3-result-chain-builder"><a class="header" href="#exercise-3-result-chain-builder">Exercise 3: Result Chain Builder</a></h3>
+<p>Create a builder pattern that properly handles errors at each step:</p>
+<pre><pre class="playground"><code class="language-rust">#[derive(Debug)]
+struct EmailBuilder {
+    to: Option&lt;String&gt;,
+    from: Option&lt;String&gt;,
+    subject: Option&lt;String&gt;,
+    body: Option&lt;String&gt;,
+}
+
+#[derive(Debug)]
+enum EmailError {
+    MissingField(&amp;'static str),
+    InvalidEmail(String),
+}
+
+// TODO: Implement builder methods that return Result
+impl EmailBuilder {
+    fn new() -&gt; Self {
+        EmailBuilder {
+            to: None,
+            from: None,
+            subject: None,
+            body: None,
+        }
+    }
+    
+    fn to(mut self, email: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Validate email format
+        todo!()
+    }
+    
+    fn from(mut self, email: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Validate email format
+        todo!()
+    }
+    
+    fn subject(mut self, subject: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Ensure subject is not empty
+        todo!()
+    }
+    
+    fn body(mut self, body: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Set body
+        todo!()
+    }
+    
+    fn build(self) -&gt; Result&lt;Email, EmailError&gt; {
+        // TODO: Ensure all required fields are set
+        todo!()
+    }
+}
+
+struct Email {
+    to: String,
+    from: String,
+    subject: String,
+    body: String,
+}
+
+fn main() {
+    let email_result = EmailBuilder::new()
+        .to("user@example.com")?
+        .from("sender@example.com")?
+        .subject("Hello")?
+        .body("This is the email body")?
+        .build();
+    
+    match email_result {
+        Ok(email) =&gt; println!("Email created successfully"),
+        Err(e) =&gt; eprintln!("Failed to create email: {:?}", e),
+    }
+}</code></pre></pre>
+<hr />
 <h2 id="key-takeaways-9"><a class="header" href="#key-takeaways-9">Key Takeaways</a></h2>
 <ol>
 <li><strong>Use Result&lt;T, E&gt;</strong> for recoverable errors, panic! for unrecoverable ones</li>
 <li><strong>The ? operator</strong> makes error propagation clean and efficient</li>
 <li><strong>Custom error types</strong> should implement Display and Error traits</li>
+<li><strong>Error conversion</strong> with From trait enables seamless ? usage</li>
+<li><strong>anyhow</strong> is great for applications, <strong>thiserror</strong> for libraries</li>
+<li><strong>Chain operations</strong> with Result for clean error handling</li>
 <li><strong>Test error cases</strong> as thoroughly as success cases</li>
-<li><strong>Zero-cost abstractions</strong> - proper error handling is fast</li>
+<li><strong>Collect multiple errors</strong> when appropriate instead of failing fast</li>
 </ol>
 <p><strong>Next Up:</strong> In Chapter 11, we'll explore iterators and closures - Rust's functional programming features that make data processing both efficient and expressive.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-11-iterators-and-functional-programming"><a class="header" href="#chapter-11-iterators-and-functional-programming">Chapter 11: Iterators and Functional Programming</a></h1>
-<h2 id="iterator-trait-closures-and-lazy-evaluation-in-rust"><a class="header" href="#iterator-trait-closures-and-lazy-evaluation-in-rust">Iterator Trait, Closures, and Lazy Evaluation in Rust</a></h2>
+<h2 id="efficient-data-processing-with-rusts-iterator-pattern"><a class="header" href="#efficient-data-processing-with-rusts-iterator-pattern">Efficient Data Processing with Rust's Iterator Pattern</a></h2>
 <h3 id="learning-objectives-9"><a class="header" href="#learning-objectives-9">Learning Objectives</a></h3>
 <p>By the end of this chapter, you'll be able to:</p>
 <ul>
-<li>Understand the Iterator trait and implement custom iterators</li>
-<li>Use iterator adaptors like map, filter, fold, and collect effectively</li>
-<li>Write and use closures with proper capture semantics</li>
-<li>Leverage lazy evaluation for performance</li>
-<li>Choose between imperative loops and functional iterator chains</li>
-<li>Handle iterator errors and edge cases</li>
-<li>Write efficient, readable functional-style Rust code</li>
+<li>Use iterator adaptors like map, filter, fold effectively</li>
+<li>Understand lazy evaluation and its performance benefits</li>
+<li>Write closures with proper capture semantics</li>
+<li>Choose between loops and iterator chains</li>
+<li>Convert between collections using collect()</li>
+<li>Handle iterator errors gracefully</li>
 </ul>
 <hr />
-<h2 id="iterator-trait-vs-other-languages"><a class="header" href="#iterator-trait-vs-other-languages">Iterator Trait vs Other Languages</a></h2>
-<h3 id="comparison-with-other-languages-2"><a class="header" href="#comparison-with-other-languages-2">Comparison with Other Languages</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>C++ STL</th><th>C# LINQ</th><th>Java Streams</th><th>Rust Iterators</th></tr></thead><tbody>
-<tr><td>Lazy evaluation</td><td>Partial</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-<tr><td>Zero-cost</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
-<tr><td>Chaining</td><td>Limited</td><td>Extensive</td><td>Extensive</td><td>Extensive</td></tr>
-<tr><td>Error handling</td><td>Exceptions</td><td>Exceptions</td><td>Exceptions</td><td>Result&lt;T, E&gt;</td></tr>
-<tr><td>Memory safety</td><td>No</td><td>GC</td><td>GC</td><td>Compile-time</td></tr>
-<tr><td>Parallel processing</td><td>Limited</td><td>PLINQ</td><td>Parallel streams</td><td>Rayon</td></tr>
-</tbody></table>
-</div>
-<h3 id="the-iterator-trait"><a class="header" href="#the-iterator-trait">The Iterator Trait</a></h3>
-<pre><pre class="playground"><code class="language-rust">trait Iterator {
+<h2 id="the-iterator-trait"><a class="header" href="#the-iterator-trait">The Iterator Trait</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>trait Iterator {
     type Item;
     
-    // Required method
     fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;
     
-    // Many default implementations built on next()
-    fn collect&lt;B: FromIterator&lt;Self::Item&gt;&gt;(self) -&gt; B { ... }
-    fn map&lt;B, F&gt;(self, f: F) -&gt; Map&lt;Self, F&gt; { ... }
-    fn filter&lt;P&gt;(self, predicate: P) -&gt; Filter&lt;Self, P&gt; { ... }
-    // ... and many more
+    // 70+ provided methods like map, filter, fold, etc.
 }
-
-// Example: Custom iterator
-struct Counter {
-    current: u32,
-    max: u32,
-}
-
-impl Counter {
-    fn new(max: u32) -&gt; Counter {
-        Counter { current: 0, max }
-    }
-}
-
-impl Iterator for Counter {
-    type Item = u32;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        if self.current &lt; self.max {
-            let current = self.current;
-            self.current += 1;
-            Some(current)
-        } else {
-            None
-        }
-    }
-}
-
-fn main() {
-    let counter = Counter::new(5);
-    for n in counter {
-        println!("{}", n); // 0, 1, 2, 3, 4
-    }
-}</code></pre></pre>
+<span class="boring">}</span></code></pre></pre>
+<h3 id="key-concepts"><a class="header" href="#key-concepts">Key Concepts</a></h3>
+<ul>
+<li><strong>Lazy evaluation</strong>: Operations don't execute until consumed</li>
+<li><strong>Zero-cost abstraction</strong>: Compiles to same code as hand-written loops</li>
+<li><strong>Composable</strong>: Chain multiple operations cleanly</li>
+</ul>
 <hr />
 <h2 id="creating-iterators"><a class="header" href="#creating-iterators">Creating Iterators</a></h2>
-<h3 id="from-collections"><a class="header" href="#from-collections">From Collections</a></h3>
-<pre><pre class="playground"><code class="language-rust">fn main() {
-    let vec = vec![1, 2, 3, 4, 5];
-    
-    // iter() - borrows elements
-    for item in vec.iter() {
-        println!("Borrowed: {}", item); // item is &amp;i32
-    }
-    
-    // into_iter() - takes ownership
-    for item in vec.into_iter() {
-        println!("Owned: {}", item); // item is i32
-    }
-    // vec is no longer accessible here
-    
-    let mut vec = vec![1, 2, 3, 4, 5];
-    
-    // iter_mut() - mutable borrows
-    for item in vec.iter_mut() {
-        *item *= 2; // item is &amp;mut i32
-    }
-    println!("{:?}", vec); // [2, 4, 6, 8, 10]
-}
-
-// Range iterators
-fn range_examples() {
-    // Inclusive range
-    for i in 0..=5 {
-        println!("{}", i); // 0, 1, 2, 3, 4, 5
-    }
-    
-    // Exclusive range
-    let squares: Vec&lt;i32&gt; = (1..6)
-        .map(|x| x * x)
-        .collect();
-    println!("{:?}", squares); // [1, 4, 9, 16, 25]
-    
-    // Step by
-    let evens: Vec&lt;i32&gt; = (0..10)
-        .step_by(2)
-        .collect();
-    println!("{:?}", evens); // [0, 2, 4, 6, 8]
-}</code></pre></pre>
-<h3 id="custom-iterator-implementation"><a class="header" href="#custom-iterator-implementation">Custom Iterator Implementation</a></h3>
-<pre><pre class="playground"><code class="language-rust">// Fibonacci iterator
-struct Fibonacci {
-    current: u64,
-    next: u64,
-}
-
-impl Fibonacci {
-    fn new() -&gt; Self {
-        Fibonacci { current: 0, next: 1 }
-    }
-}
-
-impl Iterator for Fibonacci {
-    type Item = u64;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        let current = self.current;
-        self.current = self.next;
-        self.next = current + self.next;
-        
-        // Prevent overflow
-        if self.current &gt; u64::MAX / 2 {
-            None
-        } else {
-            Some(current)
-        }
-    }
-}
-
-// File line iterator
-use std::fs::File;
-use std::io::{BufRead, BufReader, Lines};
-
-struct FileLines {
-    lines: Lines&lt;BufReader&lt;File&gt;&gt;,
-}
-
-impl FileLines {
-    fn new(file: File) -&gt; Self {
-        let reader = BufReader::new(file);
-        FileLines {
-            lines: reader.lines(),
-        }
-    }
-}
-
-impl Iterator for FileLines {
-    type Item = Result&lt;String, std::io::Error&gt;;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        self.lines.next()
-    }
-}
-
-fn main() {
-    // Fibonacci sequence
-    let fib: Vec&lt;u64&gt; = Fibonacci::new()
-        .take(10)
-        .collect();
-    println!("Fibonacci: {:?}", fib);
-    
-    // File processing (if file exists)
-    if let Ok(file) = File::open("data.txt") {
-        for line_result in FileLines::new(file) {
-            match line_result {
-                Ok(line) =&gt; println!("Line: {}", line),
-                Err(e) =&gt; eprintln!("Error reading line: {}", e),
-            }
-        }
-    }
-}</code></pre></pre>
-<hr />
-<h2 id="iterator-adaptors"><a class="header" href="#iterator-adaptors">Iterator Adaptors</a></h2>
-<h3 id="map-filter-and-collect"><a class="header" href="#map-filter-and-collect">Map, Filter, and Collect</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>fn basic_adaptors() {
-    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+</span>fn iterator_sources() {
+    // From collections
+    let vec = vec![1, 2, 3];
+    vec.iter();       // &amp;T - borrows
+    vec.into_iter();  // T - takes ownership
+    vec.iter_mut();   // &amp;mut T - mutable borrow
     
-    // Chain multiple operations
-    let result: Vec&lt;i32&gt; = numbers
-        .iter()
-        .filter(|&amp;x| x % 2 == 0)  // Keep even numbers
-        .map(|x| x * x)           // Square them
-        .collect();               // Collect into Vec
-    println!("Even squares: {:?}", result); // [4, 16, 36, 64, 100]
+    // From ranges
+    (0..10)           // 0 to 9
+    (0..=10)          // 0 to 10 inclusive
     
-    // Different collection types
-    use std::collections::HashSet;
+    // Infinite iterators
+    std::iter::repeat(5)      // 5, 5, 5, ...
+    (0..).step_by(2)          // 0, 2, 4, 6, ...
     
-    let unique_lengths: HashSet&lt;usize&gt; = vec!["hello", "world", "rust", "is", "awesome"]
-        .iter()
-        .map(|s| s.len())
-        .collect();
-    println!("Unique lengths: {:?}", unique_lengths);
-    
-    // Collect to String
-    let concatenated: String = vec!["Hello", " ", "world", "!"]
-        .iter()
-        .cloned()
-        .collect();
-    println!("{}", concatenated); // Hello world!
+    // From functions
+    std::iter::from_fn(|| Some(rand::random::&lt;u32&gt;()))
 }
-
-// Working with Results
-fn process_with_results() -&gt; Result&lt;Vec&lt;i32&gt;, std::num::ParseIntError&gt; {
-    let strings = vec!["1", "2", "3", "4", "not_a_number", "6"];
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="essential-iterator-adaptors"><a class="header" href="#essential-iterator-adaptors">Essential Iterator Adaptors</a></h2>
+<h3 id="transform-map-flat_map"><a class="header" href="#transform-map-flat_map">Transform: map, flat_map</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn transformations() {
+    let numbers = vec![1, 2, 3, 4];
     
-    // This will short-circuit on first error
-    let numbers: Result&lt;Vec&lt;i32&gt;, _&gt; = strings
+    // Simple transformation
+    let doubled: Vec&lt;i32&gt; = numbers.iter()
+        .map(|x| x * 2)
+        .collect();  // [2, 4, 6, 8]
+    
+    // Parse strings to numbers, handling errors
+    let strings = vec!["1", "2", "3"];
+    let parsed: Result&lt;Vec&lt;i32&gt;, _&gt; = strings
         .iter()
         .map(|s| s.parse::&lt;i32&gt;())
-        .collect();
-    
-    numbers
-}
-
-fn process_filtering_errors() -&gt; Vec&lt;i32&gt; {
-    let strings = vec!["1", "2", "3", "4", "not_a_number", "6"];
-    
-    // Filter out errors, keep only successful parses
-    strings
-        .iter()
-        .filter_map(|s| s.parse::&lt;i32&gt;().ok())
-        .collect()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="enumerate-zip-and-take"><a class="header" href="#enumerate-zip-and-take">Enumerate, Zip, and Take</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn advanced_adaptors() {
-    let names = vec!["Alice", "Bob", "Charlie", "Diana"];
-    let ages = vec![25, 30, 35, 28];
-    
-    // Enumerate - add indices
-    for (index, name) in names.iter().enumerate() {
-        println!("{}: {}", index, name);
-    }
-    
-    // Zip - combine two iterators
-    let people: Vec&lt;(&amp;&amp;str, &amp;i32)&gt; = names
-        .iter()
-        .zip(ages.iter())
-        .collect();
-    
-    for (name, age) in people {
-        println!("{} is {} years old", name, age);
-    }
-    
-    // Take and skip
-    let first_three: Vec&lt;&amp;str&gt; = names
-        .iter()
-        .take(3)
-        .cloned()
-        .collect();
-    println!("First three: {:?}", first_three);
-    
-    let skip_first_two: Vec&lt;&amp;str&gt; = names
-        .iter()
-        .skip(2)
-        .cloned()
-        .collect();
-    println!("Skip first two: {:?}", skip_first_two);
-    
-    // Take while predicate is true
-    let numbers = vec![1, 3, 5, 8, 9, 11];
-    let odds_until_even: Vec&lt;i32&gt; = numbers
-        .iter()
-        .take_while(|&amp;&amp;x| x % 2 == 1)
-        .cloned()
-        .collect();
-    println!("Odds until even: {:?}", odds_until_even); // [1, 3, 5]
-}
-
-// Chain and flatten
-fn combining_iterators() {
-    let vec1 = vec![1, 2, 3];
-    let vec2 = vec![4, 5, 6];
-    
-    // Chain iterators
-    let combined: Vec&lt;i32&gt; = vec1
-        .iter()
-        .chain(vec2.iter())
-        .cloned()
-        .collect();
-    println!("Combined: {:?}", combined); // [1, 2, 3, 4, 5, 6]
+        .collect();  // Collects into Result&lt;Vec&lt;_&gt;, _&gt;
     
     // Flatten nested structures
-    let nested = vec![vec![1, 2], vec![3, 4, 5], vec![6]];
-    let flattened: Vec&lt;i32&gt; = nested
-        .iter()
-        .flatten()
-        .cloned()
-        .collect();
-    println!("Flattened: {:?}", flattened); // [1, 2, 3, 4, 5, 6]
+    let nested = vec![vec![1, 2], vec![3, 4]];
+    let flat: Vec&lt;i32&gt; = nested
+        .into_iter()
+        .flat_map(|v| v.into_iter())
+        .collect();  // [1, 2, 3, 4]
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="filter-and-search"><a class="header" href="#filter-and-search">Filter and Search</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn filtering() {
+    let numbers = vec![1, 2, 3, 4, 5, 6];
     
-    // flat_map - map then flatten
-    let words = vec!["hello world", "rust programming"];
-    let all_words: Vec&lt;&amp;str&gt; = words
-        .iter()
-        .flat_map(|s| s.split_whitespace())
-        .collect();
-    println!("All words: {:?}", all_words); // ["hello", "world", "rust", "programming"]
+    // Keep only even numbers
+    let evens: Vec&lt;_&gt; = numbers.iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .cloned()
+        .collect();  // [2, 4, 6]
+    
+    // Find first match
+    let first_even = numbers.iter()
+        .find(|&amp;&amp;x| x % 2 == 0);  // Some(&amp;2)
+    
+    // Check conditions
+    let all_positive = numbers.iter().all(|&amp;x| x &gt; 0);  // true
+    let has_seven = numbers.iter().any(|&amp;x| x == 7);    // false
+    
+    // Position of element
+    let pos = numbers.iter().position(|&amp;x| x == 4);  // Some(3)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="reduce-fold-reduce-sum"><a class="header" href="#reduce-fold-reduce-sum">Reduce: fold, reduce, sum</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn reductions() {
+    let numbers = vec![1, 2, 3, 4, 5];
+    
+    // Sum all elements
+    let sum: i32 = numbers.iter().sum();  // 15
+    
+    // Product of all elements
+    let product: i32 = numbers.iter().product();  // 120
+    
+    // Custom reduction with fold
+    let result = numbers.iter()
+        .fold(0, |acc, x| acc + x * x);  // Sum of squares: 55
+    
+    // Build a string
+    let words = vec!["Hello", "World"];
+    let sentence = words.iter()
+        .fold(String::new(), |mut acc, word| {
+            if !acc.is_empty() { acc.push(' '); }
+            acc.push_str(word);
+            acc
+        });  // "Hello World"
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="take-and-skip"><a class="header" href="#take-and-skip">Take and Skip</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn slicing_iterators() {
+    let numbers = 0..100;
+    
+    // Take first n elements
+    let first_five: Vec&lt;_&gt; = numbers.clone()
+        .take(5)
+        .collect();  // [0, 1, 2, 3, 4]
+    
+    // Skip first n elements
+    let after_ten: Vec&lt;_&gt; = numbers.clone()
+        .skip(10)
+        .take(5)
+        .collect();  // [10, 11, 12, 13, 14]
+    
+    // Take while condition is true
+    let until_ten: Vec&lt;_&gt; = numbers.clone()
+        .take_while(|&amp;x| x &lt; 10)
+        .collect();  // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 }
 <span class="boring">}</span></code></pre></pre>
 <hr />
-<h2 id="closures-and-capture"><a class="header" href="#closures-and-capture">Closures and Capture</a></h2>
-<h3 id="closure-syntax-and-types"><a class="header" href="#closure-syntax-and-types">Closure Syntax and Types</a></h3>
+<h2 id="closures-anonymous-functions"><a class="header" href="#closures-anonymous-functions">Closures: Anonymous Functions</a></h2>
+<h3 id="closure-syntax-and-captures"><a class="header" href="#closure-syntax-and-captures">Closure Syntax and Captures</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>fn closure_basics() {
-    let numbers = vec![1, 2, 3, 4, 5];
+    let x = 10;
     
-    // Different closure syntaxes
-    let add_one = |x| x + 1;
-    let add_two = |x: i32| -&gt; i32 { x + 2 };
-    let add_three = |x: i32| {
-        let result = x + 3;
-        result
+    // Closure that borrows
+    let add_x = |y| x + y;
+    println!("{}", add_x(5));  // 15
+    
+    // Closure that mutates
+    let mut count = 0;
+    let mut increment = || {
+        count += 1;
+        count
     };
+    println!("{}", increment());  // 1
+    println!("{}", increment());  // 2
     
-    // Using closures with iterators
-    let incremented: Vec&lt;i32&gt; = numbers
-        .iter()
-        .map(|&amp;x| add_one(x))
-        .collect();
-    println!("Incremented: {:?}", incremented);
-    
-    // Inline closures
-    let evens: Vec&lt;i32&gt; = numbers
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .cloned()
-        .collect();
-    println!("Evens: {:?}", evens);
-}
-
-// Capture modes
-fn capture_modes() {
-    let multiplier = 10;
-    let mut counter = 0;
-    let mut data = vec![1, 2, 3];
-    
-    // Fn - immutable borrow
-    let multiply_by = |x| x * multiplier;
-    println!("5 * {} = {}", multiplier, multiply_by(5));
-    
-    // FnMut - mutable borrow
-    let mut count_calls = || {
-        counter += 1;
-        counter
-    };
-    println!("Call count: {}", count_calls());
-    println!("Call count: {}", count_calls());
-    
-    // FnOnce - takes ownership
-    let consume_data = || {
-        let owned_data = data; // Takes ownership
-        owned_data.len()
-    };
-    println!("Data length: {}", consume_data());
-    // data is no longer accessible
-    
-    // Move keyword forces ownership
-    let value = 42;
-    let thread_closure = move || {
-        println!("Value in thread: {}", value);
-    };
-    // value is moved into closure
-    
-    std::thread::spawn(thread_closure).join().unwrap();
+    // Move closure - takes ownership
+    let message = String::from("Hello");
+    let print_message = move || println!("{}", message);
+    print_message();
+    // message is no longer accessible here
 }
 <span class="boring">}</span></code></pre></pre>
-<h3 id="advanced-closure-patterns"><a class="header" href="#advanced-closure-patterns">Advanced Closure Patterns</a></h3>
-<pre><pre class="playground"><code class="language-rust">// Higher-order functions
-fn apply_twice&lt;F&gt;(f: F, x: i32) -&gt; i32 
-where 
-    F: Fn(i32) -&gt; i32,
+<h3 id="fn-fnmut-fnonce-traits"><a class="header" href="#fn-fnmut-fnonce-traits">Fn, FnMut, FnOnce Traits</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Fn: Can be called multiple times, borrows values
+fn apply_twice&lt;F&gt;(f: F) -&gt; i32 
+where F: Fn(i32) -&gt; i32 
 {
-    f(f(x))
+    f(f(5))
 }
 
-fn create_multiplier(factor: i32) -&gt; impl Fn(i32) -&gt; i32 {
-    move |x| x * factor
+// FnMut: Can be called multiple times, mutates values
+fn apply_mut&lt;F&gt;(mut f: F) 
+where F: FnMut() 
+{
+    f();
+    f();
 }
 
-fn conditional_processor&lt;F, G&gt;(
-    condition: bool,
-    true_fn: F,
-    false_fn: G,
-) -&gt; Box&lt;dyn Fn(i32) -&gt; i32&gt;
-where
-    F: Fn(i32) -&gt; i32 + 'static,
-    G: Fn(i32) -&gt; i32 + 'static,
+// FnOnce: Can only be called once, consumes values
+fn apply_once&lt;F&gt;(f: F) 
+where F: FnOnce() 
 {
-    if condition {
-        Box::new(true_fn)
-    } else {
-        Box::new(false_fn)
+    f();
+    // f(); // Error: f was consumed
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="common-patterns-1"><a class="header" href="#common-patterns-1">Common Patterns</a></h2>
+<h3 id="processing-collections"><a class="header" href="#processing-collections">Processing Collections</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::HashMap;
+
+fn collection_processing() {
+    let text = "hello world hello rust";
+    
+    // Word frequency counter
+    let word_counts: HashMap&lt;&amp;str, usize&gt; = text
+        .split_whitespace()
+        .fold(HashMap::new(), |mut map, word| {
+            *map.entry(word).or_insert(0) += 1;
+            map
+        });
+    
+    // Find most common word
+    let most_common = word_counts
+        .iter()
+        .max_by_key(|(_, &amp;count)| count)
+        .map(|(&amp;word, _)| word);
+    
+    println!("Most common: {:?}", most_common);  // Some("hello")
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="error-handling-with-iterators"><a class="header" href="#error-handling-with-iterators">Error Handling with Iterators</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn parse_numbers(input: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;i32&gt;, std::num::ParseIntError&gt; {
+    input.iter()
+        .map(|s| s.parse::&lt;i32&gt;())
+        .collect()  // Collects into Result&lt;Vec&lt;_&gt;, _&gt;
+}
+
+fn process_files(paths: &amp;[&amp;str]) -&gt; Vec&lt;Result&lt;String, std::io::Error&gt;&gt; {
+    paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect()  // Collects all results, both Ok and Err
+}
+
+// Partition successes and failures
+fn partition_results&lt;T, E&gt;(results: Vec&lt;Result&lt;T, E&gt;&gt;) -&gt; (Vec&lt;T&gt;, Vec&lt;E&gt;) {
+    let (oks, errs): (Vec&lt;_&gt;, Vec&lt;_&gt;) = results
+        .into_iter()
+        .partition(|r| r.is_ok());
+    
+    let values = oks.into_iter().map(|r| r.unwrap()).collect();
+    let errors = errs.into_iter().map(|r| r.unwrap_err()).collect();
+    
+    (values, errors)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="infinite-iterators-and-lazy-evaluation"><a class="header" href="#infinite-iterators-and-lazy-evaluation">Infinite Iterators and Lazy Evaluation</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn lazy_evaluation() {
+    // Generate Fibonacci numbers lazily
+    let mut fib = (0u64, 1u64);
+    let fibonacci = std::iter::from_fn(move || {
+        let next = fib.0;
+        fib = (fib.1, fib.0 + fib.1);
+        Some(next)
+    });
+    
+    // Take only what we need
+    let first_10: Vec&lt;_&gt; = fibonacci
+        .take(10)
+        .collect();
+    
+    println!("First 10 Fibonacci: {:?}", first_10);
+    
+    // Find first Fibonacci &gt; 1000
+    let mut fib2 = (0u64, 1u64);
+    let first_large = std::iter::from_fn(move || {
+        let next = fib2.0;
+        fib2 = (fib2.1, fib2.0 + fib2.1);
+        Some(next)
+    })
+    .find(|&amp;n| n &gt; 1000);
+    
+    println!("First &gt; 1000: {:?}", first_large);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="performance-iterators-vs-loops"><a class="header" href="#performance-iterators-vs-loops">Performance: Iterators vs Loops</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// These compile to identical machine code!
+
+fn sum_squares_loop(nums: &amp;[i32]) -&gt; i32 {
+    let mut sum = 0;
+    for &amp;n in nums {
+        sum += n * n;
+    }
+    sum
+}
+
+fn sum_squares_iter(nums: &amp;[i32]) -&gt; i32 {
+    nums.iter()
+        .map(|&amp;n| n * n)
+        .sum()
+}
+
+// Iterator version is:
+// - More concise
+// - Harder to introduce bugs
+// - Easier to modify (add filter, take, etc.)
+// - Same performance!
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="exercise-data-pipeline"><a class="header" href="#exercise-data-pipeline">Exercise: Data Pipeline</a></h2>
+<p>Build a log analysis pipeline using iterators:</p>
+<pre><pre class="playground"><code class="language-rust">#[derive(Debug)]
+struct LogEntry {
+    timestamp: u64,
+    level: LogLevel,
+    message: String,
+}
+
+#[derive(Debug, PartialEq)]
+enum LogLevel {
+    Debug,
+    Info,
+    Warning,
+    Error,
+}
+
+impl LogEntry {
+    fn parse(line: &amp;str) -&gt; Option&lt;LogEntry&gt; {
+        // Format: "timestamp|level|message"
+        let parts: Vec&lt;&amp;str&gt; = line.split('|').collect();
+        if parts.len() != 3 {
+            return None;
+        }
+        
+        let timestamp = parts[0].parse().ok()?;
+        let level = match parts[1] {
+            "DEBUG" =&gt; LogLevel::Debug,
+            "INFO" =&gt; LogLevel::Info,
+            "WARNING" =&gt; LogLevel::Warning,
+            "ERROR" =&gt; LogLevel::Error,
+            _ =&gt; return None,
+        };
+        
+        Some(LogEntry {
+            timestamp,
+            level,
+            message: parts[2].to_string(),
+        })
+    }
+}
+
+struct LogAnalyzer&lt;'a&gt; {
+    lines: &amp;'a [String],
+}
+
+impl&lt;'a&gt; LogAnalyzer&lt;'a&gt; {
+    fn new(lines: &amp;'a [String]) -&gt; Self {
+        LogAnalyzer { lines }
+    }
+    
+    fn parse_entries(&amp;self) -&gt; impl Iterator&lt;Item = LogEntry&gt; + '_ {
+        // TODO: Parse lines into LogEntry, skip invalid lines
+        self.lines.iter()
+            .filter_map(|line| LogEntry::parse(line))
+    }
+    
+    fn errors_only(&amp;self) -&gt; impl Iterator&lt;Item = LogEntry&gt; + '_ {
+        // TODO: Return only ERROR level entries
+        todo!()
+    }
+    
+    fn in_time_range(&amp;self, start: u64, end: u64) -&gt; impl Iterator&lt;Item = LogEntry&gt; + '_ {
+        // TODO: Return entries within time range
+        todo!()
+    }
+    
+    fn count_by_level(&amp;self) -&gt; HashMap&lt;LogLevel, usize&gt; {
+        // TODO: Count entries by log level
+        todo!()
+    }
+    
+    fn most_recent(&amp;self, n: usize) -&gt; Vec&lt;LogEntry&gt; {
+        // TODO: Return n most recent entries (highest timestamps)
+        todo!()
     }
 }
 
 fn main() {
-    // Using higher-order functions
-    let double = |x| x * 2;
-    let result = apply_twice(double, 5);
-    println!("Applied twice: {}", result); // 20
-    
-    // Factory functions
-    let triple = create_multiplier(3);
-    println!("Triple of 7: {}", triple(7)); // 21
-    
-    // Dynamic closure selection
-    let processor = conditional_processor(
-        true,
-        |x| x * 2,
-        |x| x + 10,
-    );
-    println!("Processed: {}", processor(5)); // 10
-}
-
-// Closure performance considerations
-fn performance_comparison() {
-    let data = (0..1_000_000).collect::&lt;Vec&lt;i32&gt;&gt;();
-    
-    // Functional style (often optimizes well)
-    let start = std::time::Instant::now();
-    let sum1: i32 = data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .map(|&amp;x| x * x)
-        .sum();
-    let duration1 = start.elapsed();
-    
-    // Imperative style
-    let start = std::time::Instant::now();
-    let mut sum2 = 0;
-    for &amp;x in &amp;data {
-        if x % 2 == 0 {
-            sum2 += x * x;
-        }
-    }
-    let duration2 = start.elapsed();
-    
-    println!("Functional: {} in {:?}", sum1, duration1);
-    println!("Imperative: {} in {:?}", sum2, duration2);
-}</code></pre></pre>
-<hr />
-<h2 id="reduction-operations"><a class="header" href="#reduction-operations">Reduction Operations</a></h2>
-<h3 id="fold-reduce-and-sum"><a class="header" href="#fold-reduce-and-sum">Fold, Reduce, and Sum</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn reduction_operations() {
-    let numbers = vec![1, 2, 3, 4, 5];
-    
-    // sum() - built-in reduction
-    let sum: i32 = numbers.iter().sum();
-    println!("Sum: {}", sum); // 15
-    
-    // fold() - with initial value
-    let product = numbers
-        .iter()
-        .fold(1, |acc, &amp;x| acc * x);
-    println!("Product: {}", product); // 120
-    
-    // reduce() - no initial value (returns Option)
-    let max = numbers
-        .iter()
-        .reduce(|acc, x| if acc &gt; x { acc } else { x });
-    println!("Max: {:?}", max); // Some(5)
-    
-    // Complex fold example: word frequency
-    let text = "hello world hello rust world";
-    let word_count = text
-        .split_whitespace()
-        .fold(std::collections::HashMap::new(), |mut acc, word| {
-            *acc.entry(word).or_insert(0) += 1;
-            acc
-        });
-    println!("Word count: {:?}", word_count);
-}
-
-fn advanced_reductions() {
-    use std::collections::HashMap;
-    
-    #[derive(Debug)]
-    struct Sale {
-        product: String,
-        amount: f64,
-        region: String,
-    }
-    
-    let sales = vec![
-        Sale { product: "Widget".to_string(), amount: 100.0, region: "North".to_string() },
-        Sale { product: "Gadget".to_string(), amount: 150.0, region: "South".to_string() },
-        Sale { product: "Widget".to_string(), amount: 200.0, region: "North".to_string() },
-        Sale { product: "Gadget".to_string(), amount: 175.0, region: "North".to_string() },
+    let log_lines = vec![
+        "1000|INFO|Server started".to_string(),
+        "1001|DEBUG|Connection received".to_string(),
+        "1002|ERROR|Failed to connect to database".to_string(),
+        "invalid line".to_string(),
+        "1003|WARNING|High memory usage".to_string(),
+        "1004|INFO|Request processed".to_string(),
+        "1005|ERROR|Timeout error".to_string(),
     ];
     
-    // Group sales by region
-    let sales_by_region = sales
-        .iter()
-        .fold(HashMap::new(), |mut acc, sale| {
-            acc.entry(&amp;sale.region)
-                .or_insert(Vec::new())
-                .push(sale);
-            acc
-        });
+    let analyzer = LogAnalyzer::new(&amp;log_lines);
     
-    // Calculate totals by region
-    let totals_by_region: HashMap&lt;&amp;String, f64&gt; = sales_by_region
-        .iter()
-        .map(|(region, sales)| {
-            let total = sales.iter().map(|s| s.amount).sum();
-            (*region, total)
-        })
-        .collect();
-    
-    println!("Sales by region: {:?}", totals_by_region);
-    
-    // Find highest sale
-    let highest_sale = sales
-        .iter()
-        .max_by(|a, b| a.amount.partial_cmp(&amp;b.amount).unwrap());
-    println!("Highest sale: {:?}", highest_sale);
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="lazy-evaluation-and-performance"><a class="header" href="#lazy-evaluation-and-performance">Lazy Evaluation and Performance</a></h2>
-<h3 id="understanding-lazy-evaluation"><a class="header" href="#understanding-lazy-evaluation">Understanding Lazy Evaluation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn lazy_evaluation_demo() {
-    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    
-    // This creates iterator adaptors but doesn't process anything yet
-    let iter = numbers
-        .iter()
-        .inspect(|&amp;x| println!("Processing: {}", x))  // Debug what's happening
-        .filter(|&amp;&amp;x| {
-            println!("Filtering: {}", x);
-            x % 2 == 0
-        })
-        .map(|&amp;x| {
-            println!("Mapping: {}", x);
-            x * x
-        });
-    
-    println!("Iterator created, but nothing processed yet!");
-    
-    // Only now does processing happen
-    let result: Vec&lt;i32&gt; = iter.take(2).collect();
-    println!("Result: {:?}", result);
-    // Notice: Only processes elements until it gets 2 results
-}
-
-// Performance benefits
-fn performance_benefits() {
-    let large_data = (0..1_000_000).collect::&lt;Vec&lt;i32&gt;&gt;();
-    
-    // Early termination with lazy evaluation
-    let start = std::time::Instant::now();
-    let first_large_even = large_data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .filter(|&amp;&amp;x| x &gt; 100_000)
-        .next();  // Stops at first match!
-    let duration = start.elapsed();
-    
-    println!("First large even: {:?} in {:?}", first_large_even, duration);
-    
-    // Compare with eager evaluation (collect before next)
-    let start = std::time::Instant::now();
-    let all_evens: Vec&lt;_&gt; = large_data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .collect();  // Processes ALL elements
-    let first_large = all_evens
-        .iter()
-        .find(|&amp;&amp;&amp;x| x &gt; 100_000);
-    let duration_eager = start.elapsed();
-    
-    println!("Eager approach: {:?} in {:?}", first_large, duration_eager);
-}
-
-// Memory efficiency
-fn memory_efficiency() {
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
-    
-    // Process large file without loading everything into memory
-    fn process_large_file(filename: &amp;str) -&gt; std::io::Result&lt;usize&gt; {
-        let file = File::open(filename)?;
-        let reader = BufReader::new(file);
-        
-        let long_lines_count = reader
-            .lines()
-            .map(|line| line.unwrap_or_default())
-            .filter(|line| line.len() &gt; 100)
-            .count();
-        
-        Ok(long_lines_count)
-    }
-    
-    // This is memory-efficient: processes one line at a time
-    match process_large_file("large_file.txt") {
-        Ok(count) =&gt; println!("Long lines: {}", count),
-        Err(e) =&gt; println!("Error: {}", e),
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="error-handling-with-iterators"><a class="header" href="#error-handling-with-iterators">Error Handling with Iterators</a></h2>
-<h3 id="handling-results-in-iterator-chains"><a class="header" href="#handling-results-in-iterator-chains">Handling Results in Iterator Chains</a></h3>
-<pre><pre class="playground"><code class="language-rust">fn error_handling_patterns() {
-    let inputs = vec!["1", "2", "invalid", "4", "5"];
-    
-    // Pattern 1: Collect results, short-circuit on error
-    let results: Result&lt;Vec&lt;i32&gt;, _&gt; = inputs
-        .iter()
-        .map(|s| s.parse::&lt;i32&gt;())
-        .collect();
-    
-    match results {
-        Ok(numbers) =&gt; println!("All parsed: {:?}", numbers),
-        Err(e) =&gt; println!("Parse error: {}", e),
-    }
-    
-    // Pattern 2: Filter out errors, keep successful results
-    let successful_parses: Vec&lt;i32&gt; = inputs
-        .iter()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    println!("Successful parses: {:?}", successful_parses);
-    
-    // Pattern 3: Partition results
-    let (successes, errors): (Vec&lt;_&gt;, Vec&lt;_&gt;) = inputs
-        .iter()
-        .map(|s| s.parse::&lt;i32&gt;())
-        .partition(Result::is_ok);
-    
-    let successes: Vec&lt;i32&gt; = successes.into_iter().map(Result::unwrap).collect();
-    let errors: Vec&lt;_&gt; = errors.into_iter().map(Result::unwrap_err).collect();
-    
-    println!("Successes: {:?}", successes);
-    println!("Errors: {:?}", errors);
-}
-
-// Custom error handling
-#[derive(Debug)]
-struct ProcessingError {
-    input: String,
-    reason: String,
-}
-
-fn process_with_custom_errors(inputs: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;i32&gt;, Vec&lt;ProcessingError&gt;&gt; {
-    let mut successes = Vec::new();
-    let mut errors = Vec::new();
-    
-    for &amp;input in inputs {
-        match input.parse::&lt;i32&gt;() {
-            Ok(num) if num &gt;= 0 =&gt; successes.push(num),
-            Ok(_) =&gt; errors.push(ProcessingError {
-                input: input.to_string(),
-                reason: "Negative numbers not allowed".to_string(),
-            }),
-            Err(_) =&gt; errors.push(ProcessingError {
-                input: input.to_string(),
-                reason: "Invalid number format".to_string(),
-            }),
-        }
-    }
-    
-    if errors.is_empty() {
-        Ok(successes)
-    } else {
-        Err(errors)
-    }
-}
-
-fn main() {
-    let inputs = vec!["1", "2", "-3", "invalid", "5"];
-    
-    match process_with_custom_errors(&amp;inputs) {
-        Ok(numbers) =&gt; println!("Processed: {:?}", numbers),
-        Err(errors) =&gt; {
-            println!("Errors occurred:");
-            for error in errors {
-                println!("  {}: {}", error.input, error.reason);
-            }
-        }
-    }
+    // Test the methods
+    println!("Valid entries: {}", analyzer.parse_entries().count());
+    println!("Errors: {:?}", analyzer.errors_only().collect::&lt;Vec&lt;_&gt;&gt;());
+    println!("Count by level: {:?}", analyzer.count_by_level());
+    println!("Most recent 3: {:?}", analyzer.most_recent(3));
 }</code></pre></pre>
-<hr />
-<h2 id="common-pitfalls-and-best-practices-2"><a class="header" href="#common-pitfalls-and-best-practices-2">Common Pitfalls and Best Practices</a></h2>
-<h3 id="pitfall-1-forgetting-to-consume-iterators"><a class="header" href="#pitfall-1-forgetting-to-consume-iterators">Pitfall 1: Forgetting to Consume Iterators</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn pitfall_unused_iterators() {
-    let numbers = vec![1, 2, 3, 4, 5];
-    
-    // BAD: This does nothing! Iterator adaptors are lazy
-    numbers
-        .iter()
-        .map(|x| x * 2)
-        .filter(|&amp;&amp;x| x &gt; 5); // Warning: unused iterator that must be used
-    
-    // GOOD: Consume the iterator
-    let result: Vec&lt;i32&gt; = numbers
-        .iter()
-        .map(|x| x * 2)
-        .filter(|&amp;&amp;x| x &gt; 5)
-        .cloned()
-        .collect();
-    
-    println!("Result: {:?}", result);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="pitfall-2-inefficient-cloning"><a class="header" href="#pitfall-2-inefficient-cloning">Pitfall 2: Inefficient Cloning</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn avoid_unnecessary_cloning() {
-    let strings = vec!["hello".to_string(), "world".to_string()];
-    
-    // BAD: Clones every string
-    let lengths: Vec&lt;usize&gt; = strings
-        .iter()
-        .cloned()  // Expensive!
-        .map(|s| s.len())
-        .collect();
-    
-    // GOOD: Work with references
-    let lengths: Vec&lt;usize&gt; = strings
-        .iter()
-        .map(|s| s.len())  // s is &amp;String
-        .collect();
-    
-    println!("Lengths: {:?}", lengths);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="best-practices-1"><a class="header" href="#best-practices-1">Best Practices</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// 1. Use iterator methods over manual loops when appropriate
-fn best_practices() {
-    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    
-    // Good: Functional style for complex transformations
-    let processed: Vec&lt;String&gt; = numbers
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .map(|&amp;x| x * x)
-        .map(|x| format!("Square: {}", x))
-        .collect();
-    
-    // Good: Use specific methods when available
-    let sum: i32 = numbers.iter().sum();
-    let max = numbers.iter().max();
-    
-    // Good: Early termination
-    let first_large = numbers
-        .iter()
-        .find(|&amp;&amp;x| x &gt; 5);
-    
-    // Good: Use for_each for side effects without collecting
-    numbers
-        .iter()
-        .filter(|&amp;&amp;x| x % 3 == 0)
-        .for_each(|x| println!("Divisible by 3: {}", x));
-}
-
-// 2. Choose the right level of functional vs imperative
-fn choose_appropriate_style() {
-    let data = vec![1, 2, 3, 4, 5];
-    
-    // Simple case: iterator is cleaner
-    let doubled: Vec&lt;i32&gt; = data.iter().map(|x| x * 2).collect();
-    
-    // Complex case: imperative might be clearer
-    fn complex_processing(data: &amp;[i32]) -&gt; Vec&lt;String&gt; {
-        let mut results = Vec::new();
-        
-        for &amp;item in data {
-            if item % 2 == 0 {
-                let processed = item * item;
-                if processed &gt; 10 {
-                    results.push(format!("Large square: {}", processed));
-                } else {
-                    results.push(format!("Small square: {}", processed));
-                }
-            }
-        }
-        
-        results
-    }
-    
-    // vs functional (might be less readable for complex logic)
-    let functional_result: Vec&lt;String&gt; = data
-        .iter()
-        .filter(|&amp;&amp;x| x % 2 == 0)
-        .map(|&amp;x| x * x)
-        .map(|x| {
-            if x &gt; 10 {
-                format!("Large square: {}", x)
-            } else {
-                format!("Small square: {}", x)
-            }
-        })
-        .collect();
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="exercises-8"><a class="header" href="#exercises-8">Exercises</a></h2>
-<h3 id="exercise-1-data-processing-pipeline"><a class="header" href="#exercise-1-data-processing-pipeline">Exercise 1: Data Processing Pipeline</a></h3>
-<p>Create a data processing pipeline that handles a list of employee records:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[derive(Debug, Clone)]
-struct Employee {
-    name: String,
-    department: String,
-    salary: f64,
-    years_of_service: u32,
-}
-
-// TODO: Implement these functions using iterators
-fn high_earners(employees: &amp;[Employee], threshold: f64) -&gt; Vec&lt;Employee&gt; {
-    // Return employees earning more than threshold, sorted by salary (highest first)
-    todo!()
-}
-
-fn department_stats(employees: &amp;[Employee]) -&gt; std::collections::HashMap&lt;String, (usize, f64)&gt; {
-    // Return (count, average_salary) for each department
-    todo!()
-}
-
-fn senior_employees_by_dept(employees: &amp;[Employee], min_years: u32) -&gt; std::collections::HashMap&lt;String, Vec&lt;String&gt;&gt; {
-    // Return employee names grouped by department for employees with &gt;= min_years service
-    todo!()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-2-text-processing"><a class="header" href="#exercise-2-text-processing">Exercise 2: Text Processing</a></h3>
-<p>Process a text file and extract various statistics:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// TODO: Implement these text processing functions
-fn word_frequency(text: &amp;str) -&gt; std::collections::HashMap&lt;String, usize&gt; {
-    // Return word frequency map (case-insensitive, ignore punctuation)
-    todo!()
-}
-
-fn longest_words(text: &amp;str, n: usize) -&gt; Vec&lt;String&gt; {
-    // Return n longest unique words
-    todo!()
-}
-
-fn sentences_with_word(text: &amp;str, target_word: &amp;str) -&gt; Vec&lt;String&gt; {
-    // Return sentences containing target_word (case-insensitive)
-    // Split on ., !, or ?
-    todo!()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-3-number-sequence-processing"><a class="header" href="#exercise-3-number-sequence-processing">Exercise 3: Number Sequence Processing</a></h3>
-<p>Work with mathematical sequences:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// TODO: Implement a custom iterator for prime numbers
-struct PrimeIterator {
-    current: u64,
-}
-
-impl PrimeIterator {
-    fn new() -&gt; Self {
-        // Start from 2 (first prime)
-        todo!()
-    }
-    
-    fn is_prime(n: u64) -&gt; bool {
-        // Helper function to check if number is prime
-        todo!()
-    }
-}
-
-impl Iterator for PrimeIterator {
-    type Item = u64;
-    
-    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
-        // Return next prime number
-        todo!()
-    }
-}
-
-// TODO: Use the iterator to solve these problems
-fn sum_of_primes_below(limit: u64) -&gt; u64 {
-    // Sum all prime numbers below limit
-    todo!()
-}
-
-fn nth_prime(n: usize) -&gt; Option&lt;u64&gt; {
-    // Return the nth prime number (1-indexed)
-    todo!()
-}
-
-fn prime_gaps(limit: u64) -&gt; Vec&lt;u64&gt; {
-    // Return gaps between consecutive primes below limit
-    // e.g., for primes 2,3,5,7,11: gaps are [1,2,2,4]
-    todo!()
-}
-<span class="boring">}</span></code></pre></pre>
 <hr />
 <h2 id="key-takeaways-10"><a class="header" href="#key-takeaways-10">Key Takeaways</a></h2>
 <ol>
-<li><strong>Lazy evaluation</strong> makes iterators memory-efficient and fast</li>
-<li><strong>Zero-cost abstractions</strong> mean functional style can be as fast as imperative</li>
-<li><strong>Closure capture</strong> has three modes: Fn, FnMut, and FnOnce</li>
-<li><strong>Iterator adaptors</strong> are composable and chainable</li>
-<li><strong>Error handling</strong> in iterator chains requires careful consideration</li>
-<li><strong>Choose the right tool</strong> - iterators for transformations, loops for complex control flow</li>
-<li><strong>Early termination</strong> with find() and take() can provide significant performance benefits</li>
-<li><strong>Memory efficiency</strong> comes from processing one item at a time, not collecting unnecessarily</li>
+<li><strong>Iterators are lazy</strong> - nothing happens until you consume them</li>
+<li><strong>Zero-cost abstraction</strong> - same performance as hand-written loops</li>
+<li><strong>Composable</strong> - chain operations for clean, readable code</li>
+<li><strong>collect() is powerful</strong> - converts to any collection type</li>
+<li><strong>Closures capture environment</strong> - be aware of borrowing vs moving</li>
+<li><strong>Error handling</strong> - Result&lt;Vec<T>, E&gt; vs Vec&lt;Result&lt;T, E&gt;&gt;</li>
+<li><strong>Prefer iterators</strong> over manual loops for clarity and safety</li>
 </ol>
-<p><strong>Next Up:</strong> In Chapter 12, we'll explore testing - how to write reliable tests for your Rust code with unit tests, integration tests, and documentation tests.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-12-macros---code-generation-and-metaprogramming"><a class="header" href="#chapter-12-macros---code-generation-and-metaprogramming">Chapter 12: Macros - Code Generation and Metaprogramming</a></h1>
-<h2 id="learning-objectives-10"><a class="header" href="#learning-objectives-10">Learning Objectives</a></h2>
+<p><strong>Next Up:</strong> In Chapter 12, we'll explore modules and visibility - essential for organizing larger Rust projects and creating clean APIs.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-12-modules-and-visibility"><a class="header" href="#chapter-12-modules-and-visibility">Chapter 12: Modules and Visibility</a></h1>
+<h2 id="organizing-rust-projects-at-scale"><a class="header" href="#organizing-rust-projects-at-scale">Organizing Rust Projects at Scale</a></h2>
+<h3 id="learning-objectives-10"><a class="header" href="#learning-objectives-10">Learning Objectives</a></h3>
+<p>By the end of this chapter, you'll be able to:</p>
 <ul>
-<li>Understand declarative macros (macro_rules!)</li>
-<li>Learn procedural macros basics</li>
-<li>Compare with C++ preprocessor and C# source generators</li>
-<li>Write your own macros for DRY code</li>
-<li>Recognize common macro patterns in Rust</li>
+<li>Structure Rust projects with modules and submodules</li>
+<li>Control visibility with <code>pub</code> and privacy rules</li>
+<li>Use the <code>use</code> keyword effectively for imports</li>
+<li>Organize code across multiple files</li>
+<li>Design clean module APIs with proper encapsulation</li>
+<li>Apply the module system to build maintainable projects</li>
+<li>Understand path resolution and the module tree</li>
 </ul>
-<h2 id="introduction-1"><a class="header" href="#introduction-1">Introduction</a></h2>
-<p>Rust macros are not text substitution like C preprocessor macros. They operate on the Abstract Syntax Tree (AST), making them hygienic and type-aware.</p>
-<h2 id="declarative-macros-macro_rules"><a class="header" href="#declarative-macros-macro_rules">Declarative Macros (macro_rules!)</a></h2>
-<h3 id="basic-syntax"><a class="header" href="#basic-syntax">Basic Syntax</a></h3>
-<pre><pre class="playground"><code class="language-rust">// Simple macro
-macro_rules! say_hello {
-    () =&gt; {
-        println!("Hello, world!");
-    };
-}
-
-// Macro with parameters
-macro_rules! create_function {
-    ($func_name:ident) =&gt; {
-        fn $func_name() {
-            println!("You called {:?}()", stringify!($func_name));
-        }
-    };
-}
-
-// Usage
-fn main() {
-    say_hello!();
+<hr />
+<h2 id="module-basics"><a class="header" href="#module-basics">Module Basics</a></h2>
+<h3 id="defining-modules"><a class="header" href="#defining-modules">Defining Modules</a></h3>
+<pre><pre class="playground"><code class="language-rust">// Modules can be defined inline
+mod network {
+    pub fn connect() {
+        println!("Connecting to network...");
+    }
     
-    create_function!(foo);
-    create_function!(bar);
+    fn internal_function() {
+        // Private by default - not accessible outside this module
+        println!("Internal network operation");
+    }
+}
+
+mod database {
+    pub struct Connection {
+        // Fields are private by default
+        host: String,
+        port: u16,
+    }
     
-    foo();  // Prints: You called "foo"()
-    bar();  // Prints: You called "bar"()
-}</code></pre></pre>
-<h3 id="pattern-matching-in-macros"><a class="header" href="#pattern-matching-in-macros">Pattern Matching in Macros</a></h3>
-<pre><pre class="playground"><code class="language-rust">macro_rules! calculate {
-    // Match single expression
-    (eval $e:expr) =&gt; {
-        {
-            let val: usize = $e;
-            println!("{} = {}", stringify!{$e}, val);
-        }
-    };
-    
-    // Match multiple patterns
-    (add $a:expr, $b:expr) =&gt; {
-        $a + $b
-    };
-    
-    (mul $a:expr, $b:expr) =&gt; {
-        $a * $b
-    };
-}
-
-fn main() {
-    calculate!(eval 1 + 2 * 3);        // Prints: 1 + 2 * 3 = 7
-    let sum = calculate!(add 10, 20);  // Returns 30
-    let product = calculate!(mul 4, 5); // Returns 20
-}</code></pre></pre>
-<h3 id="repetition-patterns"><a class="header" href="#repetition-patterns">Repetition Patterns</a></h3>
-<pre><pre class="playground"><code class="language-rust">macro_rules! vec_of_strings {
-    ($($x:expr),*) =&gt; {
-        {
-            let mut temp_vec = Vec::new();
-            $(
-                temp_vec.push($x.to_string());
-            )*
-            temp_vec
-        }
-    };
-}
-
-macro_rules! create_struct {
-    ($name:ident { $($field:ident: $type:ty),* }) =&gt; {
-        #[derive(Debug)]
-        struct $name {
-            $($field: $type),*
-        }
-    };
-}
-
-fn main() {
-    let v = vec_of_strings!["hello", "world", "rust"];
-    
-    create_struct!(Person {
-        name: String,
-        age: u32,
-        email: String
-    });
-    
-    let p = Person {
-        name: "Alice".to_string(),
-        age: 30,
-        email: "alice@example.com".to_string(),
-    };
-}</code></pre></pre>
-<h3 id="common-standard-library-macros"><a class="header" href="#common-standard-library-macros">Common Standard Library Macros</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// vec! - Create vectors
-let v = vec![1, 2, 3, 4, 5];
-
-// format! - Format strings
-let s = format!("Hello, {}!", "world");
-
-// println!/eprintln! - Print with formatting
-println!("Debug: {:?}", some_struct);
-eprintln!("Error: {}", error_message);
-
-// assert!/assert_eq!/assert_ne! - Testing
-assert!(x &gt; 0, "x must be positive");
-assert_eq!(result, expected);
-
-// dbg! - Debug printing
-let x = dbg!(5 + 3);  // Prints: [src/main.rs:10] 5 + 3 = 8
-
-// include_str!/include_bytes! - Compile-time file inclusion
-const CONFIG: &amp;str = include_str!("config.txt");
-
-// concat!/stringify! - Compile-time string operations
-const VERSION: &amp;str = concat!("v", env!("CARGO_PKG_VERSION"));
-
-// todo!/unimplemented!/unreachable! - Development helpers
-fn future_feature() {
-    todo!("Implement this later")
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="comparison-with-c-preprocessor"><a class="header" href="#comparison-with-c-preprocessor">Comparison with C++ Preprocessor</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Rust Macros</th><th>C++ Preprocessor</th></tr></thead><tbody>
-<tr><td>Type safety</td><td>Yes (AST-based)</td><td>No (text substitution)</td></tr>
-<tr><td>Hygiene</td><td>Yes (no name collisions)</td><td>No</td></tr>
-<tr><td>Debugging</td><td>Good error messages</td><td>Difficult</td></tr>
-<tr><td>Recursion</td><td>Supported</td><td>Limited</td></tr>
-<tr><td>Pattern matching</td><td>Yes</td><td>No</td></tr>
-<tr><td>IDE support</td><td>Good</td><td>Poor</td></tr>
-</tbody></table>
-</div>
-<h3 id="c-preprocessor-example"><a class="header" href="#c-preprocessor-example">C++ Preprocessor Example</a></h3>
-<pre><code class="language-cpp">// C++ - Text substitution, error-prone
-#define MAX(a, b) ((a) &gt; (b) ? (a) : (b))
-int x = MAX(i++, j++);  // Undefined behavior!
-
-// C++ - No type safety
-#define MULTIPLY(x, y) x * y
-int result = MULTIPLY(2 + 3, 4 + 5);  // Wrong: 2 + 3 * 4 + 5 = 19
-</code></pre>
-<h3 id="rust-macro-equivalent"><a class="header" href="#rust-macro-equivalent">Rust Macro Equivalent</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Rust - Hygienic, type-safe
-macro_rules! max {
-    ($a:expr, $b:expr) =&gt; {
-        {
-            let a = $a;
-            let b = $b;
-            if a &gt; b { a } else { b }
-        }
-    };
-}
-
-let x = max!(i, j);  // No side effects, i and j evaluated once
-
-macro_rules! multiply {
-    ($x:expr, $y:expr) =&gt; {
-        ($x) * ($y)  // Parentheses ensure correct precedence
-    };
-}
-
-let result = multiply!(2 + 3, 4 + 5);  // Correct: (2 + 3) * (4 + 5) = 45
-<span class="boring">}</span></code></pre></pre>
-<h2 id="writing-useful-macros"><a class="header" href="#writing-useful-macros">Writing Useful Macros</a></h2>
-<h3 id="builder-pattern-macro"><a class="header" href="#builder-pattern-macro">Builder Pattern Macro</a></h3>
-<pre><pre class="playground"><code class="language-rust">macro_rules! builder {
-    ($name:ident { $($field:ident: $type:ty),* }) =&gt; {
-        #[derive(Debug, Default)]
-        pub struct $name {
-            $($field: Option&lt;$type&gt;),*
+    impl Connection {
+        // Public constructor
+        pub fn new(host: String, port: u16) -&gt; Self {
+            Connection { host, port }
         }
         
-        impl $name {
-            pub fn new() -&gt; Self {
-                Default::default()
-            }
-            
-            $(
-                pub fn $field(mut self, value: $type) -&gt; Self {
-                    self.$field = Some(value);
-                    self
-                }
-            )*
-            
-            pub fn build(self) -&gt; Result&lt;($($type),*), &amp;'static str&gt; {
-                Ok((
-                    $(
-                        self.$field.ok_or(concat!(stringify!($field), " is required"))?
-                    ),*
-                ))
-            }
+        // Public method
+        pub fn execute(&amp;self, query: &amp;str) {
+            println!("Executing: {}", query);
         }
-    };
+        
+        // Private method
+        fn validate_query(&amp;self, query: &amp;str) -&gt; bool {
+            !query.is_empty()
+        }
+    }
 }
 
-// Usage
-builder!(PersonBuilder {
-    name: String,
-    age: u32,
-    email: String
-});
-
 fn main() {
-    let result = PersonBuilder::new()
-        .name("Alice".to_string())
-        .age(30)
-        .email("alice@example.com".to_string())
-        .build();
+    network::connect();
+    // network::internal_function(); // Error: private function
     
-    match result {
-        Ok((name, age, email)) =&gt; {
-            println!("Built person: {} ({}) - {}", name, age, email);
-        }
-        Err(e) =&gt; eprintln!("Error: {}", e),
-    }
+    let conn = database::Connection::new("localhost".to_string(), 5432);
+    conn.execute("SELECT * FROM users");
+    // println!("{}", conn.host); // Error: private field
 }</code></pre></pre>
-<h3 id="test-generation-macro"><a class="header" href="#test-generation-macro">Test Generation Macro</a></h3>
+<h3 id="module-hierarchy"><a class="header" href="#module-hierarchy">Module Hierarchy</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>macro_rules! generate_tests {
-    ($($name:ident: $value:expr, $expected:expr),*) =&gt; {
-        $(
-            #[test]
-            fn $name() {
-                let result = process($value);
-                assert_eq!(result, $expected);
-            }
-        )*
-    };
-}
-
-fn process(x: i32) -&gt; i32 {
-    x * 2
-}
-
-generate_tests! {
-    test_zero: 0, 0,
-    test_one: 1, 2,
-    test_negative: -5, -10,
-    test_large: 1000, 2000
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="procedural-macros-brief-introduction"><a class="header" href="#procedural-macros-brief-introduction">Procedural Macros (Brief Introduction)</a></h2>
-<p>Procedural macros are more powerful but require a separate crate. They come in three types:</p>
-<h3 id="1-derive-macros"><a class="header" href="#1-derive-macros">1. Derive Macros</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// In your code
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Person {
-    name: String,
-    age: u32,
-}
-
-// Custom derive (requires proc-macro crate)
-#[derive(MyTrait)]
-struct MyStruct {
-    field: String,
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="2-attribute-macros"><a class="header" href="#2-attribute-macros">2. Attribute Macros</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Like #[test] or #[tokio::main]
-#[route(GET, "/")]
-fn index() -&gt; &amp;'static str {
-    "Hello, World!"
-}
-
-#[cached]
-fn expensive_computation(n: u64) -&gt; u64 {
-    // Function result will be cached
-    fibonacci(n)
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="3-function-like-procedural-macros"><a class="header" href="#3-function-like-procedural-macros">3. Function-like Procedural Macros</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// More powerful than macro_rules!
-let sql = sql!(SELECT * FROM users WHERE age &gt; 18);
-
-html! {
-    &lt;div class="container"&gt;
-        &lt;h1&gt;{"Hello, World!"}&lt;/h1&gt;
-    &lt;/div&gt;
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="macro-hygiene"><a class="header" href="#macro-hygiene">Macro Hygiene</a></h2>
-<p>Rust macros are hygienic - they don't accidentally capture or pollute namespaces:</p>
-<pre><pre class="playground"><code class="language-rust">macro_rules! using_a {
-    ($e:expr) =&gt; {
-        {
-            let a = 42;
-            $e
+</span>mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {
+            println!("Added to waitlist");
         }
-    };
+        
+        fn seat_at_table() {
+            println!("Seated at table");
+        }
+    }
+    
+    mod serving {
+        fn take_order() {}
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+}
+
+// Using paths to access nested modules
+pub fn eat_at_restaurant() {
+    // Absolute path
+    crate::front_of_house::hosting::add_to_waitlist();
+    
+    // Relative path
+    front_of_house::hosting::add_to_waitlist();
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="the-use-keyword"><a class="header" href="#the-use-keyword">The <code>use</code> Keyword</a></h2>
+<h3 id="basic-imports"><a class="header" href="#basic-imports">Basic Imports</a></h3>
+<pre><pre class="playground"><code class="language-rust">mod math {
+    pub fn add(a: i32, b: i32) -&gt; i32 {
+        a + b
+    }
+    
+    pub fn multiply(a: i32, b: i32) -&gt; i32 {
+        a * b
+    }
+    
+    pub mod advanced {
+        pub fn power(base: i32, exp: u32) -&gt; i32 {
+            base.pow(exp)
+        }
+    }
+}
+
+// Bring functions into scope
+use math::add;
+use math::multiply;
+use math::advanced::power;
+
+// Group imports
+use math::{add, multiply};
+
+// Import everything from a module
+use math::advanced::*;
+
+fn main() {
+    let sum = add(2, 3);        // No need for math:: prefix
+    let product = multiply(4, 5);
+    let result = power(2, 10);
+}</code></pre></pre>
+<h3 id="re-exporting-with-pub-use"><a class="header" href="#re-exporting-with-pub-use">Re-exporting with <code>pub use</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>mod shapes {
+    pub mod circle {
+        pub struct Circle {
+            pub radius: f64,
+        }
+        
+        impl Circle {
+            pub fn area(&amp;self) -&gt; f64 {
+                std::f64::consts::PI * self.radius * self.radius
+            }
+        }
+    }
+    
+    pub mod rectangle {
+        pub struct Rectangle {
+            pub width: f64,
+            pub height: f64,
+        }
+        
+        impl Rectangle {
+            pub fn area(&amp;self) -&gt; f64 {
+                self.width * self.height
+            }
+        }
+    }
+}
+
+// Re-export to flatten the hierarchy
+pub use shapes::circle::Circle;
+pub use shapes::rectangle::Rectangle;
+
+// Now users can do:
+// use your_crate::{Circle, Rectangle};
+// Instead of:
+// use your_crate::shapes::circle::Circle;
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="file-based-modules"><a class="header" href="#file-based-modules">File-based Modules</a></h2>
+<h3 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h3>
+<pre><code>src/
+├── main.rs
+├── lib.rs
+├── network/
+│   ├── mod.rs
+│   ├── client.rs
+│   └── server.rs
+└── utils.rs
+</code></pre>
+<h3 id="main-module-file-srcmainrs-or-srclibrs"><a class="header" href="#main-module-file-srcmainrs-or-srclibrs">Main Module File (src/main.rs or src/lib.rs)</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// src/lib.rs
+pub mod network;  // Looks for network/mod.rs or network.rs
+pub mod utils;    // Looks for utils.rs
+
+// Re-export commonly used items
+pub use network::client::Client;
+pub use network::server::Server;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="module-directory-srcnetworkmodrs"><a class="header" href="#module-directory-srcnetworkmodrs">Module Directory (src/network/mod.rs)</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// src/network/mod.rs
+pub mod client;
+pub mod server;
+
+// Common network functionality
+pub struct Config {
+    pub timeout: u64,
+    pub retry_count: u32,
+}
+
+impl Config {
+    pub fn default() -&gt; Self {
+        Config {
+            timeout: 30,
+            retry_count: 3,
+        }
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="submodule-files"><a class="header" href="#submodule-files">Submodule Files</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// src/network/client.rs
+use super::Config;  // Access parent module
+
+pub struct Client {
+    config: Config,
+    connected: bool,
+}
+
+impl Client {
+    pub fn new(config: Config) -&gt; Self {
+        Client {
+            config,
+            connected: false,
+        }
+    }
+    
+    pub fn connect(&amp;mut self) -&gt; Result&lt;(), String&gt; {
+        // Connection logic
+        self.connected = true;
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// src/network/server.rs
+use super::Config;
+
+pub struct Server {
+    config: Config,
+    listening: bool,
+}
+
+impl Server {
+    pub fn new(config: Config) -&gt; Self {
+        Server {
+            config,
+            listening: false,
+        }
+    }
+    
+    pub fn listen(&amp;mut self, port: u16) -&gt; Result&lt;(), String&gt; {
+        println!("Listening on port {}", port);
+        self.listening = true;
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="visibility-rules"><a class="header" href="#visibility-rules">Visibility Rules</a></h2>
+<h3 id="privacy-boundaries"><a class="header" href="#privacy-boundaries">Privacy Boundaries</a></h3>
+<pre><pre class="playground"><code class="language-rust">mod outer {
+    pub fn public_function() {
+        println!("Public function");
+    }
+    
+    fn private_function() {
+        println!("Private function");
+    }
+    
+    pub mod inner {
+        pub fn inner_public() {
+            // Can access parent's private items
+            super::private_function();
+        }
+        
+        pub(super) fn visible_to_parent() {
+            println!("Only visible to parent module");
+        }
+        
+        pub(crate) fn visible_in_crate() {
+            println!("Visible throughout the crate");
+        }
+    }
 }
 
 fn main() {
-    let a = "outer";
-    let result = using_a!(a);  // Uses outer 'a', not macro's 'a'
-    println!("{}", result);     // Prints: "outer"
+    outer::public_function();
+    outer::inner::inner_public();
+    // outer::inner::visible_to_parent(); // Error: not visible here
+    outer::inner::visible_in_crate(); // OK: we're in the same crate
 }</code></pre></pre>
-<h2 id="when-to-use-macros"><a class="header" href="#when-to-use-macros">When to Use Macros</a></h2>
-<h3 id="good-use-cases"><a class="header" href="#good-use-cases">Good Use Cases</a></h3>
-<ol>
-<li><strong>Eliminating boilerplate</strong> - Derive macros, builders</li>
-<li><strong>Domain-specific languages</strong> - SQL, HTML, routing</li>
-<li><strong>Conditional compilation</strong> - Platform-specific code</li>
-<li><strong>Testing utilities</strong> - Test generation, benchmarking</li>
-<li><strong>Performance</strong> - Zero-cost abstractions</li>
-</ol>
-<h3 id="when-not-to-use-macros"><a class="header" href="#when-not-to-use-macros">When NOT to Use Macros</a></h3>
-<ol>
-<li>When a function would work</li>
-<li>When it makes code harder to understand</li>
-<li>For simple type aliasing (use <code>type</code> instead)</li>
-<li>When generics would be clearer</li>
-</ol>
-<h2 id="common-pitfalls-1"><a class="header" href="#common-pitfalls-1">Common Pitfalls</a></h2>
-<h3 id="1-forgetting-semicolons"><a class="header" href="#1-forgetting-semicolons">1. Forgetting Semicolons</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>macro_rules! bad {
-    () =&gt; {
-        let x = 5  // Missing semicolon!
-    };
-}
-
-macro_rules! good {
-    () =&gt; {
-        let x = 5;  // Semicolon included
-    };
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="2-multiple-evaluation"><a class="header" href="#2-multiple-evaluation">2. Multiple Evaluation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>macro_rules! bad_twice {
-    ($x:expr) =&gt; {
-        $x + $x  // $x evaluated twice
-    };
-}
-
-macro_rules! good_twice {
-    ($x:expr) =&gt; {
-        {
-            let val = $x;  // Evaluate once
-            val + val
+<h3 id="struct-field-visibility"><a class="header" href="#struct-field-visibility">Struct Field Visibility</a></h3>
+<pre><pre class="playground"><code class="language-rust">mod back_of_house {
+    pub struct Breakfast {
+        pub toast: String,      // Public field
+        seasonal_fruit: String, // Private field
+    }
+    
+    impl Breakfast {
+        pub fn summer(toast: &amp;str) -&gt; Breakfast {
+            Breakfast {
+                toast: String::from(toast),
+                seasonal_fruit: String::from("peaches"),
+            }
         }
-    };
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="3-type-inference-issues"><a class="header" href="#3-type-inference-issues">3. Type Inference Issues</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>macro_rules! make_vec {
-    () =&gt; {
-        Vec::new()  // Type unknown
-    };
+    }
+    
+    // All fields must be public for tuple struct to be constructable
+    pub struct Color(pub u8, pub u8, pub u8);
 }
 
-macro_rules! make_vec_typed {
-    ($t:ty) =&gt; {
-        Vec::&lt;$t&gt;::new()
-    };
+fn main() {
+    let mut meal = back_of_house::Breakfast::summer("Rye");
+    meal.toast = String::from("Wheat");  // OK: public field
+    // meal.seasonal_fruit = String::from("strawberries"); // Error: private
+    
+    let color = back_of_house::Color(255, 0, 0);  // OK: all fields public
+}</code></pre></pre>
+<hr />
+<h2 id="module-design-patterns"><a class="header" href="#module-design-patterns">Module Design Patterns</a></h2>
+<h3 id="api-design-with-modules"><a class="header" href="#api-design-with-modules">API Design with Modules</a></h3>
+<pre><pre class="playground"><code class="language-rust">// A well-designed module API
+pub mod database {
+    // Re-export the main types users need
+    pub use self::connection::Connection;
+    pub use self::error::{Error, Result};
+    
+    mod connection {
+        use super::error::Result;
+        
+        pub struct Connection {
+            // Implementation details hidden
+            url: String,
+        }
+        
+        impl Connection {
+            pub fn open(url: &amp;str) -&gt; Result&lt;Self&gt; {
+                Ok(Connection {
+                    url: url.to_string(),
+                })
+            }
+            
+            pub fn execute(&amp;self, query: &amp;str) -&gt; Result&lt;()&gt; {
+                // Implementation
+                Ok(())
+            }
+        }
+    }
+    
+    mod error {
+        use std::fmt;
+        
+        #[derive(Debug)]
+        pub struct Error {
+            message: String,
+        }
+        
+        impl fmt::Display for Error {
+            fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+                write!(f, "Database error: {}", self.message)
+            }
+        }
+        
+        impl std::error::Error for Error {}
+        
+        pub type Result&lt;T&gt; = std::result::Result&lt;T, Error&gt;;
+    }
 }
-<span class="boring">}</span></code></pre></pre>
-<h2 id="debugging-macros"><a class="header" href="#debugging-macros">Debugging Macros</a></h2>
-<h3 id="techniques"><a class="header" href="#techniques">Techniques</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// 1. Use trace_macros! (nightly)
-#![feature(trace_macros)]
-trace_macros!(true);
-my_macro!(args);
-trace_macros!(false);
 
-// 2. Use log_syntax! (nightly)
-#![feature(log_syntax)]
-macro_rules! debug_macro {
-    ($x:expr) =&gt; {
-        log_syntax!($x);
-        $x
-    };
+// Clean usage
+use database::{Connection, Result};
+
+fn main() -&gt; Result&lt;()&gt; {
+    let conn = Connection::open("postgres://localhost/mydb")?;
+    conn.execute("SELECT * FROM users")?;
+    Ok(())
+}</code></pre></pre>
+<h3 id="builder-pattern-with-modules"><a class="header" href="#builder-pattern-with-modules">Builder Pattern with Modules</a></h3>
+<pre><pre class="playground"><code class="language-rust">pub mod request {
+    pub struct Request {
+        url: String,
+        method: Method,
+        headers: Vec&lt;(String, String)&gt;,
+    }
+    
+    #[derive(Clone)]
+    pub enum Method {
+        GET,
+        POST,
+        PUT,
+        DELETE,
+    }
+    
+    pub struct RequestBuilder {
+        url: Option&lt;String&gt;,
+        method: Method,
+        headers: Vec&lt;(String, String)&gt;,
+    }
+    
+    impl RequestBuilder {
+        pub fn new() -&gt; Self {
+            RequestBuilder {
+                url: None,
+                method: Method::GET,
+                headers: Vec::new(),
+            }
+        }
+        
+        pub fn url(mut self, url: &amp;str) -&gt; Self {
+            self.url = Some(url.to_string());
+            self
+        }
+        
+        pub fn method(mut self, method: Method) -&gt; Self {
+            self.method = method;
+            self
+        }
+        
+        pub fn header(mut self, key: &amp;str, value: &amp;str) -&gt; Self {
+            self.headers.push((key.to_string(), value.to_string()));
+            self
+        }
+        
+        pub fn build(self) -&gt; Result&lt;Request, &amp;'static str&gt; {
+            let url = self.url.ok_or("URL is required")?;
+            Ok(Request {
+                url,
+                method: self.method,
+                headers: self.headers,
+            })
+        }
+    }
+    
+    impl Request {
+        pub fn builder() -&gt; RequestBuilder {
+            RequestBuilder::new()
+        }
+        
+        pub fn send(&amp;self) -&gt; Result&lt;Response, &amp;'static str&gt; {
+            // Send request logic
+            Ok(Response { status: 200 })
+        }
+    }
+    
+    pub struct Response {
+        pub status: u16,
+    }
 }
 
-// 3. Expand macros with cargo expand
-// cargo install cargo-expand
-// cargo expand
+use request::{Request, Method};
 
-// 4. Use compile_error! for debugging
-macro_rules! check {
-    ($condition:expr) =&gt; {
-        #[cfg(not($condition))]
-        compile_error!("Condition not met");
-    };
+fn main() {
+    let response = Request::builder()
+        .url("https://api.example.com/data")
+        .method(Method::POST)
+        .header("Content-Type", "application/json")
+        .build()
+        .unwrap()
+        .send()
+        .unwrap();
+    
+    println!("Response status: {}", response.status);
+}</code></pre></pre>
+<hr />
+<h2 id="common-patterns-and-best-practices"><a class="header" href="#common-patterns-and-best-practices">Common Patterns and Best Practices</a></h2>
+<h3 id="prelude-pattern"><a class="header" href="#prelude-pattern">Prelude Pattern</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Create a prelude module for commonly used items
+pub mod prelude {
+    pub use crate::error::{Error, Result};
+    pub use crate::config::Config;
+    pub use crate::client::Client;
+    pub use crate::server::Server;
 }
+
+// Users can import everything they need with one line:
+// use your_crate::prelude::*;
 <span class="boring">}</span></code></pre></pre>
-<h2 id="exercises-9"><a class="header" href="#exercises-9">Exercises</a></h2>
-<h3 id="exercise-121-create-a-hashmap-macro"><a class="header" href="#exercise-121-create-a-hashmap-macro">Exercise 12.1: Create a HashMap Macro</a></h3>
-<p>Write a macro that creates a HashMap with initial values:</p>
+<h3 id="internal-module-pattern"><a class="header" href="#internal-module-pattern">Internal Module Pattern</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let map = hashmap! {
-    "one" =&gt; 1,
-    "two" =&gt; 2,
-    "three" =&gt; 3
-};
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-122-enum-visitor-macro"><a class="header" href="#exercise-122-enum-visitor-macro">Exercise 12.2: Enum Visitor Macro</a></h3>
-<p>Create a macro that generates a visitor pattern for an enum:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>generate_visitor!(MyEnum {
-    Variant1(String),
-    Variant2(i32, i32),
-    Variant3 { field: bool }
-});
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-123-benchmark-macro"><a class="header" href="#exercise-123-benchmark-macro">Exercise 12.3: Benchmark Macro</a></h3>
-<p>Write a macro that times code execution:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>benchmark! {
-    "sorting" =&gt; {
-        let mut v = vec![3, 1, 4, 1, 5];
-        v.sort();
+</span>pub mod parser {
+    // Public API
+    pub fn parse(input: &amp;str) -&gt; Result&lt;Expression, Error&gt; {
+        let tokens = internal::tokenize(input)?;
+        internal::build_ast(tokens)
+    }
+    
+    pub struct Expression {
+        // ...
+    }
+    
+    pub struct Error {
+        // ...
+    }
+    
+    // Implementation details in internal module
+    mod internal {
+        use super::*;
+        
+        pub(super) fn tokenize(input: &amp;str) -&gt; Result&lt;Vec&lt;Token&gt;, Error&gt; {
+            // ...
+        }
+        
+        pub(super) fn build_ast(tokens: Vec&lt;Token&gt;) -&gt; Result&lt;Expression, Error&gt; {
+            // ...
+        }
+        
+        struct Token {
+            // Private implementation detail
+        }
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<h2 id="key-takeaways-11"><a class="header" href="#key-takeaways-11">Key Takeaways</a></h2>
-<p>✅ <strong>Rust macros are hygienic and type-aware</strong> - Not text substitution like C++</p>
-<p>✅ <strong>macro_rules! for pattern-based code generation</strong> - Powerful and safe</p>
-<p>✅ <strong>Procedural macros for complex transformations</strong> - Derive, attributes, function-like</p>
-<p>✅ <strong>Use macros to eliminate boilerplate</strong> - But don't overuse them</p>
-<p>✅ <strong>Standard library has many useful macros</strong> - vec!, format!, dbg!, etc.</p>
-<p>✅ <strong>Macros operate on AST, not text</strong> - Safer than preprocessor macros</p>
 <hr />
-<p>Next: <a href="day2/../day3/13_testing.html">Chapter 13: Testing &amp; Documentation</a></p>
+<h2 id="exercises-9"><a class="header" href="#exercises-9">Exercises</a></h2>
+<h3 id="exercise-1-create-a-library-management-system"><a class="header" href="#exercise-1-create-a-library-management-system">Exercise 1: Create a Library Management System</a></h3>
+<p>Design a module structure for a library system:</p>
+<pre><pre class="playground"><code class="language-rust">// TODO: Create the following module structure:
+// - books module with Book struct and methods
+// - members module with Member struct  
+// - loans module for managing book loans
+// - Use proper visibility modifiers
+
+mod books {
+    pub struct Book {
+        // TODO: Add fields (some public, some private)
+    }
+    
+    impl Book {
+        // TODO: Add constructor and methods
+    }
+}
+
+mod members {
+    pub struct Member {
+        // TODO: Add fields
+    }
+    
+    impl Member {
+        // TODO: Add methods
+    }
+}
+
+mod loans {
+    use super::books::Book;
+    use super::members::Member;
+    
+    pub struct Loan {
+        // TODO: Reference a Book and Member
+    }
+    
+    impl Loan {
+        // TODO: Implement loan management
+    }
+}
+
+pub mod library {
+    // TODO: Create a public API that uses the above modules
+    // Re-export necessary types
+}
+
+fn main() {
+    // TODO: Use the library module to:
+    // 1. Create some books
+    // 2. Register members
+    // 3. Create loans
+    // 4. Return books
+}</code></pre></pre>
+<h3 id="exercise-2-configuration-module"><a class="header" href="#exercise-2-configuration-module">Exercise 2: Configuration Module</a></h3>
+<p>Build a configuration system with environment-specific settings:</p>
+<pre><pre class="playground"><code class="language-rust">// TODO: Create a config module that:
+// - Has submodules for dev, test, and prod configurations
+// - Provides a unified interface to access config
+// - Uses visibility to hide implementation details
+
+pub mod config {
+    // TODO: Define Config struct
+    
+    mod development {
+        // TODO: Dev-specific settings
+    }
+    
+    mod production {
+        // TODO: Prod-specific settings
+    }
+    
+    mod test {
+        // TODO: Test-specific settings
+    }
+    
+    // TODO: Public function to get config based on environment
+    pub fn load() -&gt; Config {
+        todo!()
+    }
+}
+
+fn main() {
+    let config = config::load();
+    // Use configuration
+}</code></pre></pre>
+<h3 id="exercise-3-plugin-architecture"><a class="header" href="#exercise-3-plugin-architecture">Exercise 3: Plugin Architecture</a></h3>
+<p>Create a plugin system using modules:</p>
+<pre><pre class="playground"><code class="language-rust">// TODO: Design a plugin architecture where:
+// - Plugins implement a common trait
+// - Plugins are organized in separate modules
+// - A registry module manages all plugins
+// - Public API hides implementation details
+
+pub trait Plugin {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn execute(&amp;self);
+}
+
+mod plugins {
+    // TODO: Create several plugin modules
+    
+    pub mod logger {
+        // TODO: Implement logging plugin
+    }
+    
+    pub mod metrics {
+        // TODO: Implement metrics plugin
+    }
+}
+
+pub mod registry {
+    use super::Plugin;
+    
+    pub struct PluginRegistry {
+        // TODO: Store plugins
+    }
+    
+    impl PluginRegistry {
+        // TODO: Methods to register and execute plugins
+    }
+}
+
+fn main() {
+    // TODO: Create registry, register plugins, execute them
+}</code></pre></pre>
+<hr />
+<h2 id="key-takeaways-11"><a class="header" href="#key-takeaways-11">Key Takeaways</a></h2>
+<ol>
+<li><strong>Modules organize code</strong> into logical units with clear boundaries</li>
+<li><strong>Privacy by default</strong> - items are private unless marked <code>pub</code></li>
+<li><strong>The <code>use</code> keyword</strong> brings items into scope for convenience</li>
+<li><strong>File structure mirrors module structure</strong> for large projects</li>
+<li><strong><code>pub use</code> for re-exports</strong> creates clean public APIs</li>
+<li><strong>Visibility modifiers</strong> (<code>pub(crate)</code>, <code>pub(super)</code>) provide fine-grained control</li>
+<li><strong>Module design</strong> should hide implementation details and expose minimal APIs</li>
+<li><strong>Prelude pattern</strong> simplifies imports for users of your crate</li>
+</ol>
+<p><strong>Congratulations!</strong> You've completed Day 2 of the Rust course. You now have a solid understanding of Rust's advanced features including traits, generics, error handling, iterators, and module organization. These concepts form the foundation for building robust, maintainable Rust applications.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="chapter-13-testing--documentation"><a class="header" href="#chapter-13-testing--documentation">Chapter 13: Testing &amp; Documentation</a></h1>
 <h2 id="unit-tests-integration-tests-documentation-tests-and-test-organization"><a class="header" href="#unit-tests-integration-tests-documentation-tests-and-test-organization">Unit Tests, Integration Tests, Documentation Tests, and Test Organization</a></h2>
 <h3 id="learning-objectives-11"><a class="header" href="#learning-objectives-11">Learning Objectives</a></h3>
@@ -7730,7 +7730,7 @@ fn good_behavior_test() {
     assert_eq!(vec[1], 2);
 }
 <span class="boring">}</span></code></pre></pre>
-<h3 id="best-practices-2"><a class="header" href="#best-practices-2">Best Practices</a></h3>
+<h3 id="best-practices-1"><a class="header" href="#best-practices-1">Best Practices</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// 1. Use descriptive test names
@@ -12229,7 +12229,7 @@ COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/myapp /myapp
 EXPOSE 8080
 ENTRYPOINT ["/myapp"]
 </code></pre>
-<h2 id="comparison-with-cnet-2"><a class="header" href="#comparison-with-cnet-2">Comparison with C++/.NET</a></h2>
+<h2 id="comparison-with-cnet-3"><a class="header" href="#comparison-with-cnet-3">Comparison with C++/.NET</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Aspect</th><th>Rust (Cargo)</th><th>C++</th><th>.NET</th></tr></thead><tbody>
 <tr><td>Package Manager</td><td>Built-in (Cargo)</td><td>External (vcpkg, conan)</td><td>Built-in (NuGet)</td></tr>
 <tr><td>Build System</td><td>Cargo</td><td>CMake, Make, Bazel</td><td>MSBuild</td></tr>
@@ -12309,7 +12309,7 @@ const MAGIC_BYTES: [u8; 2] = [0xCA, 0xFE];
 const HEADER_SIZE: usize = 5;
 const MAX_PAYLOAD_SIZE: usize = 65535;
 <span class="boring">}</span></code></pre></pre>
-<h2 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h2>
+<h2 id="project-structure-1"><a class="header" href="#project-structure-1">Project Structure</a></h2>
 <pre><code>protocol-parser/
 ├── Cargo.toml
 ├── src/
@@ -12786,7 +12786,7 @@ impl MessageType {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<h2 id="project-structure-1"><a class="header" href="#project-structure-1">Project Structure</a></h2>
+<h2 id="project-structure-2"><a class="header" href="#project-structure-2">Project Structure</a></h2>
 <pre><code>chat-protocol/
 ├── Cargo.toml                 # Workspace configuration
 ├── README.md
@@ -15602,7 +15602,7 @@ fn bad_aliasing() {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<h2 id="best-practices-3"><a class="header" href="#best-practices-3">Best Practices</a></h2>
+<h2 id="best-practices-2"><a class="header" href="#best-practices-2">Best Practices</a></h2>
 <h3 id="1-minimize-unsafe-scope"><a class="header" href="#1-minimize-unsafe-scope">1. Minimize Unsafe Scope</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -16098,7 +16098,7 @@ fn process_array&lt;const N: usize&gt;(arr: [i32; N]) -&gt; i32 {
 }
 <span class="boring">}</span></code></pre></pre>
 <h2 id="comparison-with-c-and-net-1"><a class="header" href="#comparison-with-c-and-net-1">Comparison with C++ and .NET</a></h2>
-<h3 id="performance-characteristics-2"><a class="header" href="#performance-characteristics-2">Performance Characteristics</a></h3>
+<h3 id="performance-characteristics-1"><a class="header" href="#performance-characteristics-1">Performance Characteristics</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Aspect</th><th>Rust</th><th>C++</th><th>.NET</th></tr></thead><tbody>
 <tr><td>Predictability</td><td>Excellent</td><td>Excellent</td><td>Good (GC pauses)</td></tr>
 <tr><td>Memory usage</td><td>Minimal</td><td>Minimal</td><td>Higher (GC overhead)</td></tr>
@@ -16347,7 +16347,7 @@ impl Drop for TempDir {
     // Directory deleted when temp goes out of scope
 }
 <span class="boring">}</span></code></pre></pre>
-<h2 id="error-handling-patterns"><a class="header" href="#error-handling-patterns">Error Handling Patterns</a></h2>
+<h2 id="error-handling-patterns-1"><a class="header" href="#error-handling-patterns-1">Error Handling Patterns</a></h2>
 <h3 id="custom-error-types-1"><a class="header" href="#custom-error-types-1">Custom Error Types</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -16798,22 +16798,6 @@ where
 
         </div>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
 

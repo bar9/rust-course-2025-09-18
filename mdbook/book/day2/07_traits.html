@@ -377,15 +377,263 @@ impl Iterator for Counter {
 }
 <span class="boring">}</span></code></pre></pre>
 <hr />
+<h2 id="operator-overloading-with-traits"><a class="header" href="#operator-overloading-with-traits">Operator Overloading with Traits</a></h2>
+<h3 id="implementing-standard-operators"><a class="header" href="#implementing-standard-operators">Implementing Standard Operators</a></h3>
+<pre><pre class="playground"><code class="language-rust">use std::ops::{Add, Mul};
+
+#[derive(Debug, Clone, Copy)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+// Implement addition for Point
+impl Add for Point {
+    type Output = Point;
+    
+    fn add(self, other: Point) -&gt; Point {
+        Point {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+// Implement scalar multiplication
+impl Mul&lt;f64&gt; for Point {
+    type Output = Point;
+    
+    fn mul(self, scalar: f64) -&gt; Point {
+        Point {
+            x: self.x * scalar,
+            y: self.y * scalar,
+        }
+    }
+}
+
+fn main() {
+    let p1 = Point { x: 1.0, y: 2.0 };
+    let p2 = Point { x: 3.0, y: 4.0 };
+    
+    let p3 = p1 + p2;  // Uses Add trait
+    let p4 = p1 * 2.5; // Uses Mul trait
+    
+    println!("p1 + p2 = {:?}", p3);
+    println!("p1 * 2.5 = {:?}", p4);
+}</code></pre></pre>
+<hr />
+<h2 id="supertraits-and-trait-inheritance"><a class="header" href="#supertraits-and-trait-inheritance">Supertraits and Trait Inheritance</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Supertrait example
+trait Person {
+    fn name(&amp;self) -&gt; &amp;str;
+}
+
+// Student requires Person
+trait Student: Person {
+    fn university(&amp;self) -&gt; &amp;str;
+}
+
+// Must implement both traits
+struct GradStudent {
+    name: String,
+    uni: String,
+}
+
+impl Person for GradStudent {
+    fn name(&amp;self) -&gt; &amp;str {
+        &amp;self.name
+    }
+}
+
+impl Student for GradStudent {
+    fn university(&amp;self) -&gt; &amp;str {
+        &amp;self.uni
+    }
+}
+
+// Function requiring multiple traits
+fn print_student_info&lt;T: Student + Debug&gt;(student: &amp;T) {
+    println!("Name: {}", student.name());
+    println!("University: {}", student.university());
+    println!("Debug: {:?}", student);
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="common-trait-patterns"><a class="header" href="#common-trait-patterns">Common Trait Patterns</a></h2>
+<h3 id="the-from-and-into-traits"><a class="header" href="#the-from-and-into-traits">The From and Into Traits</a></h3>
+<pre><pre class="playground"><code class="language-rust">use std::convert::From;
+
+#[derive(Debug)]
+struct Millimeters(u32);
+
+#[derive(Debug)]
+struct Meters(f64);
+
+impl From&lt;Meters&gt; for Millimeters {
+    fn from(m: Meters) -&gt; Self {
+        Millimeters((m.0 * 1000.0) as u32)
+    }
+}
+
+// Into is automatically implemented!
+fn main() {
+    let m = Meters(1.5);
+    let mm: Millimeters = m.into(); // Uses Into (automatic from From)
+    println!("{:?}", mm); // Millimeters(1500)
+    
+    let m2 = Meters(2.0);
+    let mm2 = Millimeters::from(m2); // Direct From usage
+    println!("{:?}", mm2); // Millimeters(2000)
+}</code></pre></pre>
+<hr />
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<h3 id="exercise-1-implement-a-comparable-trait"><a class="header" href="#exercise-1-implement-a-comparable-trait">Exercise 1: Implement a Comparable Trait</a></h3>
+<p>Create a custom trait for comparison and implement it for different types:</p>
+<pre><pre class="playground"><code class="language-rust">trait Comparable {
+    fn compare(&amp;self, other: &amp;Self) -&gt; Ordering;
+    
+    // Provide default implementations
+    fn is_greater(&amp;self, other: &amp;Self) -&gt; bool {
+        matches!(self.compare(other), Ordering::Greater)
+    }
+    
+    fn is_less(&amp;self, other: &amp;Self) -&gt; bool {
+        matches!(self.compare(other), Ordering::Less)
+    }
+}
+
+use std::cmp::Ordering;
+
+struct Person {
+    name: String,
+    age: u32,
+}
+
+impl Comparable for Person {
+    fn compare(&amp;self, other: &amp;Self) -&gt; Ordering {
+        // TODO: Implement - compare by age, then by name
+    }
+}
+
+struct Product {
+    name: String,
+    price: f64,
+}
+
+impl Comparable for Product {
+    fn compare(&amp;self, other: &amp;Self) -&gt; Ordering {
+        // TODO: Implement - compare by price
+    }
+}
+
+fn main() {
+    let p1 = Person { name: "Alice".to_string(), age: 30 };
+    let p2 = Person { name: "Bob".to_string(), age: 25 };
+    
+    println!("Is Alice older than Bob? {}", p1.is_greater(&amp;p2));
+}</code></pre></pre>
+<h3 id="exercise-2-trait-objects-with-multiple-behaviors"><a class="header" href="#exercise-2-trait-objects-with-multiple-behaviors">Exercise 2: Trait Objects with Multiple Behaviors</a></h3>
+<p>Build a plugin system using trait objects:</p>
+<pre><pre class="playground"><code class="language-rust">trait Plugin {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn execute(&amp;self);
+}
+
+trait Configurable {
+    fn configure(&amp;mut self, config: &amp;str);
+}
+
+// Create different plugin types
+struct LogPlugin {
+    name: String,
+    level: String,
+}
+
+struct MetricsPlugin {
+    name: String,
+    interval: u32,
+}
+
+// TODO: Implement Plugin and Configurable for both types
+
+struct PluginManager {
+    plugins: Vec&lt;Box&lt;dyn Plugin&gt;&gt;,
+}
+
+impl PluginManager {
+    fn new() -&gt; Self {
+        PluginManager { plugins: Vec::new() }
+    }
+    
+    fn register(&amp;mut self, plugin: Box&lt;dyn Plugin&gt;) {
+        // TODO: Add plugin to the list
+    }
+    
+    fn run_all(&amp;self) {
+        // TODO: Execute all plugins
+    }
+}
+
+fn main() {
+    let mut manager = PluginManager::new();
+    
+    // TODO: Create and register plugins
+    // manager.register(Box::new(...));
+    
+    manager.run_all();
+}</code></pre></pre>
+<h3 id="exercise-3-custom-iterator-trait-implementation"><a class="header" href="#exercise-3-custom-iterator-trait-implementation">Exercise 3: Custom Iterator Trait Implementation</a></h3>
+<p>Create a trait that extends Iterator functionality:</p>
+<pre><pre class="playground"><code class="language-rust">trait FilterMap: Iterator {
+    fn filter_map_custom&lt;B, F&gt;(self, f: F) -&gt; FilterMapCustom&lt;Self, F&gt;
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -&gt; Option&lt;B&gt;,
+    {
+        FilterMapCustom { iter: self, f }
+    }
+}
+
+struct FilterMapCustom&lt;I, F&gt; {
+    iter: I,
+    f: F,
+}
+
+// TODO: Implement Iterator for FilterMapCustom
+
+// Implement FilterMap for all iterators
+impl&lt;I: Iterator&gt; FilterMap for I {}
+
+fn main() {
+    let numbers = vec![1, 2, 3, 4, 5, 6];
+    
+    // Use the custom filter_map
+    let result: Vec&lt;i32&gt; = numbers
+        .into_iter()
+        .filter_map_custom(|x| {
+            if x % 2 == 0 {
+                Some(x * x)
+            } else {
+                None
+            }
+        })
+        .collect();
+    
+    println!("Even squares: {:?}", result);
+}</code></pre></pre>
+<hr />
 <h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
 <ol>
 <li><strong>Traits define shared behavior</strong> across different types</li>
 <li><strong>Static dispatch</strong> (generics) is faster but increases code size</li>
 <li><strong>Dynamic dispatch</strong> (trait objects) enables runtime polymorphism</li>
 <li><strong>Associated types</strong> provide cleaner APIs than generic parameters</li>
-<li><strong>Coherence rules</strong> prevent conflicting implementations</li>
+<li><strong>Operator overloading</strong> is done through standard traits</li>
+<li><strong>Supertraits</strong> allow building trait hierarchies</li>
+<li><strong>From/Into</strong> traits enable type conversions</li>
 <li><strong>Default implementations</strong> reduce boilerplate code</li>
-<li><strong>Trait bounds</strong> should be as minimal as possible</li>
 </ol>
 <p><strong>Next Up:</strong> In Chapter 8, we'll explore generics - Rust's powerful system for writing flexible, reusable code with type parameters.</p>
 
@@ -418,22 +666,6 @@ impl Iterator for Counter {
 
         </div>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
 

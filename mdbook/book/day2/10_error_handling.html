@@ -287,13 +287,460 @@ fn square_root(x: f64) -&gt; Result&lt;f64, MathError&gt; {
 }
 <span class="boring">}</span></code></pre></pre>
 <hr />
+<h2 id="error-conversion-and-chaining"><a class="header" href="#error-conversion-and-chaining">Error Conversion and Chaining</a></h2>
+<h3 id="the-from-trait-for-error-conversion"><a class="header" href="#the-from-trait-for-error-conversion">The From Trait for Error Conversion</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::fs::File;
+use std::io;
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum AppError {
+    Io(io::Error),
+    Parse(ParseIntError),
+    Custom(String),
+}
+
+// Automatic conversion from io::Error
+impl From&lt;io::Error&gt; for AppError {
+    fn from(error: io::Error) -&gt; Self {
+        AppError::Io(error)
+    }
+}
+
+// Automatic conversion from ParseIntError
+impl From&lt;ParseIntError&gt; for AppError {
+    fn from(error: ParseIntError) -&gt; Self {
+        AppError::Parse(error)
+    }
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        match self {
+            AppError::Io(e) =&gt; write!(f, "IO error: {}", e),
+            AppError::Parse(e) =&gt; write!(f, "Parse error: {}", e),
+            AppError::Custom(msg) =&gt; write!(f, "Error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for AppError {}
+
+// Now ? operator works seamlessly
+fn read_number_from_file(filename: &amp;str) -&gt; Result&lt;i32, AppError&gt; {
+    let contents = std::fs::read_to_string(filename)?; // io::Error -&gt; AppError
+    let number = contents.trim().parse::&lt;i32&gt;()?;       // ParseIntError -&gt; AppError
+    
+    if number &lt; 0 {
+        return Err(AppError::Custom("Number must be positive".to_string()));
+    }
+    
+    Ok(number)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="chaining-multiple-operations"><a class="header" href="#chaining-multiple-operations">Chaining Multiple Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::path::Path;
+
+fn process_config_file(path: &amp;Path) -&gt; Result&lt;Config, AppError&gt; {
+    std::fs::read_to_string(path)?
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty() &amp;&amp; !line.starts_with('#'))
+        .map(|line| parse_config_line(line))
+        .collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()?
+        .into_iter()
+        .fold(Config::default(), |mut cfg, (key, value)| {
+            cfg.set(&amp;key, value);
+            cfg
+        })
+        .validate()
+        .map_err(|e| AppError::Custom(e))
+}
+
+struct Config {
+    settings: HashMap&lt;String, String&gt;,
+}
+
+impl Config {
+    fn default() -&gt; Self {
+        Config { settings: HashMap::new() }
+    }
+    
+    fn set(&amp;mut self, key: &amp;str, value: String) {
+        self.settings.insert(key.to_string(), value);
+    }
+    
+    fn validate(self) -&gt; Result&lt;Config, String&gt; {
+        if self.settings.is_empty() {
+            Err("Configuration is empty".to_string())
+        } else {
+            Ok(self)
+        }
+    }
+}
+
+fn parse_config_line(line: &amp;str) -&gt; Result&lt;(String, String), AppError&gt; {
+    let parts: Vec&lt;&amp;str&gt; = line.splitn(2, '=').collect();
+    if parts.len() != 2 {
+        return Err(AppError::Custom(format!("Invalid config line: {}", line)));
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="working-with-external-error-libraries"><a class="header" href="#working-with-external-error-libraries">Working with External Error Libraries</a></h2>
+<h3 id="using-anyhow-for-applications"><a class="header" href="#using-anyhow-for-applications">Using anyhow for Applications</a></h3>
+<pre><pre class="playground"><code class="language-rust">use anyhow::{Context, Result, bail};
+
+// anyhow::Result is Result&lt;T, anyhow::Error&gt;
+fn load_config(path: &amp;str) -&gt; Result&lt;Config&gt; {
+    let contents = std::fs::read_to_string(path)
+        .context("Failed to read config file")?;
+    
+    let config: Config = serde_json::from_str(&amp;contents)
+        .context("Failed to parse JSON config")?;
+    
+    if config.port == 0 {
+        bail!("Invalid port: 0");
+    }
+    
+    Ok(config)
+}
+
+fn main() -&gt; Result&lt;()&gt; {
+    let config = load_config("app.json")?;
+    
+    // Chain multiple operations with context
+    let server = create_server(&amp;config)
+        .context("Failed to create server")?;
+    
+    server.run()
+        .context("Server failed during execution")?;
+    
+    Ok(())
+}</code></pre></pre>
+<h3 id="using-thiserror-for-libraries"><a class="header" href="#using-thiserror-for-libraries">Using thiserror for Libraries</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum DataStoreError {
+    #[error("data not found")]
+    NotFound,
+    
+    #[error("permission denied: {0}")]
+    PermissionDenied(String),
+    
+    #[error("invalid input: {msg}")]
+    InvalidInput { msg: String },
+    
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+    
+    #[error("serialization error")]
+    Serialization(#[from] serde_json::Error),
+    
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+// Use in library code
+fn get_user(id: u64) -&gt; Result&lt;User, DataStoreError&gt; {
+    if id == 0 {
+        return Err(DataStoreError::InvalidInput { 
+            msg: "ID cannot be 0".to_string() 
+        });
+    }
+    
+    let user = db::query_user(id)?; // Automatic conversion from sqlx::Error
+    Ok(user)
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="error-handling-patterns"><a class="header" href="#error-handling-patterns">Error Handling Patterns</a></h2>
+<h3 id="early-returns-with-"><a class="header" href="#early-returns-with-">Early Returns with ?</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn process_data(input: &amp;str) -&gt; Result&lt;String, Box&lt;dyn std::error::Error&gt;&gt; {
+    let parsed = parse_input(input)?;
+    let validated = validate(parsed)?;
+    let processed = transform(validated)?;
+    Ok(format_output(processed))
+}
+
+// Compare with nested match statements (avoid this!)
+fn process_data_verbose(input: &amp;str) -&gt; Result&lt;String, Box&lt;dyn std::error::Error&gt;&gt; {
+    match parse_input(input) {
+        Ok(parsed) =&gt; {
+            match validate(parsed) {
+                Ok(validated) =&gt; {
+                    match transform(validated) {
+                        Ok(processed) =&gt; Ok(format_output(processed)),
+                        Err(e) =&gt; Err(e.into()),
+                    }
+                },
+                Err(e) =&gt; Err(e.into()),
+            }
+        },
+        Err(e) =&gt; Err(e.into()),
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="collecting-results"><a class="header" href="#collecting-results">Collecting Results</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn process_files(paths: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;String&gt;, io::Error&gt; {
+    paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()
+}
+
+// Handle partial success
+fn process_files_partial(paths: &amp;[&amp;str]) -&gt; (Vec&lt;String&gt;, Vec&lt;io::Error&gt;) {
+    let results: Vec&lt;Result&lt;String, io::Error&gt;&gt; = paths.iter()
+        .map(|path| std::fs::read_to_string(path))
+        .collect();
+    
+    let mut successes = Vec::new();
+    let mut failures = Vec::new();
+    
+    for result in results {
+        match result {
+            Ok(content) =&gt; successes.push(content),
+            Err(e) =&gt; failures.push(e),
+        }
+    }
+    
+    (successes, failures)
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="testing-error-cases"><a class="header" href="#testing-error-cases">Testing Error Cases</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_division_by_zero() {
+        let result = divide(10.0, 0.0);
+        assert!(result.is_err());
+        
+        match result {
+            Err(MathError::DivisionByZero) =&gt; (),
+            _ =&gt; panic!("Expected DivisionByZero error"),
+        }
+    }
+    
+    #[test]
+    fn test_file_not_found() {
+        let result = read_file_contents("nonexistent.txt");
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    fn test_panic_condition() {
+        assert!(false, "assertion failed");
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<hr />
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<h3 id="exercise-1-build-a-configuration-parser"><a class="header" href="#exercise-1-build-a-configuration-parser">Exercise 1: Build a Configuration Parser</a></h3>
+<p>Create a robust configuration parser with proper error handling:</p>
+<pre><pre class="playground"><code class="language-rust">use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+#[derive(Debug)]
+enum ConfigError {
+    IoError(std::io::Error),
+    ParseError(String),
+    ValidationError(String),
+}
+
+// TODO: Implement Display and Error traits for ConfigError
+// TODO: Implement From&lt;std::io::Error&gt; for automatic conversion
+
+struct Config {
+    settings: HashMap&lt;String, String&gt;,
+}
+
+impl Config {
+    fn from_file&lt;P: AsRef&lt;Path&gt;&gt;(path: P) -&gt; Result&lt;Self, ConfigError&gt; {
+        // TODO: Read file, parse lines, handle comments (#)
+        // TODO: Parse key=value pairs
+        // TODO: Validate required keys exist
+        todo!()
+    }
+    
+    fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;String&gt; {
+        self.settings.get(key)
+    }
+    
+    fn get_required(&amp;self, key: &amp;str) -&gt; Result&lt;&amp;String, ConfigError&gt; {
+        // TODO: Return error if key doesn't exist
+        todo!()
+    }
+    
+    fn get_int(&amp;self, key: &amp;str) -&gt; Result&lt;i32, ConfigError&gt; {
+        // TODO: Get value and parse as integer
+        todo!()
+    }
+}
+
+fn main() -&gt; Result&lt;(), ConfigError&gt; {
+    let config = Config::from_file("app.conf")?;
+    let port = config.get_int("port")?;
+    let host = config.get_required("host")?;
+    
+    println!("Starting server on {}:{}", host, port);
+    Ok(())
+}</code></pre></pre>
+<h3 id="exercise-2-multi-error-handler"><a class="header" href="#exercise-2-multi-error-handler">Exercise 2: Multi-Error Handler</a></h3>
+<p>Build a system that can handle multiple error types elegantly:</p>
+<pre><pre class="playground"><code class="language-rust">use std::fs::File;
+use std::io::{self, Read};
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum ProcessError {
+    FileError { path: String, error: io::Error },
+    ParseError { line: usize, error: ParseIntError },
+    ValidationError(String),
+}
+
+// TODO: Implement Display and Error traits
+
+struct DataProcessor {
+    errors: Vec&lt;ProcessError&gt;,
+}
+
+impl DataProcessor {
+    fn new() -&gt; Self {
+        DataProcessor { errors: Vec::new() }
+    }
+    
+    fn process_file(&amp;mut self, path: &amp;str) -&gt; Result&lt;Vec&lt;i32&gt;, ProcessError&gt; {
+        // TODO: Read file, parse each line as integer
+        // TODO: Collect all errors instead of failing on first
+        // TODO: Validate all numbers are positive
+        todo!()
+    }
+    
+    fn has_errors(&amp;self) -&gt; bool {
+        !self.errors.is_empty()
+    }
+    
+    fn report_errors(&amp;self) {
+        // TODO: Print all collected errors
+        todo!()
+    }
+}
+
+fn main() {
+    let mut processor = DataProcessor::new();
+    
+    match processor.process_file("numbers.txt") {
+        Ok(numbers) =&gt; println!("Processed {} numbers", numbers.len()),
+        Err(e) =&gt; eprintln!("Fatal error: {}", e),
+    }
+    
+    if processor.has_errors() {
+        processor.report_errors();
+    }
+}</code></pre></pre>
+<h3 id="exercise-3-result-chain-builder"><a class="header" href="#exercise-3-result-chain-builder">Exercise 3: Result Chain Builder</a></h3>
+<p>Create a builder pattern that properly handles errors at each step:</p>
+<pre><pre class="playground"><code class="language-rust">#[derive(Debug)]
+struct EmailBuilder {
+    to: Option&lt;String&gt;,
+    from: Option&lt;String&gt;,
+    subject: Option&lt;String&gt;,
+    body: Option&lt;String&gt;,
+}
+
+#[derive(Debug)]
+enum EmailError {
+    MissingField(&amp;'static str),
+    InvalidEmail(String),
+}
+
+// TODO: Implement builder methods that return Result
+impl EmailBuilder {
+    fn new() -&gt; Self {
+        EmailBuilder {
+            to: None,
+            from: None,
+            subject: None,
+            body: None,
+        }
+    }
+    
+    fn to(mut self, email: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Validate email format
+        todo!()
+    }
+    
+    fn from(mut self, email: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Validate email format
+        todo!()
+    }
+    
+    fn subject(mut self, subject: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Ensure subject is not empty
+        todo!()
+    }
+    
+    fn body(mut self, body: &amp;str) -&gt; Result&lt;Self, EmailError&gt; {
+        // TODO: Set body
+        todo!()
+    }
+    
+    fn build(self) -&gt; Result&lt;Email, EmailError&gt; {
+        // TODO: Ensure all required fields are set
+        todo!()
+    }
+}
+
+struct Email {
+    to: String,
+    from: String,
+    subject: String,
+    body: String,
+}
+
+fn main() {
+    let email_result = EmailBuilder::new()
+        .to("user@example.com")?
+        .from("sender@example.com")?
+        .subject("Hello")?
+        .body("This is the email body")?
+        .build();
+    
+    match email_result {
+        Ok(email) =&gt; println!("Email created successfully"),
+        Err(e) =&gt; eprintln!("Failed to create email: {:?}", e),
+    }
+}</code></pre></pre>
+<hr />
 <h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
 <ol>
 <li><strong>Use Result&lt;T, E&gt;</strong> for recoverable errors, panic! for unrecoverable ones</li>
 <li><strong>The ? operator</strong> makes error propagation clean and efficient</li>
 <li><strong>Custom error types</strong> should implement Display and Error traits</li>
+<li><strong>Error conversion</strong> with From trait enables seamless ? usage</li>
+<li><strong>anyhow</strong> is great for applications, <strong>thiserror</strong> for libraries</li>
+<li><strong>Chain operations</strong> with Result for clean error handling</li>
 <li><strong>Test error cases</strong> as thoroughly as success cases</li>
-<li><strong>Zero-cost abstractions</strong> - proper error handling is fast</li>
+<li><strong>Collect multiple errors</strong> when appropriate instead of failing fast</li>
 </ol>
 <p><strong>Next Up:</strong> In Chapter 11, we'll explore iterators and closures - Rust's functional programming features that make data processing both efficient and expressive.</p>
 
@@ -326,22 +773,6 @@ fn square_root(x: f64) -&gt; Result&lt;f64, MathError&gt; {
 
         </div>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
 
