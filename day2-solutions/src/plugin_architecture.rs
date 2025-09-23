@@ -136,6 +136,12 @@ pub mod registry {
         execution_order: Vec<String>,
     }
     
+    impl Default for PluginRegistry {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl PluginRegistry {
         pub fn new() -> Self {
             PluginRegistry {

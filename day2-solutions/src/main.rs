@@ -8,6 +8,7 @@ fn main() {
     demonstrate_collections();
     demonstrate_traits_chapter();
     demonstrate_generics();
+    demonstrate_pattern_matching();
     demonstrate_error_handling();
     demonstrate_iterators();
     demonstrate_modules();
@@ -38,31 +39,106 @@ fn demonstrate_traits_chapter() {
 
 fn demonstrate_generics() {
     println!("\n--- Chapter 8: GENERICS ---\n");
-    
+
     // Exercise 1: Queue
     let mut queue = generics::Queue::new();
     queue.enqueue("First");
     queue.enqueue("Second");
     queue.enqueue("Third");
-    
+
     println!("Queue operations:");
     while let Some(item) = queue.dequeue() {
         println!("  Dequeued: {}", item);
     }
-    
+
     // Exercise 2: Min function
     println!("\nMin function:");
     println!("  min(5, 3) = {}", generics::min(5, 3));
-    println!("  min(2.7, 3.14) = {}", generics::min(2.7, 3.14));
-    
+    println!("  min(2.7, 3.14) = {}", generics::min(2.7, std::f64::consts::PI));
+
     // Exercise 3: Builder with phantom types
     println!("\nRequest builder:");
     let request = generics::RequestBuilder::new("https://api.example.com".to_string())
         .add_header("Content-Type".to_string(), "application/json".to_string())
         .add_header("Authorization".to_string(), "Bearer token".to_string())
         .send();
-    
+
     println!("  {}", request.execute());
+}
+
+fn demonstrate_pattern_matching() {
+    println!("\n--- Chapter 9: PATTERN MATCHING ---\n");
+
+    // Exercise 1: HTTP Status Handler
+    println!("HTTP Status Handler:");
+
+    let responses = vec![
+        pattern_matching::HttpResponse {
+            status: pattern_matching::HttpStatus::Ok,
+            body: Some("Hello World".to_string()),
+            headers: vec![],
+        },
+        pattern_matching::HttpResponse {
+            status: pattern_matching::HttpStatus::Ok,
+            body: None,
+            headers: vec![],
+        },
+        pattern_matching::HttpResponse {
+            status: pattern_matching::HttpStatus::NotFound,
+            body: None,
+            headers: vec![],
+        },
+        pattern_matching::HttpResponse {
+            status: pattern_matching::HttpStatus::Custom(202),
+            body: None,
+            headers: vec![],
+        },
+        pattern_matching::HttpResponse {
+            status: pattern_matching::HttpStatus::Custom(403),
+            body: None,
+            headers: vec![],
+        },
+    ];
+
+    for (i, response) in responses.into_iter().enumerate() {
+        println!("  Response {}: {}", i + 1, pattern_matching::handle_response(response));
+    }
+
+    // Exercise 2: Configuration Parser
+    println!("\nConfiguration Parser:");
+    let config_lines = vec![
+        "name=John",
+        "port:int=8080",
+        "debug:bool=true",
+        "tags:array=rust,programming,tutorial",
+        "timeout=30",
+    ];
+
+    for line in config_lines {
+        match pattern_matching::parse_config_line(line) {
+            Ok((key, value)) => println!("  {} -> {:?}", key, value),
+            Err(e) => println!("  Error parsing '{}': {:?}", line, e),
+        }
+    }
+
+    // Exercise 3: State Machine
+    println!("\nState Machine:");
+    let mut state = pattern_matching::State::Idle;
+    println!("  Initial state: {:?}", state);
+
+    let events = vec![
+        pattern_matching::Event::Start,
+        pattern_matching::Event::Progress(25),
+        pattern_matching::Event::Progress(50),
+        pattern_matching::Event::Progress(75),
+        pattern_matching::Event::Finish,
+        pattern_matching::Event::Reset,
+    ];
+
+    for event in events {
+        state = pattern_matching::transition_state(state, event);
+        println!("  After event: {:?}", state);
+    }
 }
 
 fn demonstrate_error_handling() {
@@ -122,8 +198,7 @@ fn demonstrate_iterators() {
     let recent = analyzer.most_recent(3);
     println!("  Most recent 3 entries:");
     for entry in recent {
-        println!("    [{}] {}: {}", entry.timestamp, 
-                 format!("{:?}", entry.level), entry.message);
+        println!("    [{}] {:?}: {}", entry.timestamp, entry.level, entry.message);
     }
 }
 

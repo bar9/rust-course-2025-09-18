@@ -123,6 +123,12 @@ pub struct DataProcessor {
     pub errors: Vec<ProcessError>,
 }
 
+impl Default for DataProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataProcessor {
     pub fn new() -> Self {
         DataProcessor { errors: Vec::new() }
@@ -205,6 +211,12 @@ impl fmt::Display for EmailError {
 }
 
 impl std::error::Error for EmailError {}
+
+impl Default for EmailBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl EmailBuilder {
     pub fn new() -> Self {

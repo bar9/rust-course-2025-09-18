@@ -165,7 +165,7 @@ where
     type Item = B;
     
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(item) = self.iter.next() {
+        for item in self.iter.by_ref() {
             if let Some(result) = (self.f)(item) {
                 return Some(result);
             }

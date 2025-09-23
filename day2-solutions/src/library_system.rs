@@ -77,6 +77,12 @@ pub mod loans {
         pub(super) loans: HashMap<String, Loan>,  // ISBN -> Loan
     }
     
+    impl Default for LoanManager {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl LoanManager {
         pub fn new() -> Self {
             LoanManager {
@@ -140,6 +146,12 @@ pub mod library {
         pub loan_manager: LoanManager,
     }
     
+    impl Default for Library {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl Library {
         pub fn new() -> Self {
             Library {
