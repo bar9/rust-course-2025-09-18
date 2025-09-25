@@ -1,15 +1,13 @@
 #![no_std]
 
 use heapless::{Vec, String};
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 // Re-export core temperature types
 pub use temp_core::Temperature;
 
 // Fixed-capacity temperature reading for embedded systems
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EmbeddedTemperatureReading {
     pub temperature: Temperature,
     pub timestamp: u32, // Using u32 for embedded systems (seconds since boot)
@@ -116,8 +114,7 @@ impl<const N: usize> EmbeddedTemperatureStore<N> {
 }
 
 // Statistics without heap allocation
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EmbeddedTemperatureStats {
     pub min: Temperature,
     pub max: Temperature,
@@ -153,8 +150,7 @@ pub const TEMP_THRESHOLD_HIGH: u16 = celsius_to_adc_value(35.0); // 35°C
 pub const TEMP_CRITICAL: u16 = celsius_to_adc_value(50.0);       // 50°C
 
 // Binary protocol for embedded communication
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EmbeddedCommand {
     GetStatus,
     GetLatestReading,
@@ -164,8 +160,7 @@ pub enum EmbeddedCommand {
     SetSampleRate(u32),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EmbeddedResponse {
     Status {
         uptime_seconds: u32,
@@ -244,68 +239,12 @@ impl<const N: usize> EmbeddedProtocolHandler<N> {
         }
     }
 
-    pub fn serialize_binary(&self, response: &EmbeddedResponse) -> Result<Vec<u8, 256>, &'static str> {
-        let mut buffer = Vec::new();
-        // Simple binary encoding - just put a response type byte first
-        match response {
-            EmbeddedResponse::Status { uptime_seconds, reading_count, sample_rate, buffer_usage } => {
-                buffer.push(0).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&uptime_seconds.to_le_bytes()).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&reading_count.to_le_bytes()).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&sample_rate.to_le_bytes()).map_err(|_| "Buffer full")?;
-                buffer.push(*buffer_usage).map_err(|_| "Buffer full")?;
-            }
-            EmbeddedResponse::Reading(reading) => {
-                buffer.push(1).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&reading.temperature.celsius.to_le_bytes()).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&reading.timestamp.to_le_bytes()).map_err(|_| "Buffer full")?;
-            }
-            EmbeddedResponse::ReadingCount(count) => {
-                buffer.push(2).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&count.to_le_bytes()).map_err(|_| "Buffer full")?;
-            }
-            EmbeddedResponse::Stats(stats) => {
-                buffer.push(3).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&stats.min.celsius.to_le_bytes()).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&stats.max.celsius.to_le_bytes()).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&stats.average.celsius.to_le_bytes()).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&(stats.count as u32).to_le_bytes()).map_err(|_| "Buffer full")?;
-            }
-            EmbeddedResponse::Cleared => {
-                buffer.push(4).map_err(|_| "Buffer full")?;
-            }
-            EmbeddedResponse::SampleRateSet(rate) => {
-                buffer.push(5).map_err(|_| "Buffer full")?;
-                buffer.extend_from_slice(&rate.to_le_bytes()).map_err(|_| "Buffer full")?;
-            }
-            EmbeddedResponse::Error(code) => {
-                buffer.push(6).map_err(|_| "Buffer full")?;
-                buffer.push(*code).map_err(|_| "Buffer full")?;
-            }
-        }
-        Ok(buffer)
+    pub fn serialize_response(&self, response: &EmbeddedResponse) -> Result<Vec<u8, 256>, &'static str> {
+        postcard::to_vec(response).map_err(|_| "Serialization failed")
     }
 
-    pub fn deserialize_binary(&self, data: &[u8]) -> Result<EmbeddedCommand, &'static str> {
-        if data.is_empty() {
-            return Err("Empty data");
-        }
-        match data[0] {
-            0 => Ok(EmbeddedCommand::GetStatus),
-            1 => Ok(EmbeddedCommand::GetLatestReading),
-            2 => Ok(EmbeddedCommand::GetReadingCount),
-            3 => Ok(EmbeddedCommand::GetStats),
-            4 => Ok(EmbeddedCommand::ClearReadings),
-            5 => {
-                if data.len() >= 5 {
-                    let rate = u32::from_le_bytes([data[1], data[2], data[3], data[4]]);
-                    Ok(EmbeddedCommand::SetSampleRate(rate))
-                } else {
-                    Err("Invalid command data")
-                }
-            }
-            _ => Err("Unknown command"),
-        }
+    pub fn deserialize_command(&self, data: &[u8]) -> Result<EmbeddedCommand, &'static str> {
+        postcard::from_bytes(data).map_err(|_| "Deserialization failed")
     }
 
     pub fn add_reading(&mut self, temperature: Temperature, timestamp: u32) -> Result<(), &'static str> {
@@ -329,8 +268,7 @@ impl<const N: usize> Default for EmbeddedProtocolHandler<N> {
 }
 
 // Error types for embedded systems
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum EmbeddedError {
     BufferFull,
     InvalidSampleRate,
@@ -587,12 +525,13 @@ mod tests {
     }
 
     #[test]
-    fn test_protocol_binary_serialization() {
+    fn test_protocol_serde_serialization() {
         let handler: EmbeddedProtocolHandler<8> = EmbeddedProtocolHandler::new();
 
-        // Test command deserialization
-        let binary_command = [0]; // GetStatus command
-        let deserialized_command = handler.deserialize_binary(&binary_command).unwrap();
+        // Test command serialization/deserialization
+        let command = EmbeddedCommand::GetStatus;
+        let serialized_command = postcard::to_vec::<_, 64>(&command).unwrap();
+        let deserialized_command = handler.deserialize_command(&serialized_command).unwrap();
         assert_eq!(deserialized_command, EmbeddedCommand::GetStatus);
 
         // Test response serialization
@@ -603,15 +542,14 @@ mod tests {
             buffer_usage: 50,
         };
 
-        let serialized = handler.serialize_binary(&response).unwrap();
-        let binary_size = serialized.len();
-
-        // Should contain: type byte (1) + uptime (4) + reading_count (4) + sample_rate (4) + buffer_usage (1) = 14 bytes
-        assert_eq!(binary_size, 14);
+        let serialized = handler.serialize_response(&response).unwrap();
+        // Postcard produces compact binary output
+        assert!(serialized.len() > 0 && serialized.len() < 32);
 
         // Test command with parameter
-        let binary_command_with_param = [5, 100, 0, 0, 0]; // SetSampleRate(100)
-        let deserialized_command = handler.deserialize_binary(&binary_command_with_param).unwrap();
+        let command_with_param = EmbeddedCommand::SetSampleRate(100);
+        let serialized_command = postcard::to_vec::<_, 64>(&command_with_param).unwrap();
+        let deserialized_command = handler.deserialize_command(&serialized_command).unwrap();
         assert_eq!(deserialized_command, EmbeddedCommand::SetSampleRate(100));
     }
 

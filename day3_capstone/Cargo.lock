@@ -418,6 +418,7 @@ name = "temp_embedded"
 version = "0.1.0"
 dependencies = [
  "heapless",
+ "postcard",
  "serde",
  "serde_json",
  "temp_core",

@@ -1,11 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::fmt;
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Temperature {
     pub celsius: f32,
 }
@@ -63,6 +61,7 @@ pub mod mock;
 #[cfg(test)]
 mod tests {
     use super::*;
+    extern crate std;
 
     #[test]
     fn temperature_conversions() {
@@ -80,6 +79,6 @@ mod tests {
     #[test]
     fn temperature_display() {
         let temp = Temperature::new(23.456);
-        assert_eq!(format!("{}", temp), "23.5°C");
+        assert_eq!(std::format!("{}", temp), "23.5°C");
     }
 }

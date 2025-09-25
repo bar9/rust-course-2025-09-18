@@ -188,7 +188,7 @@ fn print_final_statistics(
         EmbeddedCommand::GetStatus,
         timestamp
     );
-    let binary_data = protocol_handler.serialize_binary(&status_response)
+    let binary_data = protocol_handler.serialize_response(&status_response)
         .unwrap_or_else(|_| heapless::Vec::new());
 
     println!("  🔧 Binary Protocol: {} bytes per command", binary_data.len());

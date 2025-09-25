@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-temp_core = { path = "../temp_core", features = ["serde"] }
+temp_core = { path = "../temp_core" }
 serde = { version = "1.0", features = ["derive"] }

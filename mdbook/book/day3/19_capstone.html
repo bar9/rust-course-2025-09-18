@@ -348,9 +348,10 @@ use esp_hal::{
 };
 use temp_embedded::{
     EmbeddedTemperatureStore, EmbeddedProtocolHandler,
-    EmbeddedCommand, EmbeddedResponse,
+    EmbeddedCommand, EmbeddedResponse, EmbeddedTemperatureReading,
     Temperature, READING_BUFFER_SIZE
 };
+use serde_json_core;
 
 #[entry]
 fn main() -&gt; ! {
@@ -377,6 +378,13 @@ fn main() -&gt; ! {
     esp_println::println!("🌡️ ESP32-C3 Temperature Monitor Starting");
     esp_println::println!("📊 Buffer capacity: {} readings", store.capacity());
     esp_println::println!("⚡ Sample rate: {} Hz", temp_embedded::SAMPLE_RATE_HZ);
+    esp_println::println!("📋 JSON output format: STATUS_JSON, STATS_JSON, READING_JSON");
+    esp_println::println!("🔧 Send JSON commands: {{\"GetStatus\"}}, {{\"GetStats\"}}, {{\"GetLatestReading\"}}");
+
+    // Demonstrate serde JSON functionality
+    esp_println::println!("=== SERDE DEMO: Processing sample commands ===");
+    demonstrate_json_commands(&amp;mut protocol_handler, 0);
+    esp_println::println!("=== Starting continuous monitoring ===");
 
     let mut reading_count = 0u32;
 
@@ -398,28 +406,72 @@ fn main() -&gt; ! {
             reading_count += 1;
 
             if reading_count % 10 == 0 {
-                // Process status command every 10 readings
+                // Process status command and output as JSON
                 let status_command = EmbeddedCommand::GetStatus;
                 let response = protocol_handler.process_command(status_command, timestamp);
 
-                if let EmbeddedResponse::Status { uptime_seconds, reading_count, buffer_usage, .. } = response {
-                    esp_println::println!("Status: {} readings, {}% buffer, uptime: {}s",
-                                         reading_count, buffer_usage, uptime_seconds);
+                // Serialize status response to JSON using serde
+                if let Ok(json_str) = serde_json_core::to_string::&lt;_, 256&gt;(&amp;response) {
+                    esp_println::println!("STATUS_JSON: {}", json_str);
                 }
 
-                // Show latest statistics
+                // Show latest statistics as JSON
                 let stats_command = EmbeddedCommand::GetStats;
                 let stats_response = protocol_handler.process_command(stats_command, timestamp);
 
-                if let EmbeddedResponse::Stats(stats) = stats_response {
-                    esp_println::println!("Stats: Min={:.1}°C, Max={:.1}°C, Avg={:.1}°C",
-                                         stats.min.celsius, stats.max.celsius, stats.average.celsius);
+                if let Ok(json_str) = serde_json_core::to_string::&lt;_, 256&gt;(&amp;stats_response) {
+                    esp_println::println!("STATS_JSON: {}", json_str);
+                }
+
+                // Output current temperature reading as JSON
+                let current_reading = EmbeddedTemperatureReading::new(temperature, timestamp);
+                if let Ok(json_str) = serde_json_core::to_string::&lt;_, 256&gt;(&amp;current_reading) {
+                    esp_println::println!("READING_JSON: {}", json_str);
                 }
             }
         }
 
         // Wait according to sample rate (100ms for 10Hz)
         delay.delay_millis(100);
+    }
+}
+
+fn demonstrate_json_commands(protocol_handler: &amp;mut EmbeddedProtocolHandler&lt;READING_BUFFER_SIZE&gt;, timestamp: u32) {
+    esp_println::println!("📝 Demonstrating JSON command processing with serde:");
+
+    // Add some sample readings first
+    let temp1 = Temperature::from_embedded_sensor(simulate_adc_reading(0));
+    let temp2 = Temperature::from_embedded_sensor(simulate_adc_reading(10));
+    let temp3 = Temperature::from_embedded_sensor(simulate_adc_reading(20));
+
+    let _ = protocol_handler.add_reading(temp1, timestamp);
+    let _ = protocol_handler.add_reading(temp2, timestamp + 1);
+    let _ = protocol_handler.add_reading(temp3, timestamp + 2);
+
+    // Demonstrate various commands
+    let commands = [
+        ("GetStatus", EmbeddedCommand::GetStatus),
+        ("GetStats", EmbeddedCommand::GetStats),
+        ("GetLatestReading", EmbeddedCommand::GetLatestReading),
+        ("GetReadingCount", EmbeddedCommand::GetReadingCount)
+    ];
+
+    for (cmd_name, command) in &amp;commands {
+        esp_println::println!("🔄 Processing command: {}", cmd_name);
+
+        // Process the command
+        let response = protocol_handler.process_command(command.clone(), timestamp + 10);
+
+        // Serialize response to JSON using serde
+        match serde_json_core::to_string::&lt;_, 512&gt;(&amp;response) {
+            Ok(json_response) =&gt; {
+                esp_println::println!("✅ JSON Response: {}", json_response);
+            }
+            Err(_) =&gt; {
+                esp_println::println!("❌ Failed to serialize response");
+            }
+        }
+        esp_println::println!("");
     }
 }
 
@@ -735,13 +787,148 @@ cargo size -p temp_embedded --release
 </code></pre>
 </li>
 <li>
-<p><strong>ESP32-C3 Deployment</strong> (optional):</p>
-<pre><code class="language-bash"># Build for ESP32-C3
-cargo build -p temp_esp32 --target riscv32imc-esp-espidf --release
+<p><strong>ESP32-C3 Hardware Deployment</strong>:</p>
+<p><strong>Prerequisites</strong>:</p>
+<ul>
+<li>ESP32-C3 development board</li>
+<li>USB-C cable for programming and power</li>
+<li>probe-rs installed: <code>cargo install probe-rs --features cli</code></li>
+<li>Any Serial USB Terminal app (like "Serial USB Terminal" on macOS, PuTTY, screen, etc.)</li>
+</ul>
+<p><strong>Hardware Setup</strong>:
+The ESP32-C3 includes an internal temperature sensor, so no external components are required for this demo.</p>
+<p><strong>Build and Flash</strong>:</p>
+<pre><code class="language-bash"># Navigate to ESP32 project
+cd day3_capstone/temp_esp32
 
-# Flash to hardware (if available)
-espflash flash --monitor target/riscv32imc-esp-espidf/release/temp_esp32
+# Build for ESP32-C3 hardware (default feature)
+cargo build --release
+
+# Flash with probe-rs (working command)
+probe-rs run --chip=esp32c3 target/riscv32imc-unknown-none-elf/release/temp_esp32
+
+# Alternative: Flash with espflash
+# espflash flash --monitor target/riscv32imc-unknown-none-elf/release/temp_esp32
 </code></pre>
+<p><strong>Serial Monitoring</strong>:
+The ESP32 now outputs via USB Serial (not RTT), making it compatible with any standard Serial USB Terminal app:</p>
+<pre><code class="language-bash"># Using screen (macOS/Linux)
+screen /dev/cu.usbmodem* 115200
+
+# Using Serial USB Terminal app
+# - Connect to the ESP32-C3 device
+# - Set baud rate to 115200
+# - You'll see JSON output with serde serialization examples
+</code></pre>
+<p><strong>Expected Output</strong>:
+The ESP32 now demonstrates serde serialization in embedded contexts:</p>
+<pre><code>🌡️ ESP32-C3 Temperature Monitor Starting
+📊 Buffer capacity: 64 readings
+⚡ Sample rate: 10 Hz
+📋 JSON output format: STATUS_JSON, STATS_JSON, READING_JSON
+🔧 Send JSON commands: {"GetStatus"}, {"GetStats"}, {"GetLatestReading"}
+=== SERDE DEMO: Processing sample commands ===
+🔄 Processing command: GetStatus
+✅ JSON Response: {"Status":{"uptime_seconds":0,"reading_count":3,"sample_rate":10,"buffer_usage":4}}
+🔄 Processing command: GetStats
+✅ JSON Response: {"Stats":{"min":{"celsius":25.0},"max":{"celsius":25.0},"average":{"celsius":25.0},"count":3}}
+=== Starting continuous monitoring ===
+STATUS_JSON: {"Status":{"uptime_seconds":1,"reading_count":10,"sample_rate":10,"buffer_usage":15}}
+STATS_JSON: {"Stats":{"min":{"celsius":22.0},"max":{"celsius":27.5},"average":{"celsius":24.8},"count":10}}
+READING_JSON: {"temperature":{"celsius":25.2},"timestamp":1001}
+</code></pre>
+<p><strong>Key Features Demonstrated</strong>:</p>
+<ul>
+<li><strong>Serde in no_std</strong>: JSON serialization works in embedded environments using <code>serde-json-core</code></li>
+<li><strong>Serial USB compatibility</strong>: Replaced RTT with USB Serial for universal terminal support</li>
+<li><strong>Educational value</strong>: Students see practical serde usage in embedded contexts</li>
+<li><strong>Structured output</strong>: JSON format makes data easily parseable by IoT systems and APIs</li>
+</ul>
+<h3 id="understanding-the-serial-usb-terminal-integration"><a class="header" href="#understanding-the-serial-usb-terminal-integration">Understanding the Serial USB Terminal Integration</a></h3>
+<p>The ESP32 implementation now includes several improvements for better accessibility:</p>
+<p><strong>1. USB Serial vs RTT (Real-Time Transfer)</strong>:</p>
+<ul>
+<li><strong>Previous</strong>: Used RTT which requires special debugging tools like probe-rs or J-Link</li>
+<li><strong>Current</strong>: Uses standard USB Serial that works with any serial terminal app</li>
+<li><strong>Benefit</strong>: More accessible for students and production IoT applications</li>
+</ul>
+<p><strong>2. Serde Integration in Embedded</strong>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Shows how serde works in no_std environments
+use serde_json_core;  // no_std compatible JSON library
+
+// All embedded types now support serialization:
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct EmbeddedTemperatureReading {
+    pub temperature: Temperature,
+    pub timestamp: u32,
+}
+
+// JSON serialization in no_std:
+if let Ok(json_str) = serde_json_core::to_string::&lt;_, 256&gt;(&amp;response) {
+    esp_println!("STATUS_JSON: {}", json_str);
+}
+<span class="boring">}</span></code></pre></pre>
+<p><strong>3. JSON Output Format</strong>:
+The system outputs structured JSON with prefixes for easy parsing:</p>
+<ul>
+<li><code>STATUS_JSON:</code> - System status and health information</li>
+<li><code>STATS_JSON:</code> - Temperature statistics (min, max, average)</li>
+<li><code>READING_JSON:</code> - Individual temperature readings with timestamps</li>
+</ul>
+<p><strong>4. Serial Terminal Setup</strong>:</p>
+<pre><code class="language-bash"># Different ways to connect to the ESP32:
+
+# Option 1: Using screen (built-in on macOS/Linux)
+screen /dev/cu.usbmodem* 115200
+# Press Ctrl+A, then K to exit
+
+# Option 2: Using minicom (Linux)
+minicom -b 115200 -D /dev/ttyUSB0
+
+# Option 3: Serial USB Terminal app (GUI - recommended for beginners)
+# - Download from Mac App Store or similar
+# - Connect to ESP32-C3 device
+# - Set baud rate: 115200
+# - Data bits: 8, Parity: None, Stop bits: 1
+</code></pre>
+<p><strong>5. JSON Parsing Examples</strong>:
+The JSON output can be easily parsed by other systems:</p>
+<pre><code class="language-python"># Python example for parsing ESP32 output
+import json
+import serial
+
+ser = serial.Serial('/dev/cu.usbmodem*', 115200)
+
+while True:
+    line = ser.readline().decode('utf-8').strip()
+    if line.startswith('STATUS_JSON:'):
+        json_data = line[12:]  # Remove prefix
+        status = json.loads(json_data)
+        print(f"Uptime: {status['Status']['uptime_seconds']}s")
+        print(f"Readings: {status['Status']['reading_count']}")
+    elif line.startswith('READING_JSON:'):
+        json_data = line[13:]  # Remove prefix
+        reading = json.loads(json_data)
+        print(f"Temperature: {reading['temperature']['celsius']}°C")
+</code></pre>
+<p><strong>Testing Different Modes</strong>:</p>
+<pre><code class="language-bash"># Run in simulation mode (for testing without hardware)
+cargo run --no-default-features --features simulation --target aarch64-apple-darwin
+
+# Run hardware mode (default - for actual ESP32-C3)
+cargo build --release
+probe-rs run --chip=esp32c3 target/riscv32imc-unknown-none-elf/release/temp_esp32
+</code></pre>
+<p><strong>Troubleshooting Tips</strong>:</p>
+<ul>
+<li><strong>Simulation mode</strong>: Requires <code>--target</code> flag to avoid embedded target compilation</li>
+<li><strong>Hardware vs Simulation features</strong>: Use <code>--no-default-features --features simulation</code> for desktop testing</li>
+<li><strong>Serial monitoring</strong>: Connect at 115200 baud to see JSON-formatted output</li>
+<li><strong>Build errors</strong>: Make sure <code>probe-rs</code> is installed with CLI features: <code>cargo install probe-rs --features cli</code></li>
+</ul>
 </li>
 </ol>
 <h3 id="success-criteria"><a class="header" href="#success-criteria">Success Criteria</a></h3>
@@ -762,11 +949,24 @@ Thread-safe storage (Chapter 14)</li>
 <li><input disabled="" type="checkbox"/>
 Async monitoring (Chapter 15)</li>
 <li><input disabled="" type="checkbox"/>
-Binary protocol communication (Chapter 16)</li>
+JSON and binary protocol communication (Chapter 16)</li>
 <li><input disabled="" type="checkbox"/>
-no_std operation (Chapter 17)</li>
+no_std operation with serde support (Chapter 17)</li>
 <li><input disabled="" type="checkbox"/>
-Multi-target building (Chapter 18)</li>
+Multi-target building and ESP32 deployment (Chapter 18)</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+ESP32-C3 deployment specific requirements:
+<ul>
+<li><input disabled="" type="checkbox"/>
+Successful flash with: <code>probe-rs run --chip=esp32c3 target/riscv32imc-unknown-none-elf/release/temp_esp32</code></li>
+<li><input disabled="" type="checkbox"/>
+Serial USB Terminal connectivity at 115200 baud</li>
+<li><input disabled="" type="checkbox"/>
+JSON output demonstrates serde in no_std environment</li>
+<li><input disabled="" type="checkbox"/>
+Structured data output (STATUS_JSON, STATS_JSON, READING_JSON format)</li>
 </ul>
 </li>
 <li><input disabled="" type="checkbox"/>
