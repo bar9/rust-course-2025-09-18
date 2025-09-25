@@ -153,45 +153,42 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="chapter-13-testing--documentation"><a class="header" href="#chapter-13-testing--documentation">Chapter 13: Testing &amp; Documentation</a></h1>
-<h2 id="unit-tests-integration-tests-documentation-tests-and-test-organization"><a class="header" href="#unit-tests-integration-tests-documentation-tests-and-test-organization">Unit Tests, Integration Tests, Documentation Tests, and Test Organization</a></h2>
+<h2 id="building-robust-rust-applications-with-comprehensive-testing"><a class="header" href="#building-robust-rust-applications-with-comprehensive-testing">Building Robust Rust Applications with Comprehensive Testing</a></h2>
 <h3 id="learning-objectives"><a class="header" href="#learning-objectives">Learning Objectives</a></h3>
 <p>By the end of this chapter, you'll be able to:</p>
 <ul>
-<li>Write effective unit tests using the built-in test framework</li>
-<li>Organize and structure integration tests properly</li>
-<li>Create and maintain documentation tests</li>
-<li>Use test attributes and conditional compilation</li>
-<li>Mock dependencies and external systems</li>
-<li>Benchmark code performance</li>
-<li>Apply test-driven development (TDD) practices in Rust</li>
-<li>Debug failing tests effectively</li>
+<li>Write comprehensive unit tests, integration tests, and documentation tests</li>
+<li>Use test-driven development (TDD) effectively in Rust</li>
+<li>Mock complex dependencies using traits</li>
+<li>Structure projects for maximum testability</li>
+<li>Generate and maintain excellent documentation</li>
+<li>Apply testing strategies to embedded systems (when needed)</li>
+<li>Debug test failures efficiently</li>
+<li>Measure and improve test coverage</li>
 </ul>
 <hr />
-<h2 id="rust-testing-philosophy-vs-other-languages"><a class="header" href="#rust-testing-philosophy-vs-other-languages">Rust Testing Philosophy vs Other Languages</a></h2>
-<h3 id="comparison-with-other-testing-frameworks"><a class="header" href="#comparison-with-other-testing-frameworks">Comparison with Other Testing Frameworks</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>C++ (Google Test)</th><th>C# (NUnit/MSTest)</th><th>Java (JUnit)</th><th>Rust (built-in)</th></tr></thead><tbody>
-<tr><td>Built-in framework</td><td>No</td><td>No</td><td>No</td><td>Yes</td></tr>
-<tr><td>Doc tests</td><td>No</td><td>Limited</td><td>No</td><td>Yes</td></tr>
-<tr><td>Parallel execution</td><td>Manual</td><td>Yes</td><td>Yes</td><td>Yes (default)</td></tr>
-<tr><td>Mocking</td><td>External libs</td><td>Built-in/external</td><td>External libs</td><td>External libs</td></tr>
-<tr><td>Benchmarking</td><td>External</td><td>External</td><td>External</td><td>Built-in (nightly)</td></tr>
-<tr><td>Test discovery</td><td>Manual/CMake</td><td>Automatic</td><td>Automatic</td><td>Automatic</td></tr>
+<h2 id="testing-in-rust-the-foundation-of-reliable-software"><a class="header" href="#testing-in-rust-the-foundation-of-reliable-software">Testing in Rust: The Foundation of Reliable Software</a></h2>
+<h3 id="why-testing-matters"><a class="header" href="#why-testing-matters">Why Testing Matters</a></h3>
+<p>Testing is crucial for building reliable software, and Rust's testing framework makes it both easy and powerful. Let's start with the basics and work up to more complex scenarios.</p>
+<p><strong>Testing Comparison Across Languages:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Aspect</th><th>C/C++</th><th>C#/Java</th><th>Python</th><th>Rust</th></tr></thead><tbody>
+<tr><td>Built-in framework</td><td>No</td><td>Yes</td><td>Yes</td><td><strong>Yes + Zero-cost</strong></td></tr>
+<tr><td>Mocking</td><td>Third-party</td><td>Frameworks</td><td>Built-in</td><td><strong>Trait-based</strong></td></tr>
+<tr><td>Documentation tests</td><td>No</td><td>Limited</td><td>doctest</td><td><strong>Integrated</strong></td></tr>
+<tr><td>Compile-time checks</td><td>Limited</td><td>Some</td><td>None</td><td><strong>Extensive</strong></td></tr>
+<tr><td>Performance testing</td><td>Manual</td><td>Frameworks</td><td>Third-party</td><td><strong>Built-in</strong></td></tr>
 </tbody></table>
 </div>
-<h3 id="basic-test-structure"><a class="header" href="#basic-test-structure">Basic Test Structure</a></h3>
+<h3 id="basic-unit-testing"><a class="header" href="#basic-unit-testing">Basic Unit Testing</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// lib.rs or main.rs
-pub fn add(a: i32, b: i32) -&gt; i32 {
-    a + b
+</span>// Simple function to test temperature conversions
+pub fn celsius_to_fahrenheit(celsius: f32) -&gt; f32 {
+    celsius * 9.0 / 5.0 + 32.0
 }
 
-pub fn divide(a: f64, b: f64) -&gt; Result&lt;f64, &amp;'static str&gt; {
-    if b == 0.0 {
-        Err("Division by zero")
-    } else {
-        Ok(a / b)
-    }
+pub fn fahrenheit_to_celsius(fahrenheit: f32) -&gt; f32 {
+    (fahrenheit - 32.0) * 5.0 / 9.0
 }
 
 #[cfg(test)]
@@ -199,1132 +196,565 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_add() {
-        assert_eq!(add(2, 3), 5);
-        assert_eq!(add(-1, 1), 0);
-        assert_eq!(add(0, 0), 0);
+    fn test_celsius_to_fahrenheit() {
+        assert_eq!(celsius_to_fahrenheit(0.0), 32.0);
+        assert_eq!(celsius_to_fahrenheit(100.0), 212.0);
+        assert!((celsius_to_fahrenheit(20.0) - 68.0).abs() &lt; 0.001);
     }
 
     #[test]
-    fn test_divide_success() {
-        assert_eq!(divide(10.0, 2.0), Ok(5.0));
-        assert_eq!(divide(7.0, 2.0), Ok(3.5));
+    fn test_fahrenheit_to_celsius() {
+        assert_eq!(fahrenheit_to_celsius(32.0), 0.0);
+        assert_eq!(fahrenheit_to_celsius(212.0), 100.0);
+        assert!((fahrenheit_to_celsius(68.0) - 20.0).abs() &lt; 0.001);
     }
 
     #[test]
-    fn test_divide_by_zero() {
-        assert_eq!(divide(10.0, 0.0), Err("Division by zero"));
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_panic_case() {
-        panic!("This test should panic");
-    }
-
-    #[test]
-    #[should_panic(expected = "specific error message")]
-    fn test_specific_panic() {
-        panic!("specific error message");
+    fn test_conversion_roundtrip() {
+        let temps = vec![0.0, 25.0, -40.0, 100.0];
+        for temp in temps {
+            let converted = fahrenheit_to_celsius(celsius_to_fahrenheit(temp));
+            assert!((converted - temp).abs() &lt; 0.001,
+                    "Roundtrip failed for {}: got {}", temp, converted);
+        }
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="unit-testing"><a class="header" href="#unit-testing">Unit Testing</a></h2>
-<h3 id="test-organization-and-attributes"><a class="header" href="#test-organization-and-attributes">Test Organization and Attributes</a></h3>
+<h2 id="trait-based-testing-and-mocking"><a class="header" href="#trait-based-testing-and-mocking">Trait-Based Testing and Mocking</a></h2>
+<p>One of Rust's greatest strengths is using traits to create testable abstractions. This allows us to test complex logic without depending on external systems.</p>
+<h3 id="the-power-of-trait-abstraction"><a class="header" href="#the-power-of-trait-abstraction">The Power of Trait Abstraction</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// src/calculator.rs
-pub struct Calculator {
-    memory: f64,
+</span>use std::fmt;
+
+// Our core Temperature type
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Temperature {
+    pub celsius: f32,
 }
 
-impl Calculator {
-    pub fn new() -&gt; Self {
-        Calculator { memory: 0.0 }
+impl Temperature {
+    pub fn new(celsius: f32) -&gt; Self {
+        Self { celsius }
     }
 
-    pub fn add(&amp;mut self, value: f64) -&gt; f64 {
-        self.memory += value;
-        self.memory
+    pub fn from_fahrenheit(fahrenheit: f32) -&gt; Self {
+        Self {
+            celsius: (fahrenheit - 32.0) * 5.0 / 9.0,
+        }
+    }
+}
+
+impl fmt::Display for Temperature {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(f, "{:.1}°C", self.celsius)
+    }
+}
+
+// Trait that abstracts temperature reading
+pub trait TemperatureSensor {
+    type Error: fmt::Debug;
+
+    fn read_temperature(&amp;mut self) -&gt; Result&lt;Temperature, Self::Error&gt;;
+    fn sensor_id(&amp;self) -&gt; &amp;str;
+}
+
+// Mock implementation for testing
+pub struct MockTemperatureSensor {
+    id: String,
+    temperature: f32,
+    fail_next: bool,
+    offline: bool,
+}
+
+impl MockTemperatureSensor {
+    pub fn new(id: String, temperature: f32) -&gt; Self {
+        Self {
+            id,
+            temperature,
+            fail_next: false,
+            offline: false,
+        }
     }
 
-    pub fn multiply(&amp;mut self, value: f64) -&gt; f64 {
-        self.memory *= value;
-        self.memory
+    pub fn set_temperature(&amp;mut self, temp: f32) {
+        self.temperature = temp;
     }
 
-    pub fn clear(&amp;mut self) {
-        self.memory = 0.0;
+    pub fn set_offline(&amp;mut self, offline: bool) {
+        self.offline = offline;
     }
 
-    pub fn get_memory(&amp;self) -&gt; f64 {
-        self.memory
+    pub fn fail_next_read(&amp;mut self) {
+        self.fail_next = true;
+    }
+}
+
+#[derive(Debug)]
+pub enum MockError {
+    SensorOffline,
+    ReadFailed,
+}
+
+impl TemperatureSensor for MockTemperatureSensor {
+    type Error = MockError;
+
+    fn read_temperature(&amp;mut self) -&gt; Result&lt;Temperature, Self::Error&gt; {
+        if self.offline {
+            return Err(MockError::SensorOffline);
+        }
+
+        if self.fail_next {
+            self.fail_next = false;
+            return Err(MockError::ReadFailed);
+        }
+
+        Ok(Temperature::new(self.temperature))
+    }
+
+    fn sensor_id(&amp;self) -&gt; &amp;str {
+        &amp;self.id
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod sensor_tests {
     use super::*;
 
-    // Helper function for tests
-    fn setup_calculator() -&gt; Calculator {
-        Calculator::new()
+    #[test]
+    fn mock_sensor_works() {
+        let mut sensor = MockTemperatureSensor::new("test-sensor".to_string(), 25.0);
+
+        let reading = sensor.read_temperature().unwrap();
+        assert_eq!(reading.celsius, 25.0);
+        assert_eq!(sensor.sensor_id(), "test-sensor");
     }
 
     #[test]
-    fn test_new_calculator() {
-        let calc = Calculator::new();
-        assert_eq!(calc.get_memory(), 0.0);
+    fn mock_sensor_can_fail() {
+        let mut sensor = MockTemperatureSensor::new("test-sensor".to_string(), 25.0);
+
+        sensor.fail_next_read();
+        let result = sensor.read_temperature();
+        assert!(matches!(result, Err(MockError::ReadFailed)));
+
+        // Should work again after failure
+        let reading = sensor.read_temperature().unwrap();
+        assert_eq!(reading.celsius, 25.0);
     }
 
     #[test]
-    fn test_add_operation() {
-        let mut calc = setup_calculator();
-        assert_eq!(calc.add(5.0), 5.0);
-        assert_eq!(calc.add(3.0), 8.0);
-    }
+    fn mock_sensor_can_be_offline() {
+        let mut sensor = MockTemperatureSensor::new("test-sensor".to_string(), 25.0);
 
-    #[test]
-    fn test_multiply_operation() {
-        let mut calc = setup_calculator();
-        calc.add(4.0);
-        assert_eq!(calc.multiply(3.0), 12.0);
-    }
+        sensor.set_offline(true);
+        let result = sensor.read_temperature();
+        assert!(matches!(result, Err(MockError::SensorOffline)));
 
-    #[test]
-    fn test_clear_memory() {
-        let mut calc = setup_calculator();
-        calc.add(10.0);
-        calc.clear();
-        assert_eq!(calc.get_memory(), 0.0);
-    }
-
-    // Test with custom error messages
-    #[test]
-    fn test_with_custom_message() {
-        let calc = Calculator::new();
-        assert_eq!(
-            calc.get_memory(), 
-            0.0, 
-            "New calculator should start with zero memory"
-        );
-    }
-
-    // Ignored test (won't run by default)
-    #[test]
-    #[ignore]
-    fn expensive_test() {
-        // This test takes a long time and is usually skipped
-        // Run with: cargo test -- --ignored
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        assert!(true);
-    }
-
-    // Test that only runs on specific platforms
-    #[test]
-    #[cfg(target_os = "linux")]
-    fn linux_specific_test() {
-        // This test only runs on Linux
-        assert!(true);
+        sensor.set_offline(false);
+        let reading = sensor.read_temperature().unwrap();
+        assert_eq!(reading.celsius, 25.0);
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<h3 id="advanced-testing-patterns"><a class="header" href="#advanced-testing-patterns">Advanced Testing Patterns</a></h3>
+<h2 id="test-organization-and-best-practices"><a class="header" href="#test-organization-and-best-practices">Test Organization and Best Practices</a></h2>
+<h3 id="test-module-organization"><a class="header" href="#test-module-organization">Test Module Organization</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use std::collections::HashMap;
+</span>// In your lib.rs or main module
+pub mod temperature {
+    pub use crate::{Temperature, TemperatureSensor, MockTemperatureSensor};
 
-pub struct UserService {
-    users: HashMap&lt;u32, String&gt;,
-    next_id: u32,
-}
+    // Business logic that uses the sensor
+    pub struct TemperatureMonitor&lt;S: TemperatureSensor&gt; {
+        sensor: S,
+        alert_threshold: Temperature,
+    }
 
-impl UserService {
-    pub fn new() -&gt; Self {
-        UserService {
-            users: HashMap::new(),
-            next_id: 1,
+    impl&lt;S: TemperatureSensor&gt; TemperatureMonitor&lt;S&gt; {
+        pub fn new(sensor: S, threshold_celsius: f32) -&gt; Self {
+            Self {
+                sensor,
+                alert_threshold: Temperature::new(threshold_celsius),
+            }
+        }
+
+        pub fn check_temperature(&amp;mut self) -&gt; Result&lt;bool, S::Error&gt; {
+            let current = self.sensor.read_temperature()?;
+            Ok(current.celsius &gt; self.alert_threshold.celsius)
+        }
+
+        pub fn get_sensor_id(&amp;self) -&gt; &amp;str {
+            self.sensor.sensor_id()
         }
     }
 
-    pub fn add_user(&amp;mut self, name: String) -&gt; u32 {
-        let id = self.next_id;
-        self.users.insert(id, name);
-        self.next_id += 1;
-        id
-    }
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::{MockTemperatureSensor, MockError};
 
-    pub fn get_user(&amp;self, id: u32) -&gt; Option&lt;&amp;String&gt; {
-        self.users.get(&amp;id)
-    }
+        #[test]
+        fn monitor_detects_high_temperature() {
+            let sensor = MockTemperatureSensor::new("test".to_string(), 30.0);
+            let mut monitor = TemperatureMonitor::new(sensor, 25.0);
 
-    pub fn update_user(&amp;mut self, id: u32, name: String) -&gt; Result&lt;(), &amp;'static str&gt; {
-        if self.users.contains_key(&amp;id) {
-            self.users.insert(id, name);
-            Ok(())
-        } else {
-            Err("User not found")
+            let is_alert = monitor.check_temperature().unwrap();
+            assert!(is_alert);
+        }
+
+        #[test]
+        fn monitor_handles_normal_temperature() {
+            let sensor = MockTemperatureSensor::new("test".to_string(), 20.0);
+            let mut monitor = TemperatureMonitor::new(sensor, 25.0);
+
+            let is_alert = monitor.check_temperature().unwrap();
+            assert!(!is_alert);
+        }
+
+        #[test]
+        fn monitor_propagates_sensor_errors() {
+            let mut sensor = MockTemperatureSensor::new("test".to_string(), 20.0);
+            sensor.fail_next_read();
+            let mut monitor = TemperatureMonitor::new(sensor, 25.0);
+
+            let result = monitor.check_temperature();
+            assert!(matches!(result, Err(MockError::ReadFailed)));
         }
     }
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="integration-testing"><a class="header" href="#integration-testing">Integration Testing</a></h3>
+<p>Integration tests go in the <code>tests/</code> directory and test your crate from the outside:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// tests/temperature_integration.rs
+use your_crate::{Temperature, TemperatureSensor, MockTemperatureSensor};
+use your_crate::temperature::TemperatureMonitor;
 
-    pub fn delete_user(&amp;mut self, id: u32) -&gt; Result&lt;String, &amp;'static str&gt; {
-        self.users.remove(&amp;id).ok_or("User not found")
-    }
+#[test]
+fn full_temperature_monitoring_workflow() {
+    let mut sensor = MockTemperatureSensor::new("integration-test".to_string(), 15.0);
+    let mut monitor = TemperatureMonitor::new(sensor, 20.0);
 
-    pub fn user_count(&amp;self) -&gt; usize {
-        self.users.len()
+    // Initially, temperature is below threshold
+    assert!(!monitor.check_temperature().unwrap());
+
+    // Simulate temperature rise
+    // Note: We can't modify the sensor after moving it into monitor
+    // This is where the real hardware implementation would change
+
+    // In a real scenario, you might have:
+    // - A sensor that reads from actual hardware
+    // - A monitor that runs in a loop
+    // - Integration with real systems
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="documentation-tests"><a class="header" href="#documentation-tests">Documentation Tests</a></h2>
+<p>Rust can run code examples in your documentation as tests:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Convert Celsius to Fahrenheit
+///
+/// # Examples
+///
+/// ```
+/// use your_crate::Temperature;
+///
+/// let temp = Temperature::new(20.0);
+/// assert!((temp.to_fahrenheit() - 68.0).abs() &lt; 0.1);
+/// ```
+///
+/// # Conversion Formula
+///
+/// The formula is: F = C × 9/5 + 32
+///
+/// ```
+/// use your_crate::Temperature;
+///
+/// // Freezing point of water
+/// assert_eq!(Temperature::new(0.0).to_fahrenheit(), 32.0);
+///
+/// // Boiling point of water
+/// assert_eq!(Temperature::new(100.0).to_fahrenheit(), 212.0);
+/// ```
+impl Temperature {
+    pub fn to_fahrenheit(&amp;self) -&gt; f32 {
+        self.celsius * 9.0 / 5.0 + 32.0
     }
 }
-
+<span class="boring">}</span></code></pre></pre>
+<p>Run documentation tests with:</p>
+<pre><code class="language-bash">cargo test --doc
+</code></pre>
+<h2 id="test-driven-development-tdd-in-rust"><a class="header" href="#test-driven-development-tdd-in-rust">Test-Driven Development (TDD) in Rust</a></h2>
+<p>TDD follows the Red-Green-Refactor cycle:</p>
+<ol>
+<li><strong>Red</strong>: Write a failing test</li>
+<li><strong>Green</strong>: Write minimal code to make it pass</li>
+<li><strong>Refactor</strong>: Improve the code while keeping tests passing</li>
+</ol>
+<h3 id="tdd-example-temperature-statistics"><a class="header" href="#tdd-example-temperature-statistics">TDD Example: Temperature Statistics</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Step 1: Write the test first (RED)
 #[cfg(test)]
-mod user_service_tests {
+mod stats_tests {
     use super::*;
 
-    // Fixture setup
-    fn setup_service_with_users() -&gt; (UserService, Vec&lt;u32&gt;) {
-        let mut service = UserService::new();
-        let mut ids = Vec::new();
-        
-        ids.push(service.add_user("Alice".to_string()));
-        ids.push(service.add_user("Bob".to_string()));
-        ids.push(service.add_user("Charlie".to_string()));
-        
-        (service, ids)
-    }
-
     #[test]
-    fn test_add_and_get_user() {
-        let mut service = UserService::new();
-        let id = service.add_user("John".to_string());
-        
-        assert_eq!(service.get_user(id), Some(&amp;"John".to_string()));
-        assert_eq!(service.user_count(), 1);
-    }
-
-    #[test]
-    fn test_update_existing_user() {
-        let (mut service, ids) = setup_service_with_users();
-        
-        let result = service.update_user(ids[0], "Alice Smith".to_string());
-        assert!(result.is_ok());
-        assert_eq!(service.get_user(ids[0]), Some(&amp;"Alice Smith".to_string()));
-    }
-
-    #[test]
-    fn test_update_nonexistent_user() {
-        let mut service = UserService::new();
-        let result = service.update_user(999, "Nobody".to_string());
-        assert_eq!(result, Err("User not found"));
-    }
-
-    #[test]
-    fn test_delete_user() {
-        let (mut service, ids) = setup_service_with_users();
-        
-        let deleted = service.delete_user(ids[1]);
-        assert_eq!(deleted, Ok("Bob".to_string()));
-        assert_eq!(service.user_count(), 2);
-        assert_eq!(service.get_user(ids[1]), None);
-    }
-
-    // Parameterized test pattern
-    #[test]
-    fn test_multiple_scenarios() {
-        let test_cases = vec![
-            ("Alice", 1),
-            ("Bob", 2),
-            ("", 3), // Edge case: empty string
-            ("Very Long Name That Might Cause Issues", 4),
+    fn temperature_stats_calculates_average() {
+        let temps = vec![
+            Temperature::new(10.0),
+            Temperature::new(20.0),
+            Temperature::new(30.0),
         ];
 
-        let mut service = UserService::new();
-        
-        for (name, expected_id) in test_cases {
-            let id = service.add_user(name.to_string());
-            assert_eq!(id, expected_id);
-            assert_eq!(service.get_user(id), Some(&amp;name.to_string()));
+        let stats = TemperatureStats::from_readings(&amp;temps);
+
+        assert_eq!(stats.average().celsius, 20.0);
+        assert_eq!(stats.min().celsius, 10.0);
+        assert_eq!(stats.max().celsius, 30.0);
+        assert_eq!(stats.count(), 3);
+    }
+
+    #[test]
+    fn temperature_stats_handles_empty_list() {
+        let temps = vec![];
+
+        let result = TemperatureStats::from_readings(&amp;temps);
+
+        assert!(result.is_none());
+    }
+}
+
+// Step 2: Write minimal implementation (GREEN)
+pub struct TemperatureStats {
+    min: Temperature,
+    max: Temperature,
+    average: Temperature,
+    count: usize,
+}
+
+impl TemperatureStats {
+    pub fn from_readings(readings: &amp;[Temperature]) -&gt; Option&lt;Self&gt; {
+        if readings.is_empty() {
+            return None;
         }
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="integration-tests"><a class="header" href="#integration-tests">Integration Tests</a></h2>
-<h3 id="test-directory-structure"><a class="header" href="#test-directory-structure">Test Directory Structure</a></h3>
-<pre><code>my_project/
-├── src/
-│   ├── lib.rs
-│   └── calculator.rs
-├── tests/
-│   ├── integration_test.rs
-│   ├── api_tests.rs
-│   └── common/
-│       └── mod.rs
-└── Cargo.toml
-</code></pre>
-<h3 id="integration-test-example"><a class="header" href="#integration-test-example">Integration Test Example</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// tests/integration_test.rs
-use my_project::Calculator;
 
-#[test]
-fn test_calculator_integration() {
-    let mut calc = Calculator::new();
-    
-    // Test a complete workflow
-    calc.add(10.0);
-    calc.multiply(2.0);
-    calc.add(5.0);
-    
-    assert_eq!(calc.get_memory(), 25.0);
-}
+        let mut min_temp = readings[0].celsius;
+        let mut max_temp = readings[0].celsius;
+        let mut sum = 0.0;
 
-#[test]
-fn test_calculator_multiple_instances() {
-    let mut calc1 = Calculator::new();
-    let mut calc2 = Calculator::new();
-    
-    calc1.add(10.0);
-    calc2.add(20.0);
-    
-    assert_eq!(calc1.get_memory(), 10.0);
-    assert_eq!(calc2.get_memory(), 20.0);
-    
-    // They should be independent
-    calc1.clear();
-    assert_eq!(calc1.get_memory(), 0.0);
-    assert_eq!(calc2.get_memory(), 20.0);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="common-test-utilities"><a class="header" href="#common-test-utilities">Common Test Utilities</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// tests/common/mod.rs
-use std::fs;
-use std::io;
-use tempfile::tempdir;
-
-pub fn setup_test_environment() -&gt; io::Result&lt;tempfile::TempDir&gt; {
-    let dir = tempdir()?;
-    // Setup test files, directories, etc.
-    Ok(dir)
-}
-
-pub fn create_test_file(dir: &amp;std::path::Path, name: &amp;str, content: &amp;str) -&gt; io::Result&lt;()&gt; {
-    let file_path = dir.join(name);
-    fs::write(file_path, content)
-}
-
-// tests/api_tests.rs
-mod common;
-
-use common::*;
-use my_project::*;
-
-#[test]
-fn test_file_operations() {
-    let temp_dir = setup_test_environment().unwrap();
-    
-    create_test_file(
-        temp_dir.path(), 
-        "test.txt", 
-        "Hello, World!"
-    ).unwrap();
-    
-    // Test your file processing logic here
-    let file_path = temp_dir.path().join("test.txt");
-    assert!(file_path.exists());
-    
-    // temp_dir is automatically cleaned up when it goes out of scope
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="documentation-tests"><a class="header" href="#documentation-tests">Documentation Tests</a></h2>
-<h3 id="basic-documentation-tests"><a class="header" href="#basic-documentation-tests">Basic Documentation Tests</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// src/math.rs
-
-/// Calculates the factorial of a number.
-/// 
-/// # Examples
-/// 
-/// ```
-/// use my_project::factorial;
-/// 
-/// assert_eq!(factorial(0), 1);
-/// assert_eq!(factorial(1), 1);
-/// assert_eq!(factorial(5), 120);
-/// ```
-/// 
-/// # Panics
-/// 
-/// This function will panic if the input is negative:
-/// 
-/// ```should_panic
-/// use my_project::factorial;
-/// 
-/// factorial(-1); // This will panic
-/// ```
-pub fn factorial(n: i32) -&gt; i32 {
-    match n {
-        0 | 1 =&gt; 1,
-        n if n &lt; 0 =&gt; panic!("Factorial is not defined for negative numbers"),
-        _ =&gt; n * factorial(n - 1),
-    }
-}
-
-/// Performs integer division with proper error handling.
-/// 
-/// # Examples
-/// 
-/// Basic usage:
-/// ```
-/// use my_project::safe_divide;
-/// 
-/// assert_eq!(safe_divide(10, 2), Ok(5));
-/// assert_eq!(safe_divide(10, 3), Ok(3)); // Integer division
-/// ```
-/// 
-/// Error handling:
-/// ```
-/// use my_project::safe_divide;
-/// 
-/// assert!(safe_divide(10, 0).is_err());
-/// match safe_divide(10, 0) {
-///     Ok(_) =&gt; panic!("Should not succeed"),
-///     Err(e) =&gt; assert_eq!(e, "Division by zero"),
-/// }
-/// ```
-/// 
-/// # Errors
-/// 
-/// Returns an error if the divisor is zero.
-pub fn safe_divide(dividend: i32, divisor: i32) -&gt; Result&lt;i32, &amp;'static str&gt; {
-    if divisor == 0 {
-        Err("Division by zero")
-    } else {
-        Ok(dividend / divisor)
-    }
-}
-
-/// A simple calculator struct.
-/// 
-/// # Examples
-/// 
-/// ```
-/// use my_project::SimpleCalculator;
-/// 
-/// let mut calc = SimpleCalculator::new();
-/// calc.add(5);
-/// calc.multiply(2);
-/// assert_eq!(calc.result(), 10);
-/// ```
-pub struct SimpleCalculator {
-    value: i32,
-}
-
-impl SimpleCalculator {
-    /// Creates a new calculator with value 0.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use my_project::SimpleCalculator;
-    /// 
-    /// let calc = SimpleCalculator::new();
-    /// assert_eq!(calc.result(), 0);
-    /// ```
-    pub fn new() -&gt; Self {
-        SimpleCalculator { value: 0 }
-    }
-
-    /// Adds a value to the calculator.
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use my_project::SimpleCalculator;
-    /// 
-    /// let mut calc = SimpleCalculator::new();
-    /// calc.add(5);
-    /// calc.add(3);
-    /// assert_eq!(calc.result(), 8);
-    /// ```
-    pub fn add(&amp;mut self, value: i32) {
-        self.value += value;
-    }
-
-    /// Multiplies the current value by the given value.
-    pub fn multiply(&amp;mut self, value: i32) {
-        self.value *= value;
-    }
-
-    /// Returns the current result.
-    pub fn result(&amp;self) -&gt; i32 {
-        self.value
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="advanced-documentation-test-patterns"><a class="header" href="#advanced-documentation-test-patterns">Advanced Documentation Test Patterns</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A configuration parser with various options.
-/// 
-/// # Examples
-/// 
-/// ```
-/// use my_project::ConfigParser;
-/// use std::collections::HashMap;
-/// 
-/// let mut parser = ConfigParser::new();
-/// parser.set("debug", "true");
-/// parser.set("port", "8080");
-/// 
-/// assert_eq!(parser.get("debug"), Some("true"));
-/// assert_eq!(parser.get_int("port"), Ok(8080));
-/// ```
-/// 
-/// Error handling:
-/// ```
-/// use my_project::ConfigParser;
-/// 
-/// let parser = ConfigParser::new();
-/// assert!(parser.get_int("nonexistent").is_err());
-/// ```
-/// 
-/// You can also test compilation failures:
-/// ```compile_fail
-/// use my_project::ConfigParser;
-/// 
-/// let parser = ConfigParser::new();
-/// parser.set("key", 123); // This should fail to compile
-/// ```
-pub struct ConfigParser {
-    config: std::collections::HashMap&lt;String, String&gt;,
-}
-
-impl ConfigParser {
-    pub fn new() -&gt; Self {
-        ConfigParser {
-            config: std::collections::HashMap::new(),
+        for reading in readings {
+            let temp = reading.celsius;
+            if temp &lt; min_temp {
+                min_temp = temp;
+            }
+            if temp &gt; max_temp {
+                max_temp = temp;
+            }
+            sum += temp;
         }
+
+        let average = sum / readings.len() as f32;
+
+        Some(Self {
+            min: Temperature::new(min_temp),
+            max: Temperature::new(max_temp),
+            average: Temperature::new(average),
+            count: readings.len(),
+        })
     }
 
-    pub fn set(&amp;mut self, key: &amp;str, value: &amp;str) {
-        self.config.insert(key.to_string(), value.to_string());
-    }
-
-    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;str&gt; {
-        self.config.get(key).map(|s| s.as_str())
-    }
-
-    pub fn get_int(&amp;self, key: &amp;str) -&gt; Result&lt;i32, Box&lt;dyn std::error::Error&gt;&gt; {
-        match self.get(key) {
-            Some(value) =&gt; Ok(value.parse()?),
-            None =&gt; Err(format!("Key '{}' not found", key).into()),
-        }
-    }
+    pub fn min(&amp;self) -&gt; Temperature { self.min }
+    pub fn max(&amp;self) -&gt; Temperature { self.max }
+    pub fn average(&amp;self) -&gt; Temperature { self.average }
+    pub fn count(&amp;self) -&gt; usize { self.count }
 }
+
+// Step 3: Refactor as needed while tests still pass
 <span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="test-organization-and-best-practices"><a class="header" href="#test-organization-and-best-practices">Test Organization and Best Practices</a></h2>
-<h3 id="test-configuration-in-cargotoml"><a class="header" href="#test-configuration-in-cargotoml">Test Configuration in Cargo.toml</a></h3>
-<pre><code class="language-toml"># Cargo.toml
-[package]
-name = "my_project"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.0", features = ["full"] }
-
-[dev-dependencies]
-tempfile = "3.0"
-mockall = "0.11"
-criterion = "0.5"
+<h2 id="advanced-testing-techniques"><a class="header" href="#advanced-testing-techniques">Advanced Testing Techniques</a></h2>
+<h3 id="property-based-testing-with-proptest"><a class="header" href="#property-based-testing-with-proptest">Property-Based Testing with <code>proptest</code></a></h3>
+<pre><code class="language-toml">[dev-dependencies]
 proptest = "1.0"
-
-# Test profiles
-[profile.test]
-opt-level = 1  # Faster compilation for tests
-
-# Benchmark configuration
-[[bench]]
-name = "my_benchmarks"
-harness = false
 </code></pre>
-<h3 id="property-based-testing"><a class="header" href="#property-based-testing">Property-Based Testing</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Add to [dev-dependencies]: proptest = "1.0"
-
-use proptest::prelude::*;
-
-fn reverse_string(s: &amp;str) -&gt; String {
-    s.chars().rev().collect()
-}
-
-#[cfg(test)]
-mod proptests {
+</span>#[cfg(test)]
+mod property_tests {
     use super::*;
     use proptest::prelude::*;
 
     proptest! {
         #[test]
-        fn test_reverse_twice_is_identity(s in ".*") {
-            let reversed_twice = reverse_string(&amp;reverse_string(&amp;s));
-            prop_assert_eq!(s, reversed_twice);
+        fn temperature_conversion_roundtrip(celsius in -273.15f32..1000.0f32) {
+            let temp = Temperature::new(celsius);
+            let fahrenheit = temp.to_fahrenheit();
+            let back_to_celsius = Temperature::from_fahrenheit(fahrenheit);
+
+            prop_assert!((back_to_celsius.celsius - celsius).abs() &lt; 0.001);
         }
 
         #[test]
-        fn test_reverse_length_unchanged(s in ".*") {
-            let reversed = reverse_string(&amp;s);
-            prop_assert_eq!(s.len(), reversed.len());
-        }
-
-        #[test]
-        fn test_factorial_properties(n in 0u32..10) {
-            let result = factorial(n as i32);
-            prop_assert!(result &gt; 0);
-            if n &gt; 0 {
-                prop_assert_eq!(result, n as i32 * factorial((n - 1) as i32));
+        fn temperature_display_never_panics(celsius in f32::NEG_INFINITY..f32::INFINITY) {
+            if celsius.is_finite() {
+                let temp = Temperature::new(celsius);
+                let _ = format!("{}", temp); // Should never panic
             }
         }
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<h3 id="mocking-with-mockall"><a class="header" href="#mocking-with-mockall">Mocking with Mockall</a></h3>
+<h3 id="benchmark-testing"><a class="header" href="#benchmark-testing">Benchmark Testing</a></h3>
+<pre><code class="language-toml">[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "temperature_bench"
+harness = false
+</code></pre>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Add to [dev-dependencies]: mockall = "0.11"
-
-use mockall::{automock, predicate::*};
-
-#[automock]
-trait DatabaseService {
-    fn get_user(&amp;self, id: u32) -&gt; Result&lt;String, String&gt;;
-    fn save_user(&amp;mut self, id: u32, name: String) -&gt; Result&lt;(), String&gt;;
-}
-
-struct UserManager&lt;D: DatabaseService&gt; {
-    db: D,
-}
-
-impl&lt;D: DatabaseService&gt; UserManager&lt;D&gt; {
-    fn new(db: D) -&gt; Self {
-        UserManager { db }
-    }
-
-    fn get_user_display_name(&amp;self, id: u32) -&gt; String {
-        match self.db.get_user(id) {
-            Ok(name) =&gt; format!("User: {}", name),
-            Err(_) =&gt; "Unknown User".to_string(),
-        }
-    }
-
-    fn update_user(&amp;mut self, id: u32, name: String) -&gt; Result&lt;String, String&gt; {
-        self.db.save_user(id, name.clone())?;
-        Ok(format!("Updated user {} to {}", id, name))
-    }
-}
-
-#[cfg(test)]
-mod mock_tests {
-    use super::*;
-
-    #[test]
-    fn test_get_user_display_name_success() {
-        let mut mock_db = MockDatabaseService::new();
-        mock_db
-            .expect_get_user()
-            .with(eq(1))
-            .times(1)
-            .returning(|_| Ok("Alice".to_string()));
-
-        let manager = UserManager::new(mock_db);
-        let result = manager.get_user_display_name(1);
-        assert_eq!(result, "User: Alice");
-    }
-
-    #[test]
-    fn test_get_user_display_name_error() {
-        let mut mock_db = MockDatabaseService::new();
-        mock_db
-            .expect_get_user()
-            .with(eq(999))
-            .times(1)
-            .returning(|_| Err("User not found".to_string()));
-
-        let manager = UserManager::new(mock_db);
-        let result = manager.get_user_display_name(999);
-        assert_eq!(result, "Unknown User");
-    }
-
-    #[test]
-    fn test_update_user() {
-        let mut mock_db = MockDatabaseService::new();
-        mock_db
-            .expect_save_user()
-            .with(eq(1), eq("Bob".to_string()))
-            .times(1)
-            .returning(|_, _| Ok(()));
-
-        let mut manager = UserManager::new(mock_db);
-        let result = manager.update_user(1, "Bob".to_string());
-        assert_eq!(result, Ok("Updated user 1 to Bob".to_string()));
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="benchmarking"><a class="header" href="#benchmarking">Benchmarking</a></h2>
-<h3 id="basic-benchmarks-with-criterion"><a class="header" href="#basic-benchmarks-with-criterion">Basic Benchmarks with Criterion</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// benches/my_benchmarks.rs
+</span>// benches/temperature_bench.rs
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use my_project::*;
+use your_crate::Temperature;
 
-fn bench_factorial(c: &amp;mut Criterion) {
-    c.bench_function("factorial 10", |b| {
-        b.iter(|| factorial(black_box(10)))
-    });
-    
-    c.bench_function("factorial 20", |b| {
-        b.iter(|| factorial(black_box(20)))
-    });
-}
-
-fn bench_string_operations(c: &amp;mut Criterion) {
-    let test_string = "Hello, World! This is a test string for benchmarking.";
-    
-    c.bench_function("reverse string", |b| {
-        b.iter(|| reverse_string(black_box(test_string)))
-    });
-    
-    c.bench_function("reverse and reverse again", |b| {
+fn bench_temperature_conversion(c: &amp;mut Criterion) {
+    c.bench_function("celsius_to_fahrenheit", |b| {
         b.iter(|| {
-            let reversed = reverse_string(black_box(test_string));
-            reverse_string(&amp;reversed)
+            let temp = Temperature::new(black_box(25.0));
+            black_box(temp.to_fahrenheit())
         })
     });
 }
 
-fn bench_calculator_operations(c: &amp;mut Criterion) {
-    c.bench_function("calculator workflow", |b| {
-        b.iter(|| {
-            let mut calc = SimpleCalculator::new();
-            calc.add(black_box(100));
-            calc.multiply(black_box(2));
-            calc.add(black_box(50));
-            calc.result()
-        })
-    });
-}
-
-criterion_group!(
-    benches, 
-    bench_factorial, 
-    bench_string_operations,
-    bench_calculator_operations
-);
+criterion_group!(benches, bench_temperature_conversion);
 criterion_main!(benches);
 <span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="test-driven-development-tdd-example"><a class="header" href="#test-driven-development-tdd-example">Test-Driven Development (TDD) Example</a></h2>
+<h2 id="embedded-testing-considerations"><a class="header" href="#embedded-testing-considerations">Embedded Testing Considerations</a></h2>
+<p>When your code needs to run on embedded systems:</p>
+<h3 id="testing-with-no_std"><a class="header" href="#testing-with-no_std">Testing with <code>no_std</code></a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Following TDD: Red -&gt; Green -&gt; Refactor
+</span>#![cfg_attr(not(test), no_std)]
 
-// Step 1: Write failing tests first
-#[cfg(test)]
-mod stack_tests {
-    use super::*;
+<span class="boring">fn main() {
+</span>// Use heapless collections instead of std
+use heapless::Vec;
 
-    #[test]
-    fn test_new_stack_is_empty() {
-        let stack = Stack::&lt;i32&gt;::new();
-        assert!(stack.is_empty());
-        assert_eq!(stack.size(), 0);
-    }
-
-    #[test]
-    fn test_push_item() {
-        let mut stack = Stack::new();
-        stack.push(42);
-        assert!(!stack.is_empty());
-        assert_eq!(stack.size(), 1);
-    }
-
-    #[test]
-    fn test_pop_item() {
-        let mut stack = Stack::new();
-        stack.push(42);
-        assert_eq!(stack.pop(), Some(42));
-        assert!(stack.is_empty());
-    }
-
-    #[test]
-    fn test_pop_empty_stack() {
-        let mut stack = Stack::&lt;i32&gt;::new();
-        assert_eq!(stack.pop(), None);
-    }
-
-    #[test]
-    fn test_peek_item() {
-        let mut stack = Stack::new();
-        stack.push(42);
-        assert_eq!(stack.peek(), Some(&amp;42));
-        assert_eq!(stack.size(), 1); // Should not modify stack
-    }
-
-    #[test]
-    fn test_stack_lifo_order() {
-        let mut stack = Stack::new();
-        stack.push(1);
-        stack.push(2);
-        stack.push(3);
-        
-        assert_eq!(stack.pop(), Some(3));
-        assert_eq!(stack.pop(), Some(2));
-        assert_eq!(stack.pop(), Some(1));
-        assert_eq!(stack.pop(), None);
-    }
+pub struct EmbeddedTemperatureBuffer&lt;const N: usize&gt; {
+    readings: Vec&lt;Temperature, N&gt;,
 }
 
-// Step 2: Implement minimum code to make tests pass
-pub struct Stack&lt;T&gt; {
-    items: Vec&lt;T&gt;,
-}
-
-impl&lt;T&gt; Stack&lt;T&gt; {
+impl&lt;const N: usize&gt; EmbeddedTemperatureBuffer&lt;N&gt; {
     pub fn new() -&gt; Self {
-        Stack { items: Vec::new() }
-    }
-
-    pub fn push(&amp;mut self, item: T) {
-        self.items.push(item);
-    }
-
-    pub fn pop(&amp;mut self) -&gt; Option&lt;T&gt; {
-        self.items.pop()
-    }
-
-    pub fn peek(&amp;self) -&gt; Option&lt;&amp;T&gt; {
-        self.items.last()
-    }
-
-    pub fn is_empty(&amp;self) -&gt; bool {
-        self.items.is_empty()
-    }
-
-    pub fn size(&amp;self) -&gt; usize {
-        self.items.len()
-    }
-}
-
-// Step 3: Refactor and add more tests for edge cases
-#[cfg(test)]
-mod advanced_stack_tests {
-    use super::*;
-
-    #[test]
-    fn test_stack_with_different_types() {
-        let mut string_stack = Stack::new();
-        string_stack.push("hello".to_string());
-        string_stack.push("world".to_string());
-        
-        assert_eq!(string_stack.pop(), Some("world".to_string()));
-    }
-
-    #[test]
-    fn test_large_stack() {
-        let mut stack = Stack::new();
-        
-        // Push many items
-        for i in 0..1000 {
-            stack.push(i);
+        Self {
+            readings: Vec::new(),
         }
-        
-        assert_eq!(stack.size(), 1000);
-        
-        // Pop them all
-        for i in (0..1000).rev() {
-            assert_eq!(stack.pop(), Some(i));
+    }
+
+    pub fn add_reading(&amp;mut self, temp: Temperature) -&gt; Result&lt;(), ()&gt; {
+        self.readings.push(temp).map_err(|_| ())
+    }
+
+    pub fn calculate_average(&amp;self) -&gt; Option&lt;Temperature&gt; {
+        if self.readings.is_empty() {
+            return None;
         }
-        
-        assert!(stack.is_empty());
+
+        let sum: f32 = self.readings.iter().map(|t| t.celsius).sum();
+        Some(Temperature::new(sum / self.readings.len() as f32))
     }
 }
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="common-testing-pitfalls-and-best-practices"><a class="header" href="#common-testing-pitfalls-and-best-practices">Common Testing Pitfalls and Best Practices</a></h2>
-<h3 id="pitfall-1-non-deterministic-tests"><a class="header" href="#pitfall-1-non-deterministic-tests">Pitfall 1: Non-Deterministic Tests</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// BAD: Test that depends on timing or randomness
-#[test]
-fn bad_timing_test() {
-    use std::time::{Instant, Duration};
-    
-    let start = Instant::now();
-    std::thread::sleep(Duration::from_millis(100));
-    let elapsed = start.elapsed();
-    
-    // This might fail on slow systems or under load
-    assert!(elapsed &gt;= Duration::from_millis(100));
-    assert!(elapsed &lt; Duration::from_millis(110)); // Too strict!
-}
 
-// GOOD: Deterministic test with controlled conditions
-#[test]
-fn good_deterministic_test() {
-    let mut calculator = Calculator::new();
-    
-    calculator.add(5.0);
-    calculator.multiply(2.0);
-    
-    assert_eq!(calculator.get_memory(), 10.0);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="pitfall-2-testing-implementation-instead-of-behavior"><a class="header" href="#pitfall-2-testing-implementation-instead-of-behavior">Pitfall 2: Testing Implementation Instead of Behavior</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// BAD: Testing internal implementation details
-#[test]
-fn bad_implementation_test() {
-    let mut vec = Vec::new();
-    vec.push(1);
-    vec.push(2);
-    
-    // Don't test internal capacity or specific implementation details
-    // This test is brittle and doesn't test actual behavior
-    assert!(vec.capacity() &gt;= 2);
-}
-
-// GOOD: Testing public behavior
-#[test]
-fn good_behavior_test() {
-    let mut vec = Vec::new();
-    vec.push(1);
-    vec.push(2);
-    
-    // Test the actual behavior users care about
-    assert_eq!(vec.len(), 2);
-    assert_eq!(vec[0], 1);
-    assert_eq!(vec[1], 2);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// 1. Use descriptive test names
-#[test]
-fn should_return_error_when_dividing_by_zero() {
-    let result = safe_divide(10, 0);
-    assert!(result.is_err());
-}
-
-// 2. Test one thing at a time
-#[test]
-fn should_add_user_and_return_id() {
-    let mut service = UserService::new();
-    let id = service.add_user("Alice".to_string());
-    
-    assert_eq!(id, 1);
-}
-
-#[test]
-fn should_retrieve_added_user() {
-    let mut service = UserService::new();
-    let id = service.add_user("Alice".to_string());
-    
-    assert_eq!(service.get_user(id), Some(&amp;"Alice".to_string()));
-}
-
-// 3. Use setup and teardown appropriately
 #[cfg(test)]
-mod user_tests {
+mod embedded_tests {
     use super::*;
-    
-    fn setup() -&gt; UserService {
-        UserService::new()
-    }
-    
+
     #[test]
-    fn test_user_creation() {
-        let mut service = setup();
-        // Test logic here
+    fn embedded_buffer_works() {
+        let mut buffer: EmbeddedTemperatureBuffer&lt;3&gt; = EmbeddedTemperatureBuffer::new();
+
+        buffer.add_reading(Temperature::new(10.0)).unwrap();
+        buffer.add_reading(Temperature::new(20.0)).unwrap();
+        buffer.add_reading(Temperature::new(30.0)).unwrap();
+
+        let avg = buffer.calculate_average().unwrap();
+        assert_eq!(avg.celsius, 20.0);
+
+        // Buffer is full - this should fail
+        assert!(buffer.add_reading(Temperature::new(40.0)).is_err());
     }
-}
-
-// 4. Test edge cases and error conditions
-#[test]
-fn should_handle_empty_input() {
-    let result = process_data(&amp;[]);
-    assert!(result.is_ok());
-}
-
-#[test]
-fn should_handle_very_large_input() {
-    let large_data = vec![0; 10_000];
-    let result = process_data(&amp;large_data);
-    assert!(result.is_ok());
 }
 <span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
-<h3 id="exercise-1-banking-system-tests"><a class="header" href="#exercise-1-banking-system-tests">Exercise 1: Banking System Tests</a></h3>
-<p>Create comprehensive tests for a simple banking system:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[derive(Debug, PartialEq)]
-pub enum TransactionError {
-    InsufficientFunds,
-    AccountNotFound,
-    InvalidAmount,
-}
-
-pub struct BankAccount {
-    id: u32,
-    balance: f64,
-    is_active: bool,
-}
-
-pub struct Bank {
-    accounts: std::collections::HashMap&lt;u32, BankAccount&gt;,
-    next_id: u32,
-}
-
-// TODO: Implement these methods
-impl Bank {
-    pub fn new() -&gt; Self {
-        todo!()
-    }
-    
-    pub fn create_account(&amp;mut self, initial_deposit: f64) -&gt; Result&lt;u32, TransactionError&gt; {
-        todo!()
-    }
-    
-    pub fn deposit(&amp;mut self, account_id: u32, amount: f64) -&gt; Result&lt;f64, TransactionError&gt; {
-        todo!()
-    }
-    
-    pub fn withdraw(&amp;mut self, account_id: u32, amount: f64) -&gt; Result&lt;f64, TransactionError&gt; {
-        todo!()
-    }
-    
-    pub fn transfer(&amp;mut self, from_id: u32, to_id: u32, amount: f64) -&gt; Result&lt;(), TransactionError&gt; {
-        todo!()
-    }
-    
-    pub fn get_balance(&amp;self, account_id: u32) -&gt; Result&lt;f64, TransactionError&gt; {
-        todo!()
-    }
-    
-    pub fn close_account(&amp;mut self, account_id: u32) -&gt; Result&lt;f64, TransactionError&gt; {
-        todo!()
-    }
-}
-
-// TODO: Write comprehensive tests covering:
-// - Account creation with valid/invalid initial deposits
-// - Deposit and withdrawal operations
-// - Transfer between accounts
-// - Error cases (insufficient funds, invalid accounts, etc.)
-// - Edge cases (zero amounts, closed accounts, etc.)
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-2-text-processor-with-doc-tests"><a class="header" href="#exercise-2-text-processor-with-doc-tests">Exercise 2: Text Processor with Doc Tests</a></h3>
-<p>Create a text processing module with comprehensive documentation tests:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// TODO: Add comprehensive doc tests for each function
-
-/// Counts the number of words in a text string.
-pub fn word_count(text: &amp;str) -&gt; usize {
-    todo!()
-}
-
-/// Finds the most frequent word in a text string.
-pub fn most_frequent_word(text: &amp;str) -&gt; Option&lt;String&gt; {
-    todo!()
-}
-
-/// Reverses the order of words in a sentence.
-pub fn reverse_words(text: &amp;str) -&gt; String {
-    todo!()
-}
-
-/// Extracts sentences from text (split on '.', '!', or '?').
-pub fn extract_sentences(text: &amp;str) -&gt; Vec&lt;String&gt; {
-    todo!()
-}
-
-/// Capitalizes the first letter of each word.
-pub fn title_case(text: &amp;str) -&gt; String {
-    todo!()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-3-property-based-testing"><a class="header" href="#exercise-3-property-based-testing">Exercise 3: Property-Based Testing</a></h3>
-<p>Implement and test a simple hash map with property-based tests:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// TODO: Implement a simple hash map and write property-based tests
-pub struct SimpleHashMap&lt;K, V&gt; {
-    // Your implementation here
-}
-
-impl&lt;K, V&gt; SimpleHashMap&lt;K, V&gt; 
-where 
-    K: std::hash::Hash + Eq + Clone,
-    V: Clone,
-{
-    pub fn new() -&gt; Self {
-        todo!()
-    }
-    
-    pub fn insert(&amp;mut self, key: K, value: V) -&gt; Option&lt;V&gt; {
-        todo!()
-    }
-    
-    pub fn get(&amp;self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
-        todo!()
-    }
-    
-    pub fn remove(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
-        todo!()
-    }
-    
-    pub fn len(&amp;self) -&gt; usize {
-        todo!()
-    }
-    
-    pub fn is_empty(&amp;self) -&gt; bool {
-        todo!()
-    }
-}
-
-// TODO: Write property-based tests that verify:
-// - Inserting then getting returns the same value
-// - Removing a key makes it unavailable
-// - Length increases/decreases correctly
-// - Keys that were never inserted return None
-<span class="boring">}</span></code></pre></pre>
-<hr />
-<h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
+<h2 id="exercise-complete-the-temperature-monitoring-system"><a class="header" href="#exercise-complete-the-temperature-monitoring-system">Exercise: Complete the Temperature Monitoring System</a></h2>
+<p>Now it's time to build the first increment of our capstone project!</p>
+<h3 id="your-task"><a class="header" href="#your-task">Your Task</a></h3>
 <ol>
-<li><strong>Built-in testing</strong> - Rust has excellent testing support out of the box</li>
-<li><strong>Documentation tests</strong> - Keep examples in sync with code automatically</li>
-<li><strong>Integration tests</strong> - Test public APIs from the user's perspective</li>
-<li><strong>Property-based testing</strong> - Generate test cases to find edge cases</li>
-<li><strong>Test organization</strong> - Separate unit, integration, and doc tests appropriately</li>
-<li><strong>Mocking</strong> - Use external crates for complex dependency injection</li>
-<li><strong>Benchmarking</strong> - Measure performance with criterion</li>
-<li><strong>TDD workflow</strong> - Red-Green-Refactor helps design better APIs</li>
+<li>
+<p>Create a new Rust project: <code>cargo new temp_core --lib</code></p>
+</li>
+<li>
+<p>Implement the <code>Temperature</code> struct with conversion methods:</p>
+<ul>
+<li><code>new(celsius: f32) -&gt; Self</code></li>
+<li><code>from_fahrenheit(fahrenheit: f32) -&gt; Self</code></li>
+<li><code>from_kelvin(kelvin: f32) -&gt; Self</code></li>
+<li><code>to_fahrenheit(&amp;self) -&gt; f32</code></li>
+<li><code>to_kelvin(&amp;self) -&gt; f32</code></li>
+</ul>
+</li>
+<li>
+<p>Create a <code>TemperatureSensor</code> trait with:</p>
+<ul>
+<li><code>read_temperature(&amp;mut self) -&gt; Result&lt;Temperature, Self::Error&gt;</code></li>
+<li><code>sensor_id(&amp;self) -&gt; &amp;str</code></li>
+</ul>
+</li>
+<li>
+<p>Implement a <code>MockTemperatureSensor</code> for testing that can:</p>
+<ul>
+<li>Return configurable temperatures</li>
+<li>Simulate sensor failures</li>
+<li>Go offline/online</li>
+</ul>
+</li>
+<li>
+<p>Write comprehensive tests covering:</p>
+<ul>
+<li>All temperature conversions</li>
+<li>Mock sensor behavior</li>
+<li>Error conditions</li>
+<li>Edge cases (like very hot/cold temperatures)</li>
+</ul>
+</li>
 </ol>
-<p><strong>Next Up:</strong> In Chapter 13, we'll explore concurrency - Rust's approach to safe parallel programming with threads, channels, and synchronization primitives.</p>
+<h3 id="extension-challenges"><a class="header" href="#extension-challenges">Extension Challenges</a></h3>
+<ol>
+<li><strong>Property-Based Tests</strong>: Use <code>proptest</code> to verify conversion roundtrips</li>
+<li><strong>Documentation Tests</strong>: Add examples to your documentation</li>
+<li><strong>Benchmarks</strong>: Measure conversion performance</li>
+<li><strong>no_std Support</strong>: Make your types work without the standard library</li>
+</ol>
+<h3 id="success-criteria"><a class="header" href="#success-criteria">Success Criteria</a></h3>
+<ul>
+<li>All tests pass: <code>cargo test</code></li>
+<li>No warnings: <code>cargo clippy</code></li>
+<li>Good documentation: <code>cargo doc --open</code></li>
+<li>Code coverage is high</li>
+<li>You can create mock sensors that behave predictably</li>
+</ul>
+<p>This foundation will be essential as we build more complex features in the following chapters!</p>
+<h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
+<p>✅ <strong>Testing is built into Rust</strong> - Use <code>#[test]</code>, <code>#[cfg(test)]</code>, and <code>cargo test</code></p>
+<p>✅ <strong>Traits enable powerful mocking</strong> - Abstract dependencies behind traits</p>
+<p>✅ <strong>Documentation tests keep examples current</strong> - Code in docs is tested automatically</p>
+<p>✅ <strong>TDD helps design better APIs</strong> - Write tests first to drive good interfaces</p>
+<p>✅ <strong>Integration tests verify real workflows</strong> - Test from the outside in</p>
+<p>✅ <strong>Property tests catch edge cases</strong> - Generate random inputs to find bugs</p>
+<p>✅ <strong>Embedded testing is possible</strong> - Use <code>no_std</code> compatible patterns</p>
+<p>The testing foundation you build today will make every subsequent feature more reliable and maintainable!</p>
 
                     </main>
 
@@ -1355,6 +785,22 @@ where
 
         </div>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
 

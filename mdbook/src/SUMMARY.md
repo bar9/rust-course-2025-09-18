@@ -20,23 +20,23 @@
 - [Iterators & Functional Programming](./day2/11_iterators.md)
 - [Modules & Visibility](./day2/12_modules_visibility.md)
 
-# Day 3: Systems Programming & Concurrency
+# Day 3: Embedded Systems Programming with ESP32-C3
 
 - [Testing & Documentation](./day3/13_testing.md)
-- [Concurrency Fundamentals](./day3/14_concurrency.md)
+- [Concurrency & Shared State](./day3/14_concurrency.md)
 - [Async Programming Basics](./day3/15_async.md)
-- [File I/O & Serialization](./day3/16_file_io.md)
-- [no_std Programming Introduction](./day3/17_no_std.md)
+- [Serialization & Protocols](./day3/16_file_io.md)
+- [no_std & Embedded Patterns](./day3/17_no_std.md)
 - [Build, Package & Deploy](./day3/18_build_deploy.md)
-- [Capstone Project: Network Protocol Parser](./day3/19_capstone.md)
+- [Final Integration - Complete Temperature Monitoring System](./day3/19_capstone.md)
 
-# Transfer Day: C++/.NET to Rust
+# Transfer Day: C++/.NET to Rust with Serde & Axum
 
-- [Memory Management Paradigm Shift](./transfer/20_memory_paradigm.md)
+- [Memory Management & Serialization Paradigm Shift](./transfer/20_memory_paradigm.md)
 - [Null Safety & Error Handling](./transfer/21_null_safety.md)
 - [Type System Differences](./transfer/22_type_differences.md)
-- [Traits vs OOP Concepts](./transfer/23_traits_vs_oop.md)
-- [Modern Development Workflow](./transfer/24_workflow.md)
-- [Unsafe Rust & FFI](./transfer/25_unsafe_ffi.md)
-- [Performance & Optimization](./transfer/26_performance.md)
-- [Idiomatic Rust Patterns](./transfer/27_idiomatic_patterns.md)
+- [Serde Deep Dive - From Reflection to Compile-Time Codegen](./transfer/23_traits_vs_oop.md)
+- [Axum Web Services - From ASP.NET to Type-Safe APIs](./transfer/24_workflow.md)
+- [Unsafe Rust & Hardware Register Access](./transfer/25_unsafe_ffi.md)
+- [Real-Time Performance & Embedded Optimization](./transfer/26_performance.md)
+- [Embedded Rust Patterns & IoT Integration](./transfer/27_idiomatic_patterns.md)

@@ -1,14 +1,16 @@
-# Chapter 23: Traits vs OOP - Composition Over Inheritance
-## From Object-Oriented to Behavior-Oriented Programming
+# Chapter 23: Serde Deep Dive - From Reflection to Compile-Time Codegen
+## Mastering Zero-Cost Serialization with Trait-Based Design
 
-### The Paradigm Shift
+### Serialization Paradigm Comparison
 
-| Concept | C++ | C#/.NET | Rust |
-|---------|-----|---------|------|
-| **Code Reuse** | Inheritance | Inheritance + Interfaces | Traits |
-| **Polymorphism** | Virtual functions | Virtual methods | Trait objects |
-| **Data + Behavior** | Classes | Classes | Structs + impl |
-| **Multiple inheritance** | Yes (complex) | No (interfaces only) | Yes (traits) |
+| Concept | C++ (Boost.Serialization) | C#/.NET (System.Text.Json) | Rust (Serde) |
+|---------|---------------------------|----------------------------|---------------|
+| **Code Generation** | Template-based | Runtime reflection | Compile-time macros |
+| **Performance** | Good (but complex) | Variable (reflection) | Excellent (zero-cost) |
+| **Schema Evolution** | Manual versioning | Attribute-driven | Type-safe traits |
+| **Format Support** | Limited | JSON focus | Format agnostic |
+| **Memory Usage** | Manual control | GC pressure | Zero-copy capable |
+| **Error Handling** | Exceptions | Exception/nullable | Result types |
 
 ---
 

@@ -771,176 +771,338 @@ async fn async_shared_state() {
 }
 ```
 
-## Exercises
+## When to Use Async vs Threads
 
-### Exercise 1: Async HTTP Client
+Choosing between async and threads depends on your use case. Here are practical guidelines:
 
-Create an async HTTP client that fetches multiple URLs concurrently:
+### Use Async When:
+- **I/O bound operations**: Network requests, file operations, database queries
+- **Many concurrent operations**: Handling thousands of connections
+- **Resource efficiency matters**: Limited memory, embedded systems
+- **Coordinated operations**: Need to combine multiple I/O operations
+- **Back-pressure handling**: Need to control flow between producers/consumers
+
+### Use Threads When:
+- **CPU-intensive tasks**: Mathematical calculations, image processing
+- **Blocking operations**: Legacy libraries that don't support async
+- **Simple parallelism**: Independent work that can be divided
+- **Mixed workloads**: Some CPU work, some I/O work
+
+### Practical Decision Framework
 
 ```rust
-use reqwest;
-use tokio::time::Instant;
+// ✅ Good for async - I/O bound, many concurrent operations
+async fn handle_many_requests() {
+    let mut tasks = Vec::new();
 
-struct HttpClient {
-    client: reqwest::Client,
+    for i in 0..1000 {
+        let task = tokio::spawn(async move {
+            // Simulated network request
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            format!("Response {}", i)
+        });
+        tasks.push(task);
+    }
+
+    // All 1000 operations can run concurrently with minimal memory
+    let results = futures::future::join_all(tasks).await;
+    println!("Handled {} requests", results.len());
 }
 
-impl HttpClient {
-    pub fn new() -> Self {
-        HttpClient {
-            client: reqwest::Client::new(),
+// ✅ Good for threads - CPU intensive work
+fn cpu_intensive_parallel() {
+    use std::thread;
+    use std::sync::mpsc;
+
+    let data: Vec<u64> = (0..1_000_000).collect();
+    let chunk_size = data.len() / 4; // Use 4 threads
+
+    let (tx, rx) = mpsc::channel();
+    let mut handles = vec![];
+
+    for chunk in data.chunks(chunk_size) {
+        let tx = tx.clone();
+        let chunk = chunk.to_vec();
+        let handle = thread::spawn(move || {
+            // CPU-intensive calculation
+            let sum: u64 = chunk.iter().map(|&x| x * x).sum();
+            tx.send(sum).unwrap();
+        });
+        handles.push(handle);
+    }
+
+    drop(tx);
+    let total: u64 = rx.iter().sum();
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Total: {}", total);
+}
+```
+
+### Embedded Async Considerations
+
+When targeting embedded systems, async has different trade-offs:
+
+```rust
+// Embassy async model for embedded
+#[cfg(feature = "embedded-preview")]
+mod embassy_preview {
+    // Embassy provides:
+    // - Single stack async (memory efficient)
+    // - Interrupt-driven wakeups
+    // - Zero-allocation futures
+    // - Hardware-specific optimizations
+
+    // We'll explore this more in Chapter 17!
+}
+
+// Desktop async for comparison
+async fn desktop_async_pattern() {
+    // Tokio provides:
+    // - Multi-threaded work-stealing scheduler
+    // - Heap-allocated tasks
+    // - Rich ecosystem (HTTP clients, databases, etc.)
+    // - Great for high-throughput servers
+
+    println!("Desktop async focuses on throughput and ecosystem");
+}
+```
+
+## Exercise: Build Async Temperature Monitoring
+
+Now it's time to build the third increment of our capstone project!
+
+### Your Task: Complete temp_async
+
+Building on the `temp_core` and `temp_store` from previous chapters, create an async temperature monitoring system.
+
+1. **Create the temp_async crate** (if following along):
+   ```bash
+   cargo new temp_async --lib
+   # Add dependencies: temp_core, temp_store, tokio
+   ```
+
+2. **Define `AsyncTemperatureSensor` trait**:
+   ```rust
+   pub trait AsyncTemperatureSensor: Send {
+       type Error: std::fmt::Debug + Send;
+
+       async fn read_temperature(&mut self) -> Result<Temperature, Self::Error>;
+       fn sensor_id(&self) -> &str;
+   }
+   ```
+
+3. **Implement `AsyncMockSensor`**:
+   - Configurable read delays (simulate real sensor timing)
+   - Failure injection for testing error handling
+   - Temperature updates while running
+
+4. **Build `AsyncTemperatureMonitor`**:
+   - Uses `tokio::select!` to handle multiple concurrent operations:
+     - Periodic temperature readings
+     - Command processing (change intervals, get stats, etc.)
+     - Graceful shutdown
+   - Integrates with `TemperatureStore` from Chapter 14
+   - Command pattern with `tokio::sync` channels
+
+5. **Key async patterns to implement**:
+   - **Periodic tasks**: Use `tokio::time::interval` for regular sampling
+   - **Command handling**: Use `mpsc` channels for control commands
+   - **Request/response**: Use `oneshot` channels for queries
+   - **Concurrent sensors**: Multiple async sensors running simultaneously
+   - **Graceful shutdown**: Clean termination of all async tasks
+
+### Implementation Guide
+
+```rust
+use std::time::Duration;
+use tokio::time::{sleep, interval};
+use tokio::sync::{mpsc, oneshot};
+use temp_core::Temperature;
+use temp_store::{TemperatureReading, TemperatureStore};
+
+// Your async sensor trait
+pub trait AsyncTemperatureSensor: Send {
+    type Error: std::fmt::Debug + Send;
+
+    async fn read_temperature(&mut self) -> Result<Temperature, Self::Error>;
+    fn sensor_id(&self) -> &str;
+}
+
+// Commands the monitor can handle
+pub enum MonitorCommand {
+    SetInterval(Duration),
+    GetStats(oneshot::Sender<Option<TemperatureStats>>),
+    GetLatest(oneshot::Sender<Option<TemperatureReading>>),
+    Stop,
+}
+
+// The main async monitor
+pub struct AsyncTemperatureMonitor {
+    store: TemperatureStore,
+    command_rx: mpsc::Receiver<MonitorCommand>,
+}
+
+impl AsyncTemperatureMonitor {
+    pub async fn run<S: AsyncTemperatureSensor>(&mut self, mut sensor: S, initial_interval: Duration) {
+        let mut sample_interval = interval(initial_interval);
+
+        loop {
+            tokio::select! {
+                // Sample temperature at regular intervals
+                _ = sample_interval.tick() => {
+                    match sensor.read_temperature().await {
+                        Ok(temp) => {
+                            let reading = TemperatureReading::new(temp);
+                            self.store.add_reading(reading);
+                            println!("📊 {}", temp);
+                        }
+                        Err(e) => {
+                            eprintln!("❌ Sensor error: {:?}", e);
+                        }
+                    }
+                }
+
+                // Handle control commands
+                command = self.command_rx.recv() => {
+                    match command {
+                        Some(MonitorCommand::SetInterval(new_interval)) => {
+                            sample_interval = interval(new_interval);
+                        }
+                        Some(MonitorCommand::GetStats(reply)) => {
+                            let stats = self.store.calculate_stats();
+                            let _ = reply.send(stats);
+                        }
+                        Some(MonitorCommand::Stop) => break,
+                        None => break, // Channel closed
+                    }
+                }
+            }
         }
-    }
-    
-    pub async fn fetch_url(&self, url: &str) -> Result<String, reqwest::Error> {
-        // TODO: Implement URL fetching with timeout
-        unimplemented!()
-    }
-    
-    pub async fn fetch_multiple(&self, urls: Vec<String>) -> Vec<Result<String, reqwest::Error>> {
-        // TODO: Fetch all URLs concurrently and return results
-        unimplemented!()
-    }
-}
 
-// Test your implementation
-async fn test_http_client() {
-    let client = HttpClient::new();
-    let urls = vec![
-        "https://httpbin.org/delay/1".to_string(),
-        "https://httpbin.org/delay/2".to_string(),
-        "https://httpbin.org/status/404".to_string(),
-    ];
-    
-    let start = Instant::now();
-    let results = client.fetch_multiple(urls).await;
-    println!("Fetched {} URLs in {:?}", results.len(), start.elapsed());
-    
-    for (i, result) in results.iter().enumerate() {
-        match result {
-            Ok(body) => println!("URL {}: {} bytes", i, body.len()),
-            Err(e) => println!("URL {} failed: {}", i, e),
-        }
+        println!("🛑 Monitor stopped");
     }
 }
 ```
 
-### Exercise 2: Async Producer-Consumer
+### Testing Your Implementation
 
-Implement an async producer-consumer pattern with backpressure:
+Write comprehensive tests covering:
 
 ```rust
-use tokio::sync::mpsc;
-use tokio::time::{interval, Duration};
+#[tokio::test]
+async fn async_sensor_works() {
+    let mut sensor = AsyncMockSensor::new("test".to_string(), 25.0);
 
-struct AsyncProducer {
-    sender: mpsc::Sender<WorkItem>,
+    let reading = sensor.read_temperature().await.unwrap();
+    assert_eq!(reading.celsius, 25.0);
 }
 
-struct AsyncConsumer {
-    receiver: mpsc::Receiver<WorkItem>,
-}
+#[tokio::test]
+async fn monitor_handles_commands() {
+    let mut monitor = AsyncTemperatureMonitor::new(10);
+    let handle = monitor.get_handle();
 
-#[derive(Debug, Clone)]
-struct WorkItem {
-    id: u32,
-    data: String,
-}
-
-impl AsyncProducer {
-    pub fn new(sender: mpsc::Sender<WorkItem>) -> Self {
-        AsyncProducer { sender }
-    }
-    
-    pub async fn produce_items(&self, count: u32) -> Result<(), mpsc::error::SendError<WorkItem>> {
-        // TODO: Produce items at regular intervals
-        unimplemented!()
-    }
-}
-
-impl AsyncConsumer {
-    pub fn new(receiver: mpsc::Receiver<WorkItem>) -> Self {
-        AsyncConsumer { receiver }
-    }
-    
-    pub async fn consume_items(&mut self) {
-        // TODO: Consume items and process them with simulated work
-        unimplemented!()
-    }
-}
-
-// Test your implementation
-async fn test_producer_consumer() {
-    let (tx, rx) = mpsc::channel(5); // Buffer size of 5
-    
-    let producer = AsyncProducer::new(tx);
-    let mut consumer = AsyncConsumer::new(rx);
-    
-    // Spawn producer and consumer
-    let producer_handle = tokio::spawn(async move {
-        producer.produce_items(20).await
+    // Start monitor in background
+    let monitor_task = tokio::spawn(async move {
+        let sensor = AsyncMockSensor::new("test".to_string(), 20.0);
+        monitor.run(sensor, Duration::from_millis(100)).await;
     });
-    
-    let consumer_handle = tokio::spawn(async move {
-        consumer.consume_items().await
-    });
-    
-    // Wait for both to complete
-    let _ = tokio::join!(producer_handle, consumer_handle);
+
+    // Test commands
+    tokio::time::sleep(Duration::from_millis(250)).await;
+    let stats = handle.get_stats().await.unwrap();
+    assert!(stats.is_some());
+
+    handle.stop().await.unwrap();
+    monitor_task.await.unwrap();
+}
+
+#[tokio::test]
+async fn multiple_sensors_concurrently() {
+    // Test running multiple async sensors at the same time
+    // Each should operate independently without blocking others
 }
 ```
 
-### Exercise 3: Async Rate Limiter
+### Extension Challenges
 
-Create a rate limiter for async operations:
+1. **Advanced async patterns**:
+   - Implement timeout handling for sensor reads
+   - Add exponential backoff for failed sensor connections
+   - Create async stream of temperature readings
+
+2. **Real-time features**:
+   - Temperature alerts when thresholds are exceeded
+   - Rolling statistics calculations
+   - Data export to different formats
+
+3. **Performance optimization**:
+   - Benchmark async vs sync implementations
+   - Memory usage profiling
+   - Concurrent sensor handling
+
+### Success Criteria
+
+- All tests pass: `cargo test -p temp_async`
+- No warnings: `cargo clippy`
+- Async sensor can be controlled (start/stop/change interval)
+- Multiple sensors can run concurrently without blocking
+- Commands are handled promptly even during sensor operations
+- Graceful shutdown works properly
+- Integration with previous increments works seamlessly
+
+### Integration with Previous Work
+
+Your async monitor builds on all previous work:
 
 ```rust
-use tokio::time::{Duration, Instant};
-use std::collections::VecDeque;
+// Combining all three increments
+async fn integrated_example() {
+    // Chapter 13: Temperature types and traits
+    let sensor = AsyncMockSensor::new("living-room".to_string(), 22.0);
 
-struct RateLimiter {
-    max_requests: usize,
-    window_duration: Duration,
-    requests: VecDeque<Instant>,
-}
+    // Chapter 14: Thread-safe storage
+    let store = TemperatureStore::new(100);
 
-impl RateLimiter {
-    pub fn new(max_requests: usize, window_duration: Duration) -> Self {
-        // TODO: Initialize rate limiter
-        unimplemented!()
-    }
-    
-    pub async fn acquire(&mut self) {
-        // TODO: Wait if necessary to respect rate limit
-        unimplemented!()
-    }
-    
-    fn cleanup_old_requests(&mut self) {
-        // TODO: Remove requests outside the current window
-        unimplemented!()
-    }
-}
+    // Chapter 15: Async monitoring
+    let mut monitor = AsyncTemperatureMonitor::new(store);
+    let handle = monitor.get_handle();
 
-// Test your implementation
-async fn test_rate_limiter() {
-    let mut limiter = RateLimiter::new(5, Duration::from_secs(1));
-    
-    for i in 0..10 {
-        limiter.acquire().await;
-        println!("Request {} allowed at {:?}", i, Instant::now());
-    }
+    // Run everything together
+    let monitor_task = tokio::spawn(async move {
+        monitor.run(sensor, Duration::from_secs(1)).await;
+    });
+
+    // Control the system
+    tokio::time::sleep(Duration::from_secs(5)).await;
+    let stats = handle.get_stats().await.unwrap();
+    println!("📊 Current stats: {:?}", stats);
+
+    handle.stop().await.unwrap();
+    monitor_task.await.unwrap();
 }
 ```
+
+This async foundation will be essential when we add serialization and protocols in Chapter 16!
 
 ## Key Takeaways
 
-1. **Async for I/O, Threads for CPU**: Use async for I/O-bound work, threads for CPU-intensive tasks
-2. **Futures are Lazy**: They don't execute until polled (awaited)
-3. **Zero-Cost Abstractions**: Rust's async has minimal runtime overhead
-4. **Choose Your Runtime**: tokio for most cases, async-std for alternatives
-5. **Avoid Blocking**: Never use blocking operations in async code without `spawn_blocking`
-6. **Error Handling Matters**: Use proper error types and handle timeouts appropriately
-7. **Concurrency vs Parallelism**: Async provides concurrency; use thread pools for parallelism
-8. **Memory Efficiency**: Async tasks use much less memory than OS threads
+✅ **Async for I/O, threads for CPU**: Choose based on your workload characteristics
 
-**Next**: In Chapter 15, we'll explore file I/O operations, serialization, and building command-line interfaces.
+✅ **tokio::select! is powerful**: Handle multiple concurrent operations cleanly
+
+✅ **Channels enable coordination**: Use mpsc for commands, oneshot for queries
+
+✅ **Error handling is crucial**: Async operations can fail in complex ways
+
+✅ **Testing async code**: Use `#[tokio::test]` and test concurrent scenarios
+
+✅ **Integration builds value**: Each increment enhances the previous ones
+
+✅ **Embedded async is different**: Embassy optimizes for memory and power
+
+Understanding async programming opens up high-performance concurrent systems. Next, we'll add serialization and communication protocols!

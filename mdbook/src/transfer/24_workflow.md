@@ -1,33 +1,42 @@
-# Chapter 24: Compiler-Driven Development
-## Your New Pair Programming Partner
+# Chapter 24: Axum Web Services - From ASP.NET to Type-Safe APIs
+## Building High-Performance Web Services with Axum
 
-### The Rust Development Philosophy
+### Web Framework Comparison
 
-Unlike C++ or C# where you often discover issues at runtime, Rust development follows a "compiler-driven" approach where the compiler guides you toward correct solutions.
+Axum brings type safety and performance to web development, contrasting with other frameworks:
 
-### Development Workflow Comparison
+| Feature | ASP.NET Core | C++ (Crow/Drogon) | Axum |
+|---------|-------------|--------------------|------|
+| **Type Safety** | Runtime validation | Manual type handling | Compile-time guarantees |
+| **Performance** | Good | Excellent | Excellent |
+| **Async Support** | Built-in | Manual/callbacks | Native async/await |
+| **Middleware** | Pipeline-based | Manual composition | Tower layers |
+| **Dependency Injection** | Built-in container | Manual | Type system |
+| **Route Safety** | String-based | String-based | Type-safe extractors |
 
-| Phase | C++ | C#/.NET | Rust |
-|-------|-----|---------|------|
-| **Write** | Code freely | Code freely | Fight compiler initially |
-| **Compile** | May succeed with warnings | Usually succeeds | Strict - fails often at first |
-| **Test** | Find runtime bugs | Find runtime bugs | Most bugs already caught |
-| **Debug** | GDB, print statements | Debugger, logging | Minimal debugging needed |
-| **Deploy** | Cross fingers | Hope for the best | High confidence |
+### Key Advantages of Axum
+
+1. **Zero-cost abstractions** - No runtime overhead for type safety
+2. **Composable middleware** - Tower ecosystem integration
+3. **Type-safe extractors** - Request data validated at compile time
+4. **Excellent performance** - Built on hyper and tokio
+5. **Interoperability** - Works seamlessly with existing Rust ecosystem
 
 ---
 
-## The Rust Development Cycle
+## Axum Fundamentals - Building the ESP32-C3 Coordinator API
 
-### 1. Write Code (Expect Compiler Errors)
+### Basic Axum Setup for IoT Data Collection
+
 ```rust
-// This won't compile - that's expected!
-fn process_data(data: Vec<String>) -> Vec<String> {
-    let mut results = Vec::new();
-    
-    for item in data {
-        if item.len() > 0 {
-            results.push(item.to_uppercase());
+// Cargo.toml dependencies
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::{IntoResponse, Json},
+    routing::{get, post},
+    Router,
+};
         }
     }
     

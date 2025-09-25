@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Capstone Project: Network Protocol Parser</title>
+        <title>Final Integration - Complete Temperature Monitoring System</title>
 
 
         <!-- Custom HTML head -->
@@ -152,1314 +152,702 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="chapter-19-capstone-project---network-protocol-parser"><a class="header" href="#chapter-19-capstone-project---network-protocol-parser">Chapter 19: Capstone Project - Network Protocol Parser</a></h1>
-<h2 id="project-overview"><a class="header" href="#project-overview">Project Overview</a></h2>
-<p>Build a TCP-based protocol parser that demonstrates all the Rust concepts you've learned. This project simulates a real-world scenario where you need to handle network communication, parse binary protocols, manage concurrent connections, and ensure robust error handling.</p>
+                        <h1 id="chapter-19-final-integration---complete-temperature-monitoring-system"><a class="header" href="#chapter-19-final-integration---complete-temperature-monitoring-system">Chapter 19: Final Integration - Complete Temperature Monitoring System</a></h1>
 <h2 id="learning-objectives"><a class="header" href="#learning-objectives">Learning Objectives</a></h2>
 <ul>
-<li>Apply ownership and borrowing in a real system</li>
-<li>Implement a custom binary protocol</li>
-<li>Handle concurrent TCP connections</li>
-<li>Parse and validate network messages</li>
-<li>Build a complete client-server application</li>
-<li>Optimize for performance and safety</li>
+<li>Integrate all capstone increments into a working system</li>
+<li>Deploy temperature monitoring to desktop and embedded targets</li>
+<li>Test end-to-end system functionality</li>
+<li>Analyze system performance and resource usage</li>
+<li>Demonstrate production deployment considerations</li>
+<li>Celebrate building a complete Rust system from scratch!</li>
 </ul>
-<h2 id="protocol-specification"><a class="header" href="#protocol-specification">Protocol Specification</a></h2>
-<h3 id="message-format"><a class="header" href="#message-format">Message Format</a></h3>
-<p>Our custom protocol uses a simple binary format:</p>
-<pre><code>+--------+--------+--------+--------+
-| Magic  | Type   | Length | Payload|
-| 2 bytes| 1 byte | 2 bytes| N bytes|
-+--------+--------+--------+--------+
+<h2 id="system-overview"><a class="header" href="#system-overview">System Overview</a></h2>
+<p>Over Chapters 13-18, you've built a progressive temperature monitoring system. Now it's time to bring it all together into a complete, deployable solution.</p>
+<h3 id="our-complete-architecture"><a class="header" href="#our-complete-architecture">Our Complete Architecture</a></h3>
+<pre><code>┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   temp_core     │    │   temp_store    │    │   temp_async    │
+│                 │    │                 │    │                 │
+│ • Temperature   │───▶│ • Thread-safe   │───▶│ • Async monitor │
+│ • Sensor traits│    │   storage       │    │ • Command loop  │
+│ • Mock sensors  │    │ • Statistics    │    │ • Multi-sensor  │
+│ • Testing       │    │ • Circular buf  │    │ • Error handling│
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  temp_protocol  │    │ temp_embedded   │    │   temp_esp32    │
+│                 │    │                 │    │                 │
+│ • JSON &amp; binary │    │ • no_std impl   │    │ • ESP32-C3 code │
+│ • Commands      │    │ • Fixed buffers │    │ • Hardware      │
+│ • Serialization │    │ • Const config  │    │ • Deployment    │
+│ • Protocol v1   │    │ • Embedded-ready│    │ • Production    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 </code></pre>
-<h3 id="message-types"><a class="header" href="#message-types">Message Types</a></h3>
+<h3 id="what-weve-built"><a class="header" href="#what-weve-built">What We've Built</a></h3>
+<ol>
+<li><strong>temp_core</strong> (Chapter 13): Foundation types and traits with comprehensive testing</li>
+<li><strong>temp_store</strong> (Chapter 14): Thread-safe storage with statistics and concurrent access</li>
+<li><strong>temp_async</strong> (Chapter 15): Async monitoring system with tokio and command handling</li>
+<li><strong>temp_protocol</strong> (Chapter 16): Binary and JSON protocols for efficient communication</li>
+<li><strong>temp_embedded</strong> (Chapter 17): no_std version ready for embedded deployment</li>
+<li><strong>temp_esp32</strong> (Chapter 18-19): Complete ESP32-C3 deployment target</li>
+</ol>
+<h2 id="integration-architecture"><a class="header" href="#integration-architecture">Integration Architecture</a></h2>
+<p>Our system can run in multiple configurations:</p>
+<h3 id="desktop-mode-full-features"><a class="header" href="#desktop-mode-full-features">Desktop Mode (Full Features)</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MessageType {
-    Ping = 0x01,
-    Pong = 0x02,
-    Echo = 0x03,
-    Data = 0x04,
-    Error = 0xFF,
-}
-
-// Protocol constants
-const MAGIC_BYTES: [u8; 2] = [0xCA, 0xFE];
-const HEADER_SIZE: usize = 5;
-const MAX_PAYLOAD_SIZE: usize = 65535;
+</span>// Uses temp_async + temp_protocol + temp_store
+// - Full std library
+// - Network protocols
+// - Web dashboard
+// - Multiple sensors
+// - Real-time monitoring
 <span class="boring">}</span></code></pre></pre>
-<h2 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h2>
-<pre><code>protocol-parser/
-├── Cargo.toml
-├── src/
-│   ├── lib.rs           # Library with protocol implementation
-│   ├── protocol.rs      # Protocol definitions
-│   ├── parser.rs        # Message parser
-│   ├── server.rs        # TCP server
-│   ├── client.rs        # TCP client
-│   └── bin/
-│       ├── server.rs    # Server binary
-│       └── client.rs    # Client binary
-└── tests/
-    └── integration.rs   # Integration tests
-</code></pre>
-<h2 id="implementation-guide"><a class="header" href="#implementation-guide">Implementation Guide</a></h2>
-<h3 id="step-1-protocol-message-structure"><a class="header" href="#step-1-protocol-message-structure">Step 1: Protocol Message Structure</a></h3>
+<h3 id="embedded-mode-resource-optimized"><a class="header" href="#embedded-mode-resource-optimized">Embedded Mode (Resource Optimized)</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// src/protocol.rs
-use std::io::{self, Read, Write};
-use std::convert::TryFrom;
-
-#[derive(Debug, Clone)]
-pub struct Message {
-    pub msg_type: MessageType,
-    pub payload: Vec&lt;u8&gt;,
-}
-
-impl Message {
-    pub fn new(msg_type: MessageType, payload: Vec&lt;u8&gt;) -&gt; Result&lt;Self, String&gt; {
-        if payload.len() &gt; MAX_PAYLOAD_SIZE {
-            return Err(format!("Payload too large: {} bytes", payload.len()));
-        }
-        Ok(Message { msg_type, payload })
-    }
-    
-    pub fn ping() -&gt; Self {
-        Message {
-            msg_type: MessageType::Ping,
-            payload: vec![],
-        }
-    }
-    
-    pub fn pong() -&gt; Self {
-        Message {
-            msg_type: MessageType::Pong,
-            payload: vec![],
-        }
-    }
-    
-    pub fn echo(data: Vec&lt;u8&gt;) -&gt; Result&lt;Self, String&gt; {
-        Self::new(MessageType::Echo, data)
-    }
-    
-    pub fn to_bytes(&amp;self) -&gt; Vec&lt;u8&gt; {
-        let mut bytes = Vec::with_capacity(HEADER_SIZE + self.payload.len());
-        bytes.extend_from_slice(&amp;MAGIC_BYTES);
-        bytes.push(self.msg_type as u8);
-        bytes.extend_from_slice(&amp;(self.payload.len() as u16).to_be_bytes());
-        bytes.extend_from_slice(&amp;self.payload);
-        bytes
-    }
-}
-
-impl TryFrom&lt;u8&gt; for MessageType {
-    type Error = String;
-    
-    fn try_from(value: u8) -&gt; Result&lt;Self, Self::Error&gt; {
-        match value {
-            0x01 =&gt; Ok(MessageType::Ping),
-            0x02 =&gt; Ok(MessageType::Pong),
-            0x03 =&gt; Ok(MessageType::Echo),
-            0x04 =&gt; Ok(MessageType::Data),
-            0xFF =&gt; Ok(MessageType::Error),
-            _ =&gt; Err(format!("Invalid message type: 0x{:02x}", value)),
-        }
-    }
-}
+</span>// Uses temp_embedded + temp_core
+// - no_std operation
+// - Fixed-size buffers
+// - Binary protocols only
+// - Minimal memory footprint
+// - Real-time guarantees
 <span class="boring">}</span></code></pre></pre>
-<h3 id="step-2-message-parser"><a class="header" href="#step-2-message-parser">Step 2: Message Parser</a></h3>
+<h3 id="esp32-c3-mode-hardware-deployment"><a class="header" href="#esp32-c3-mode-hardware-deployment">ESP32-C3 Mode (Hardware Deployment)</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// src/parser.rs
-use crate::protocol::{Message, MessageType, MAGIC_BYTES, HEADER_SIZE};
-use std::io::{self, Read};
-use std::convert::TryFrom;
-
-pub struct Parser {
-    buffer: Vec&lt;u8&gt;,
-}
-
-impl Parser {
-    pub fn new() -&gt; Self {
-        Parser {
-            buffer: Vec::with_capacity(1024),
-        }
-    }
-    
-    pub fn parse_message&lt;R: Read&gt;(reader: &amp;mut R) -&gt; io::Result&lt;Message&gt; {
-        let mut header = [0u8; HEADER_SIZE];
-        reader.read_exact(&amp;mut header)?;
-        
-        // Validate magic bytes
-        if &amp;header[0..2] != MAGIC_BYTES {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid magic bytes",
-            ));
-        }
-        
-        // Parse message type
-        let msg_type = MessageType::try_from(header[2])
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        
-        // Parse payload length
-        let length = u16::from_be_bytes([header[3], header[4]]) as usize;
-        
-        // Read payload
-        let mut payload = vec![0u8; length];
-        reader.read_exact(&amp;mut payload)?;
-        
-        Ok(Message { msg_type, payload })
-    }
-    
-    pub fn parse_from_bytes(bytes: &amp;[u8]) -&gt; Result&lt;Message, String&gt; {
-        if bytes.len() &lt; HEADER_SIZE {
-            return Err("Message too short".to_string());
-        }
-        
-        if &amp;bytes[0..2] != MAGIC_BYTES {
-            return Err("Invalid magic bytes".to_string());
-        }
-        
-        let msg_type = MessageType::try_from(bytes[2])?;
-        let length = u16::from_be_bytes([bytes[3], bytes[4]]) as usize;
-        
-        if bytes.len() != HEADER_SIZE + length {
-            return Err("Invalid message length".to_string());
-        }
-        
-        Ok(Message {
-            msg_type,
-            payload: bytes[HEADER_SIZE..].to_vec(),
-        })
-    }
-}
+</span>// Uses temp_esp32 (includes temp_embedded)
+// - ESP-IDF integration
+// - WiFi connectivity
+// - Hardware sensors
+// - OTA updates capability
+// - Power management
 <span class="boring">}</span></code></pre></pre>
-<h3 id="step-3-tcp-server-implementation"><a class="header" href="#step-3-tcp-server-implementation">Step 3: TCP Server Implementation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// src/server.rs
-use std::net::{TcpListener, TcpStream};
-use std::thread;
-use std::sync::{Arc, Mutex};
-use std::io::{Read, Write};
-use crate::protocol::{Message, MessageType};
-use crate::parser::Parser;
-
-pub struct Server {
-    addr: String,
-    connections: Arc&lt;Mutex&lt;Vec&lt;TcpStream&gt;&gt;&gt;,
-}
-
-impl Server {
-    pub fn new(addr: &amp;str) -&gt; Self {
-        Server {
-            addr: addr.to_string(),
-            connections: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-    
-    pub fn run(&amp;self) -&gt; std::io::Result&lt;()&gt; {
-        let listener = TcpListener::bind(&amp;self.addr)?;
-        println!("Server listening on {}", self.addr);
-        
-        for stream in listener.incoming() {
-            match stream {
-                Ok(stream) =&gt; {
-                    let connections = Arc::clone(&amp;self.connections);
-                    thread::spawn(move || {
-                        handle_client(stream, connections);
-                    });
-                }
-                Err(e) =&gt; eprintln!("Connection failed: {}", e),
-            }
-        }
-        
-        Ok(())
-    }
-}
-
-fn handle_client(mut stream: TcpStream, connections: Arc&lt;Mutex&lt;Vec&lt;TcpStream&gt;&gt;&gt;) {
-    let peer_addr = stream.peer_addr().unwrap();
-    println!("Client connected: {}", peer_addr);
-    
-    // Add to connections
-    {
-        let mut conns = connections.lock().unwrap();
-        conns.push(stream.try_clone().unwrap());
-    }
-    
-    loop {
-        match Parser::parse_message(&amp;mut stream) {
-            Ok(message) =&gt; {
-                println!("Received {:?} from {}", message.msg_type, peer_addr);
-                
-                let response = match message.msg_type {
-                    MessageType::Ping =&gt; Message::pong(),
-                    MessageType::Echo =&gt; Message::echo(message.payload).unwrap(),
-                    MessageType::Data =&gt; {
-                        // Process data
-                        println!("Data: {:?}", String::from_utf8_lossy(&amp;message.payload));
-                        continue;
-                    }
-                    _ =&gt; continue,
-                };
-                
-                if let Err(e) = stream.write_all(&amp;response.to_bytes()) {
-                    eprintln!("Failed to send response: {}", e);
-                    break;
-                }
-            }
-            Err(e) =&gt; {
-                eprintln!("Error parsing message from {}: {}", peer_addr, e);
-                break;
-            }
-        }
-    }
-    
-    println!("Client disconnected: {}", peer_addr);
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="step-4-tcp-client-implementation"><a class="header" href="#step-4-tcp-client-implementation">Step 4: TCP Client Implementation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// src/client.rs
-use std::net::TcpStream;
-use std::io::{Read, Write};
+<h2 id="desktop-integration-example"><a class="header" href="#desktop-integration-example">Desktop Integration Example</a></h2>
+<p>Let's see how all pieces work together in a desktop application:</p>
+<pre><pre class="playground"><code class="language-rust">// src/main.rs - Desktop temperature monitor
 use std::time::Duration;
-use crate::protocol::{Message, MessageType};
-use crate::parser::Parser;
+use tokio::time::sleep;
+use temp_core::{Temperature, mock::MockTemperatureSensor, TemperatureSensor};
+use temp_store::{TemperatureStore, TemperatureReading};
+use temp_async::AsyncTemperatureMonitor;
+use temp_protocol::{TemperatureProtocolHandler, Command, Response};
 
-pub struct Client {
-    stream: TcpStream,
-}
-
-impl Client {
-    pub fn connect(addr: &amp;str) -&gt; std::io::Result&lt;Self&gt; {
-        let stream = TcpStream::connect(addr)?;
-        stream.set_read_timeout(Some(Duration::from_secs(5)))?;
-        Ok(Client { stream })
-    }
-    
-    pub fn send_message(&amp;mut self, message: Message) -&gt; std::io::Result&lt;()&gt; {
-        self.stream.write_all(&amp;message.to_bytes())?;
-        self.stream.flush()
-    }
-    
-    pub fn receive_message(&amp;mut self) -&gt; std::io::Result&lt;Message&gt; {
-        Parser::parse_message(&amp;mut self.stream)
-    }
-    
-    pub fn ping(&amp;mut self) -&gt; std::io::Result&lt;bool&gt; {
-        self.send_message(Message::ping())?;
-        let response = self.receive_message()?;
-        Ok(response.msg_type == MessageType::Pong)
-    }
-    
-    pub fn echo(&amp;mut self, data: Vec&lt;u8&gt;) -&gt; std::io::Result&lt;Vec&lt;u8&gt;&gt; {
-        self.send_message(Message::echo(data.clone()).unwrap())?;
-        let response = self.receive_message()?;
-        
-        if response.msg_type == MessageType::Echo {
-            Ok(response.payload)
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Expected Echo response",
-            ))
-        }
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="step-5-binary-executables"><a class="header" href="#step-5-binary-executables">Step 5: Binary Executables</a></h3>
-<pre><pre class="playground"><code class="language-rust">// src/bin/server.rs
-use protocol_parser::server::Server;
-
-fn main() {
-    let server = Server::new("127.0.0.1:8080");
-    
-    if let Err(e) = server.run() {
-        eprintln!("Server error: {}", e);
-    }
-}
-
-// src/bin/client.rs
-use protocol_parser::client::Client;
-use protocol_parser::protocol::Message;
-use std::io::{self, Write};
-
-fn main() -&gt; io::Result&lt;()&gt; {
-    let mut client = Client::connect("127.0.0.1:8080")?;
-    println!("Connected to server");
-    
-    // Test ping
-    if client.ping()? {
-        println!("Ping successful!");
-    }
-    
-    // Test echo
-    let data = b"Hello, Rust!";
-    let echoed = client.echo(data.to_vec())?;
-    println!("Echo: {}", String::from_utf8_lossy(&amp;echoed));
-    
-    // Interactive mode
-    loop {
-        print!("&gt; ");
-        io::stdout().flush()?;
-        
-        let mut input = String::new();
-        io::stdin().read_line(&amp;mut input)?;
-        
-        let input = input.trim();
-        match input {
-            "quit" =&gt; break,
-            "ping" =&gt; {
-                if client.ping()? {
-                    println!("Pong!");
-                }
-            }
-            _ =&gt; {
-                let echoed = client.echo(input.as_bytes().to_vec())?;
-                println!("Server: {}", String::from_utf8_lossy(&amp;echoed));
-            }
-        }
-    }
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="testing-strategy"><a class="header" href="#testing-strategy">Testing Strategy</a></h2>
-<h3 id="unit-tests"><a class="header" href="#unit-tests">Unit Tests</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_message_serialization() {
-        let msg = Message::ping();
-        let bytes = msg.to_bytes();
-        assert_eq!(bytes[0..2], MAGIC_BYTES);
-        assert_eq!(bytes[2], MessageType::Ping as u8);
-    }
-    
-    #[test]
-    fn test_message_parsing() {
-        let msg = Message::echo(b"test".to_vec()).unwrap();
-        let bytes = msg.to_bytes();
-        let parsed = Parser::parse_from_bytes(&amp;bytes).unwrap();
-        assert_eq!(parsed.msg_type, MessageType::Echo);
-        assert_eq!(parsed.payload, b"test");
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="performance-optimizations"><a class="header" href="#performance-optimizations">Performance Optimizations</a></h2>
-<ol>
-<li><strong>Buffer Reuse</strong>: Use a single buffer per connection</li>
-<li><strong>Zero-Copy Parsing</strong>: Parse messages without copying when possible</li>
-<li><strong>Connection Pooling</strong>: Reuse client connections</li>
-<li><strong>Async I/O</strong>: Convert to async for better scalability</li>
-</ol>
-<h2 id="extension-ideas"><a class="header" href="#extension-ideas">Extension Ideas</a></h2>
-<ol>
-<li><strong>Authentication</strong>: Add message signing</li>
-<li><strong>Compression</strong>: Compress large payloads</li>
-<li><strong>Metrics</strong>: Track message rates and latencies</li>
-<li><strong>TLS Support</strong>: Add encryption</li>
-<li><strong>Protocol Versioning</strong>: Support multiple protocol versions</li>
-</ol>
-<h2 id="evaluation-criteria"><a class="header" href="#evaluation-criteria">Evaluation Criteria</a></h2>
-<p>✅ <strong>Correctness</strong>: Messages are parsed and handled correctly
-✅ <strong>Error Handling</strong>: No panics, graceful error recovery
-✅ <strong>Concurrency</strong>: Multiple clients handled simultaneously
-✅ <strong>Performance</strong>: Efficient message processing
-✅ <strong>Code Quality</strong>: Idiomatic Rust, proper abstractions
-✅ <strong>Testing</strong>: Comprehensive test coverage</p>
-<h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
-<p>✅ <strong>Real-world application</strong> of ownership and borrowing
-✅ <strong>Binary protocol parsing</strong> with type safety
-✅ <strong>Concurrent network programming</strong> without data races
-✅ <strong>Error handling</strong> in network applications
-✅ <strong>Testing strategies</strong> for network code
-✅ <strong>Performance considerations</strong> in systems programming</p>
-<hr />
-<p>Congratulations! You've built a complete network application in Rust!: Network Protocol Parser</p>
-<h2 id="learning-objectives-1"><a class="header" href="#learning-objectives-1">Learning Objectives</a></h2>
-<ul>
-<li>Apply all course concepts in a comprehensive, production-ready project</li>
-<li>Design and implement a custom network protocol parser from scratch</li>
-<li>Demonstrate proper error handling, testing, and documentation practices</li>
-<li>Use async/await for concurrent connection handling</li>
-<li>Implement performance monitoring and optimization techniques</li>
-<li>Structure code for maintainability and extensibility</li>
-</ul>
-<h2 id="project-overview-1"><a class="header" href="#project-overview-1">Project Overview</a></h2>
-<p>You'll build a <strong>TCP-based chat protocol parser</strong> that handles multiple concurrent connections, implements a custom binary protocol, and provides both server and client implementations. This project integrates concepts from all previous chapters.</p>
-<h3 id="project-requirements"><a class="header" href="#project-requirements">Project Requirements</a></h3>
-<ol>
-<li><strong>Custom Binary Protocol</strong>: Design a simple but extensible chat protocol</li>
-<li><strong>Async TCP Server</strong>: Handle multiple concurrent clients</li>
-<li><strong>Protocol Parser</strong>: Parse incoming messages with proper error handling</li>
-<li><strong>Client Implementation</strong>: Command-line chat client</li>
-<li><strong>Comprehensive Testing</strong>: Unit tests, integration tests, and benchmarks</li>
-<li><strong>Documentation</strong>: Complete API documentation and usage examples</li>
-<li><strong>Monitoring</strong>: Basic metrics and logging</li>
-</ol>
-<h2 id="protocol-specification-1"><a class="header" href="#protocol-specification-1">Protocol Specification</a></h2>
-<h3 id="message-format-1"><a class="header" href="#message-format-1">Message Format</a></h3>
-<p>Our chat protocol uses a simple binary format:</p>
-<pre><code>+--------+--------+--------+--------+
-| Version|  Type  |     Length      |
-| (1 byte)(1 byte)|    (2 bytes)    |
-+--------+--------+--------+--------+
-|            Payload              |
-|         (Length bytes)          |
-+--------+--------+--------+--------+
-|          Checksum               |
-|         (4 bytes)               |
-+--------+--------+--------+--------+
-</code></pre>
-<p><strong>C++/C# Comparison:</strong></p>
-<ul>
-<li><strong>C++</strong>: Would use structs with packed attributes, manual endianness handling</li>
-<li><strong>C#</strong>: BinaryReader/Writer with careful type marshaling</li>
-<li><strong>Rust</strong>: Type-safe parsing with automatic memory safety and zero-copy optimizations</li>
-</ul>
-<h3 id="message-types-1"><a class="header" href="#message-types-1">Message Types</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MessageType {
-    // Client -&gt; Server
-    Connect = 0x01,
-    Disconnect = 0x02,
-    SendMessage = 0x03,
-    JoinRoom = 0x04,
-    LeaveRoom = 0x05,
-    
-    // Server -&gt; Client
-    ConnectAck = 0x81,
-    MessageBroadcast = 0x82,
-    UserJoined = 0x83,
-    UserLeft = 0x84,
-    Error = 0xFF,
-}
-
-impl MessageType {
-    pub fn from_u8(value: u8) -&gt; Option&lt;Self&gt; {
-        match value {
-            0x01 =&gt; Some(MessageType::Connect),
-            0x02 =&gt; Some(MessageType::Disconnect),
-            0x03 =&gt; Some(MessageType::SendMessage),
-            0x04 =&gt; Some(MessageType::JoinRoom),
-            0x05 =&gt; Some(MessageType::LeaveRoom),
-            0x81 =&gt; Some(MessageType::ConnectAck),
-            0x82 =&gt; Some(MessageType::MessageBroadcast),
-            0x83 =&gt; Some(MessageType::UserJoined),
-            0x84 =&gt; Some(MessageType::UserLeft),
-            0xFF =&gt; Some(MessageType::Error),
-            _ =&gt; None,
-        }
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="project-structure-1"><a class="header" href="#project-structure-1">Project Structure</a></h2>
-<pre><code>chat-protocol/
-├── Cargo.toml                 # Workspace configuration
-├── README.md
-├── LICENSE
-├── src/
-│   └── lib.rs                # Re-exports
-├── protocol/                 # Core protocol library
-│   ├── Cargo.toml
-│   ├── src/
-│   │   ├── lib.rs
-│   │   ├── message.rs        # Message types and parsing
-│   │   ├── parser.rs         # Protocol parser
-│   │   ├── error.rs          # Error types
-│   │   └── codec.rs          # Encoding/decoding
-│   ├── tests/
-│   │   └── integration_tests.rs
-│   └── benches/
-│       └── parser_bench.rs
-├── server/                   # Chat server
-│   ├── Cargo.toml
-│   ├── src/
-│   │   ├── main.rs
-│   │   ├── server.rs         # Server implementation
-│   │   ├── room.rs           # Chat room management
-│   │   ├── client.rs         # Client connection handling
-│   │   └── metrics.rs        # Performance metrics
-│   └── tests/
-│       └── server_tests.rs
-├── client/                   # Chat client
-│   ├── Cargo.toml
-│   ├── src/
-│   │   ├── main.rs
-│   │   ├── client.rs         # Client implementation
-│   │   └── ui.rs            # Command-line interface
-│   └── tests/
-│       └── client_tests.rs
-└── examples/
-    ├── basic_client.rs
-    └── stress_test.rs
-</code></pre>
-<h2 id="starter-code-structure"><a class="header" href="#starter-code-structure">Starter Code Structure</a></h2>
-<h3 id="workspace-configuration"><a class="header" href="#workspace-configuration">Workspace Configuration</a></h3>
-<pre><code class="language-toml"># Cargo.toml (root)
-[workspace]
-members = ["protocol", "server", "client"]
-resolver = "2"
-
-[workspace.dependencies]
-tokio = { version = "1.0", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-anyhow = "1.0"
-thiserror = "1.0"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-bytes = "1.0"
-crc32fast = "1.3"
-
-[workspace.package]
-version = "0.1.0"
-edition = "2021"
-authors = ["Your Name &lt;you@example.com&gt;"]
-license = "MIT OR Apache-2.0"
-</code></pre>
-<h3 id="protocol-library"><a class="header" href="#protocol-library">Protocol Library</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// protocol/src/lib.rs
-//! # Chat Protocol Library
-//! 
-//! A high-performance, type-safe implementation of a custom chat protocol
-//! designed for real-time communication systems.
-
-pub mod message;
-pub mod parser;
-pub mod error;
-pub mod codec;
-
-pub use message::{Message, MessageType, MessagePayload};
-pub use parser::{ProtocolParser, ParseResult};
-pub use error::{ProtocolError, ParseError};
-pub use codec::{MessageCodec, FrameCodec};
-
-/// Protocol version - increment for breaking changes
-pub const PROTOCOL_VERSION: u8 = 1;
-
-/// Maximum message size to prevent DoS attacks
-pub const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
-
-/// Default buffer size for parsing
-pub const DEFAULT_BUFFER_SIZE: usize = 8192;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_protocol_constants() {
-        assert_eq!(PROTOCOL_VERSION, 1);
-        assert!(MAX_MESSAGE_SIZE &gt; 0);
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// protocol/src/message.rs
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-/// Represents a complete protocol message
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Message {
-    pub version: u8,
-    pub message_type: MessageType,
-    pub payload: MessagePayload,
-}
-
-impl Message {
-    pub fn new(message_type: MessageType, payload: MessagePayload) -&gt; Self {
-        Self {
-            version: crate::PROTOCOL_VERSION,
-            message_type,
-            payload,
-        }
-    }
-    
-    /// Calculate the total message size including headers
-    pub fn size(&amp;self) -&gt; usize {
-        // Version (1) + Type (1) + Length (2) + Payload + Checksum (4)
-        8 + self.payload.serialized_size()
-    }
-    
-    /// Validate message constraints
-    pub fn validate(&amp;self) -&gt; Result&lt;(), crate::ProtocolError&gt; {
-        if self.size() &gt; crate::MAX_MESSAGE_SIZE {
-            return Err(crate::ProtocolError::MessageTooLarge {
-                size: self.size(),
-                max_size: crate::MAX_MESSAGE_SIZE,
-            });
-        }
-        
-        self.payload.validate()?;
-        Ok(())
-    }
-}
-
-/// All possible message payloads
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum MessagePayload {
-    Connect { username: String },
-    Disconnect,
-    SendMessage { room: String, content: String },
-    JoinRoom { room: String },
-    LeaveRoom { room: String },
-    
-    // Server responses
-    ConnectAck { 
-        user_id: u32,
-        server_info: String,
-    },
-    MessageBroadcast { 
-        user_id: u32,
-        username: String,
-        room: String,
-        content: String,
-        timestamp: u64,
-    },
-    UserJoined { 
-        user_id: u32,
-        username: String,
-        room: String,
-    },
-    UserLeft { 
-        user_id: u32,
-        username: String,
-        room: String,
-    },
-    Error { 
-        code: u16,
-        message: String,
-    },
-}
-
-impl MessagePayload {
-    /// Calculate serialized size for this payload
-    pub fn serialized_size(&amp;self) -&gt; usize {
-        // This is a simplified calculation
-        match self {
-            MessagePayload::Connect { username } =&gt; 1 + username.len(),
-            MessagePayload::Disconnect =&gt; 1,
-            MessagePayload::SendMessage { room, content } =&gt; {
-                1 + room.len() + content.len()
-            }
-            MessagePayload::JoinRoom { room } =&gt; 1 + room.len(),
-            MessagePayload::LeaveRoom { room } =&gt; 1 + room.len(),
-            MessagePayload::ConnectAck { user_id: _, server_info } =&gt; {
-                5 + server_info.len()
-            }
-            MessagePayload::MessageBroadcast { 
-                user_id: _, username, room, content, timestamp: _
-            } =&gt; {
-                13 + username.len() + room.len() + content.len()
-            }
-            MessagePayload::UserJoined { user_id: _, username, room } =&gt; {
-                5 + username.len() + room.len()
-            }
-            MessagePayload::UserLeft { user_id: _, username, room } =&gt; {
-                5 + username.len() + room.len()
-            }
-            MessagePayload::Error { code: _, message } =&gt; {
-                3 + message.len()
-            }
-        }
-    }
-    
-    /// Validate payload constraints
-    pub fn validate(&amp;self) -&gt; Result&lt;(), crate::ProtocolError&gt; {
-        match self {
-            MessagePayload::Connect { username } =&gt; {
-                if username.is_empty() || username.len() &gt; 32 {
-                    return Err(crate::ProtocolError::InvalidUsername);
-                }
-            }
-            MessagePayload::SendMessage { room, content } =&gt; {
-                if room.is_empty() || room.len() &gt; 64 {
-                    return Err(crate::ProtocolError::InvalidRoomName);
-                }
-                if content.is_empty() || content.len() &gt; 512 {
-                    return Err(crate::ProtocolError::InvalidMessageContent);
-                }
-            }
-            MessagePayload::JoinRoom { room } | MessagePayload::LeaveRoom { room } =&gt; {
-                if room.is_empty() || room.len() &gt; 64 {
-                    return Err(crate::ProtocolError::InvalidRoomName);
-                }
-            }
-            _ =&gt; {} // Server messages don't need client-side validation
-        }
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_message_creation() {
-        let payload = MessagePayload::Connect {
-            username: "testuser".to_string(),
-        };
-        let message = Message::new(MessageType::Connect, payload);
-        
-        assert_eq!(message.version, crate::PROTOCOL_VERSION);
-        assert_eq!(message.message_type, MessageType::Connect);
-        assert!(message.validate().is_ok());
-    }
-    
-    #[test]
-    fn test_payload_validation() {
-        // Valid payload
-        let payload = MessagePayload::Connect {
-            username: "validuser".to_string(),
-        };
-        assert!(payload.validate().is_ok());
-        
-        // Invalid payload - empty username
-        let payload = MessagePayload::Connect {
-            username: "".to_string(),
-        };
-        assert!(payload.validate().is_err());
-        
-        // Invalid payload - username too long
-        let payload = MessagePayload::Connect {
-            username: "a".repeat(50),
-        };
-        assert!(payload.validate().is_err());
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// protocol/src/error.rs
-use thiserror::Error;
-
-/// Errors that can occur during protocol operations
-#[derive(Error, Debug)]
-pub enum ProtocolError {
-    #[error("Message too large: {size} bytes (max: {max_size})")]
-    MessageTooLarge { size: usize, max_size: usize },
-    
-    #[error("Invalid protocol version: {version} (expected: {expected})")]
-    InvalidVersion { version: u8, expected: u8 },
-    
-    #[error("Unknown message type: {message_type:#x}")]
-    UnknownMessageType { message_type: u8 },
-    
-    #[error("Invalid username")]
-    InvalidUsername,
-    
-    #[error("Invalid room name")]
-    InvalidRoomName,
-    
-    #[error("Invalid message content")]
-    InvalidMessageContent,
-    
-    #[error("Parse error: {0}")]
-    ParseError(#[from] ParseError),
-    
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-    
-    #[error("Serialization error: {0}")]
-    SerializationError(String),
-}
-
-/// Specific parsing errors
-#[derive(Error, Debug)]
-pub enum ParseError {
-    #[error("Unexpected end of input")]
-    UnexpectedEof,
-    
-    #[error("Invalid message length: {length}")]
-    InvalidLength { length: u16 },
-    
-    #[error("Checksum mismatch: expected {expected:#x}, got {actual:#x}")]
-    ChecksumMismatch { expected: u32, actual: u32 },
-    
-    #[error("Invalid UTF-8 string")]
-    InvalidUtf8(#[from] std::string::FromUtf8Error),
-    
-    #[error("Buffer too small: need {needed} bytes, have {available}")]
-    BufferTooSmall { needed: usize, available: usize },
-}
-
-/// Type alias for results
-pub type Result&lt;T&gt; = std::result::Result&lt;T, ProtocolError&gt;;
-pub type ParseResult&lt;T&gt; = std::result::Result&lt;T, ParseError&gt;;
-<span class="boring">}</span></code></pre></pre>
-<h2 id="implementation-guidance"><a class="header" href="#implementation-guidance">Implementation Guidance</a></h2>
-<h3 id="1-protocol-parser-implementation"><a class="header" href="#1-protocol-parser-implementation">1. Protocol Parser Implementation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// protocol/src/parser.rs
-use bytes::{Buf, BytesMut};
-use crate::{Message, MessageType, MessagePayload, ParseError, ParseResult};
-
-pub struct ProtocolParser {
-    buffer: BytesMut,
-}
-
-impl ProtocolParser {
-    pub fn new() -&gt; Self {
-        Self {
-            buffer: BytesMut::with_capacity(crate::DEFAULT_BUFFER_SIZE),
-        }
-    }
-    
-    pub fn with_capacity(capacity: usize) -&gt; Self {
-        Self {
-            buffer: BytesMut::with_capacity(capacity),
-        }
-    }
-    
-    /// Add data to the parser buffer
-    pub fn feed(&amp;mut self, data: &amp;[u8]) {
-        self.buffer.extend_from_slice(data);
-    }
-    
-    /// Try to parse a complete message from the buffer
-    pub fn try_parse(&amp;mut self) -&gt; ParseResult&lt;Option&lt;Message&gt;&gt; {
-        // TODO: Implement frame parsing
-        // 1. Check if we have enough bytes for the header (4 bytes)
-        // 2. Parse version, type, and length
-        // 3. Check if we have the complete message
-        // 4. Parse payload and validate checksum
-        // 5. Return parsed message and advance buffer
-        unimplemented!("Implement message parsing")
-    }
-    
-    /// Parse message header to determine expected length
-    fn parse_header(&amp;self) -&gt; ParseResult&lt;(u8, MessageType, u16)&gt; {
-        if self.buffer.len() &lt; 4 {
-            return Err(ParseError::UnexpectedEof);
-        }
-        
-        let version = self.buffer[0];
-        let message_type = MessageType::from_u8(self.buffer[1])
-            .ok_or(ParseError::InvalidMessageType { message_type: self.buffer[1] })?;
-        let length = u16::from_be_bytes([self.buffer[2], self.buffer[3]]);
-        
-        Ok((version, message_type, length))
-    }
-    
-    /// Calculate CRC32 checksum
-    fn calculate_checksum(&amp;self, data: &amp;[u8]) -&gt; u32 {
-        crc32fast::hash(data)
-    }
-}
-
-impl Default for ProtocolParser {
-    fn default() -&gt; Self {
-        Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_parser_creation() {
-        let parser = ProtocolParser::new();
-        assert!(parser.buffer.is_empty());
-    }
-    
-    #[test]
-    fn test_feed_data() {
-        let mut parser = ProtocolParser::new();
-        parser.feed(b"test data");
-        assert_eq!(parser.buffer.len(), 9);
-    }
-    
-    // TODO: Add comprehensive parsing tests
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="2-async-server-implementation"><a class="header" href="#2-async-server-implementation">2. Async Server Implementation</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// server/src/server.rs
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{broadcast, RwLock};
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::net::SocketAddr;
-use tracing::{info, warn, error};
-
-pub struct ChatServer {
-    listener: TcpListener,
-    rooms: Arc&lt;RwLock&lt;HashMap&lt;String, Room&gt;&gt;&gt;,
-    clients: Arc&lt;RwLock&lt;HashMap&lt;u32, ClientInfo&gt;&gt;&gt;,
-    next_client_id: Arc&lt;std::sync::atomic::AtomicU32&gt;,
-    shutdown_tx: broadcast::Sender&lt;()&gt;,
-}
-
-#[derive(Debug, Clone)]
-struct ClientInfo {
-    id: u32,
-    username: String,
-    addr: SocketAddr,
-    rooms: Vec&lt;String&gt;,
-}
-
-impl ChatServer {
-    pub async fn bind(addr: &amp;str) -&gt; Result&lt;Self, Box&lt;dyn std::error::Error&gt;&gt; {
-        let listener = TcpListener::bind(addr).await?;
-        let (shutdown_tx, _) = broadcast::channel(1);
-        
-        info!("Chat server starting on {}", addr);
-        
-        Ok(Self {
-            listener,
-            rooms: Arc::new(RwLock::new(HashMap::new())),
-            clients: Arc::new(RwLock::new(HashMap::new())),
-            next_client_id: Arc::new(std::sync::atomic::AtomicU32::new(1)),
-            shutdown_tx,
-        })
-    }
-    
-    pub async fn run(&amp;self) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-        let mut shutdown_rx = self.shutdown_tx.subscribe();
-        
-        loop {
-            tokio::select! {
-                result = self.listener.accept() =&gt; {
-                    match result {
-                        Ok((stream, addr)) =&gt; {
-                            let client_id = self.next_client_id
-                                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                            
-                            info!("New connection from {}: client_id={}", addr, client_id);
-                            
-                            self.handle_client(client_id, stream, addr).await;
-                        }
-                        Err(e) =&gt; {
-                            error!("Failed to accept connection: {}", e);
-                        }
-                    }
-                }
-                _ = shutdown_rx.recv() =&gt; {
-                    info!("Server shutdown requested");
-                    break;
-                }
-            }
-        }
-        
-        Ok(())
-    }
-    
-    async fn handle_client(&amp;self, client_id: u32, stream: TcpStream, addr: SocketAddr) {
-        // TODO: Implement client connection handling
-        // 1. Create ClientConnection struct
-        // 2. Spawn async task for this client
-        // 3. Handle incoming messages
-        // 4. Broadcast messages to appropriate rooms
-        // 5. Clean up on disconnect
-        unimplemented!("Implement client handling")
-    }
-    
-    pub fn shutdown(&amp;self) -&gt; Result&lt;(), broadcast::error::SendError&lt;()&gt;&gt; {
-        self.shutdown_tx.send(())
-    }
-}
-
-// TODO: Implement Room and ClientConnection structs
-<span class="boring">}</span></code></pre></pre>
-<h3 id="3-testing-strategy"><a class="header" href="#3-testing-strategy">3. Testing Strategy</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// protocol/tests/integration_tests.rs
-use chat_protocol::{Message, MessageType, MessagePayload, ProtocolParser};
-
-#[test]
-fn test_round_trip_parsing() {
-    // TODO: Test message serialization -&gt; parsing -&gt; deserialization
-}
-
-#[test]
-fn test_partial_message_handling() {
-    // TODO: Test parsing with incomplete data
-}
-
-#[test]
-fn test_malformed_message_handling() {
-    // TODO: Test parsing with corrupted data
-}
-
-#[tokio::test]
-async fn test_server_client_communication() {
-    // TODO: Integration test with actual server and client
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="4-performance-benchmarks"><a class="header" href="#4-performance-benchmarks">4. Performance Benchmarks</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// protocol/benches/parser_bench.rs
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use chat_protocol::{Message, MessageType, MessagePayload, ProtocolParser};
-
-fn benchmark_message_parsing(c: &amp;mut Criterion) {
-    let message = Message::new(
-        MessageType::SendMessage,
-        MessagePayload::SendMessage {
-            room: "general".to_string(),
-            content: "Hello, world!".to_string(),
-        }
-    );
-    
-    // TODO: Implement serialization and benchmark parsing
-    
-    c.bench_function("parse_message", |b| {
-        b.iter(|| {
-            // TODO: Benchmark message parsing
-            black_box(())
-        })
-    });
-}
-
-criterion_group!(benches, benchmark_message_parsing);
-criterion_main!(benches);
-<span class="boring">}</span></code></pre></pre>
-<h2 id="performance-considerations"><a class="header" href="#performance-considerations">Performance Considerations</a></h2>
-<h3 id="1-zero-copy-parsing"><a class="header" href="#1-zero-copy-parsing">1. Zero-Copy Parsing</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Use Bytes for zero-copy parsing where possible
-use bytes::{Bytes, Buf};
-
-pub struct ZeroCopyMessage&lt;'a&gt; {
-    pub version: u8,
-    pub message_type: MessageType,
-    pub payload: &amp;'a [u8],  // Reference to original buffer
-}
-
-impl&lt;'a&gt; ZeroCopyMessage&lt;'a&gt; {
-    pub fn parse_from_bytes(data: &amp;'a [u8]) -&gt; ParseResult&lt;Self&gt; {
-        // TODO: Parse without allocating new strings/vectors
-        unimplemented!()
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="2-connection-pooling"><a class="header" href="#2-connection-pooling">2. Connection Pooling</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Reuse connections and buffers
-pub struct ConnectionPool {
-    available: Vec&lt;ClientConnection&gt;,
-    max_size: usize,
-}
-
-impl ConnectionPool {
-    pub fn get_connection(&amp;mut self) -&gt; ClientConnection {
-        self.available.pop().unwrap_or_else(|| {
-            ClientConnection::new()
-        })
-    }
-    
-    pub fn return_connection(&amp;mut self, mut conn: ClientConnection) {
-        if self.available.len() &lt; self.max_size {
-            conn.reset(); // Clear state but keep allocated buffers
-            self.available.push(conn);
-        }
-        // Otherwise drop the connection
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="3-metrics-collection"><a class="header" href="#3-metrics-collection">3. Metrics Collection</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// server/src/metrics.rs
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
-
-#[derive(Debug, Default)]
-pub struct ServerMetrics {
-    pub messages_processed: AtomicU64,
-    pub clients_connected: AtomicU64,
-    pub bytes_received: AtomicU64,
-    pub bytes_sent: AtomicU64,
-    pub parse_errors: AtomicU64,
-}
-
-impl ServerMetrics {
-    pub fn record_message_processed(&amp;self) {
-        self.messages_processed.fetch_add(1, Ordering::Relaxed);
-    }
-    
-    pub fn record_client_connected(&amp;self) {
-        self.clients_connected.fetch_add(1, Ordering::Relaxed);
-    }
-    
-    pub fn record_bytes_received(&amp;self, bytes: u64) {
-        self.bytes_received.fetch_add(bytes, Ordering::Relaxed);
-    }
-    
-    pub fn record_parse_error(&amp;self) {
-        self.parse_errors.fetch_add(1, Ordering::Relaxed);
-    }
-    
-    pub fn get_stats(&amp;self) -&gt; MetricsSnapshot {
-        MetricsSnapshot {
-            messages_processed: self.messages_processed.load(Ordering::Relaxed),
-            clients_connected: self.clients_connected.load(Ordering::Relaxed),
-            bytes_received: self.bytes_received.load(Ordering::Relaxed),
-            bytes_sent: self.bytes_sent.load(Ordering::Relaxed),
-            parse_errors: self.parse_errors.load(Ordering::Relaxed),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct MetricsSnapshot {
-    pub messages_processed: u64,
-    pub clients_connected: u64,
-    pub bytes_received: u64,
-    pub bytes_sent: u64,
-    pub parse_errors: u64,
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="common-pitfalls-and-solutions"><a class="header" href="#common-pitfalls-and-solutions">Common Pitfalls and Solutions</a></h2>
-<h3 id="1-buffer-management"><a class="header" href="#1-buffer-management">1. Buffer Management</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// BAD: Allocating new buffers for each message
-fn parse_message_inefficient(data: &amp;[u8]) -&gt; Result&lt;Message, ParseError&gt; {
-    let mut owned_data = data.to_vec(); // Unnecessary allocation
-    // ... parsing logic
-}
-
-// GOOD: Reuse buffers and parse in-place
-pub struct ReusableParser {
-    buffer: BytesMut,
-    temp_string_buffer: String,
-}
-
-impl ReusableParser {
-    fn parse_message(&amp;mut self, data: &amp;[u8]) -&gt; Result&lt;Message, ParseError&gt; {
-        // Reuse internal buffers
-        self.buffer.clear();
-        self.buffer.extend_from_slice(data);
-        // ... parsing logic that reuses buffers
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="2-error-handling-in-async-context"><a class="header" href="#2-error-handling-in-async-context">2. Error Handling in Async Context</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Handle client disconnections gracefully
-async fn handle_client_messages(mut stream: TcpStream) {
-    let mut parser = ProtocolParser::new();
-    let mut buffer = [0u8; 1024];
-    
-    loop {
-        match stream.read(&amp;mut buffer).await {
-            Ok(0) =&gt; {
-                // Client disconnected
-                info!("Client disconnected gracefully");
-                break;
-            }
-            Ok(n) =&gt; {
-                parser.feed(&amp;buffer[..n]);
-                
-                while let Ok(Some(message)) = parser.try_parse() {
-                    if let Err(e) = handle_message(message).await {
-                        error!("Failed to handle message: {}", e);
-                        // Decide whether to disconnect or continue
-                    }
-                }
-            }
-            Err(e) =&gt; {
-                error!("Read error: {}", e);
-                break;
-            }
-        }
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
-<h3 id="exercise-1-complete-the-protocol-parser"><a class="header" href="#exercise-1-complete-the-protocol-parser">Exercise 1: Complete the Protocol Parser</a></h3>
-<p>Implement the missing parts of <code>ProtocolParser::try_parse()</code>:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub fn try_parse(&amp;mut self) -&gt; ParseResult&lt;Option&lt;Message&gt;&gt; {
-    // TODO: Your implementation here
-    // Requirements:
-    // 1. Parse header (version, type, length)
-    // 2. Validate we have complete message
-    // 3. Parse payload based on message type
-    // 4. Verify checksum
-    // 5. Advance buffer and return message
-    unimplemented!()
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-2-implement-client-connection-handling"><a class="header" href="#exercise-2-implement-client-connection-handling">Exercise 2: Implement Client Connection Handling</a></h3>
-<p>Complete the server's client handling logic:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>struct ClientConnection {
-    id: u32,
-    stream: TcpStream,
-    parser: ProtocolParser,
-    username: Option&lt;String&gt;,
-    rooms: Vec&lt;String&gt;,
-}
-
-impl ClientConnection {
-    async fn handle_message(&amp;mut self, message: Message) -&gt; Result&lt;(), ProtocolError&gt; {
-        // TODO: Implement message handling logic
-        // 1. Validate message based on current state
-        // 2. Update client state (username, rooms)
-        // 3. Broadcast to appropriate clients
-        // 4. Send response back to client
-        unimplemented!()
-    }
-}
-<span class="boring">}</span></code></pre></pre>
-<h3 id="exercise-3-add-load-testing"><a class="header" href="#exercise-3-add-load-testing">Exercise 3: Add Load Testing</a></h3>
-<p>Create a stress test client that:</p>
-<pre><pre class="playground"><code class="language-rust">// examples/stress_test.rs
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // TODO: Create stress test that:
-    // 1. Connects multiple clients simultaneously
-    // 2. Sends messages at high rate
-    // 3. Measures latency and throughput
-    // 4. Reports performance metrics
-    // 5. Handles connection failures gracefully
+    println!("🌡️  Starting Temperature Monitoring System");
+
+    // Initialize components from different chapters
+    let mut sensor = MockTemperatureSensor::new("desktop_sensor".to_string(), 22.0);
+    let store = TemperatureStore::new(1000);  // 1000 reading capacity
+    let mut protocol_handler = TemperatureProtocolHandler::new();
+    let mut async_monitor = AsyncTemperatureMonitor::new(100);
+
+    println!("✅ All components initialized successfully");
+
+    // Simulate system operation
+    println!("\n🔄 Running system simulation...");
+
+    // Chapter 13: Basic sensor reading
+    println!("\n📊 Chapter 13 - Basic sensor reading:");
+    let temp = sensor.read_temperature()?;
+    println!("Temperature: {:.1}°C", temp.celsius);
+
+    // Chapter 14: Thread-safe storage
+    println!("\n💾 Chapter 14 - Thread-safe storage:");
+    let reading = TemperatureReading::new(temp);
+    store.add_reading(reading);
+    println!("Stored reading, total count: {}", store.len());
+
+    // Chapter 15: Async monitoring
+    println!("\n⚡ Chapter 15 - Async monitoring:");
+    let readings = simulate_async_readings().await;
+    for reading in readings {
+        store.add_reading(reading);
+    }
+    let stats = store.calculate_stats().unwrap();
+    println!("Statistics - Min: {:.1}°C, Max: {:.1}°C, Avg: {:.1}°C",
+             stats.min.celsius, stats.max.celsius, stats.average.celsius);
+
+    // Chapter 16: Protocol communication
+    println!("\n📡 Chapter 16 - Protocol communication:");
+    let command = Command::GetStats { sensor_id: "desktop_sensor".to_string() };
+    let request = protocol_handler.create_command(command);
+    let response = protocol_handler.process_command(request);
+
+    // Serialize to both formats
+    let json_data = protocol_handler.serialize_json(&amp;response)?;
+    let binary_data = protocol_handler.serialize_binary(&amp;response)?;
+    println!("Protocol response - JSON: {} bytes, Binary: {} bytes",
+             json_data.len(), binary_data.len());
+
+    // Chapter 17: no_std comparison
+    println!("\n🔧 Chapter 17 - Embedded comparison:");
+    show_embedded_integration();
+
+    // Chapter 18: Deployment ready
+    println!("\n🚀 Chapter 18 - Deployment ready:");
+    println!("✅ Desktop build: cargo build --release");
+    println!("✅ Embedded build: cargo build -p temp_embedded --no-default-features");
+    println!("✅ ESP32 build: cargo build -p temp_esp32 --target riscv32imc-esp-espidf");
+
+    println!("\n🎉 Temperature monitoring system integration complete!");
     Ok(())
+}
+
+async fn simulate_async_readings() -&gt; Vec&lt;TemperatureReading&gt; {
+    let mut readings = Vec::new();
+    let mut sensor = MockTemperatureSensor::new("async_sensor".to_string(), 20.0);
+
+    // Simulate 10 readings over time
+    for i in 0..10 {
+        sensor.set_temperature(20.0 + (i as f32) * 0.5);
+        let temp = sensor.read_temperature().unwrap();
+        let reading = TemperatureReading::new(temp);
+        readings.push(reading);
+
+        // Simulate time passing
+        sleep(Duration::from_millis(100)).await;
+    }
+
+    readings
+}
+
+fn show_embedded_integration() {
+    use temp_embedded::{EmbeddedTemperatureStore, EmbeddedProtocolHandler, READING_BUFFER_SIZE};
+
+    // Show embedded version working
+    let mut embedded_store: EmbeddedTemperatureStore&lt;READING_BUFFER_SIZE&gt; =
+        EmbeddedTemperatureStore::new();
+    let embedded_handler: EmbeddedProtocolHandler&lt;READING_BUFFER_SIZE&gt; =
+        EmbeddedProtocolHandler::new();
+
+    println!("  📱 Embedded store capacity: {} readings", embedded_store.capacity());
+    println!("  💽 Memory usage: ~{} bytes",
+             std::mem::size_of_val(&amp;embedded_store) +
+             std::mem::size_of_val(&amp;embedded_handler));
+    println!("  ⚡ Const configuration: Sample rate = {} Hz",
+             temp_embedded::SAMPLE_RATE_HZ);
 }</code></pre></pre>
-<h2 id="key-takeaways-1"><a class="header" href="#key-takeaways-1">Key Takeaways</a></h2>
+<h2 id="embedded-integration-example"><a class="header" href="#embedded-integration-example">Embedded Integration Example</a></h2>
+<p>Here's how the system works in embedded mode:</p>
+<pre><pre class="playground"><code class="language-rust">// temp_esp32/src/main.rs - ESP32-C3 temperature monitor
+#![no_std]
+#![no_main]
+
+use esp_backtrace as _;
+use esp_hal::{
+    clock::ClockControl,
+    delay::Delay,
+    gpio::{Io, Level, Output},
+    peripherals::Peripherals,
+    prelude::*,
+    system::SystemControl,
+};
+use temp_embedded::{
+    EmbeddedTemperatureStore, EmbeddedProtocolHandler,
+    EmbeddedCommand, EmbeddedResponse,
+    Temperature, READING_BUFFER_SIZE
+};
+
+#[entry]
+fn main() -&gt; ! {
+    // ESP32-C3 initialization
+    let peripherals = Peripherals::take();
+    let system = SystemControl::new(peripherals.SYSTEM);
+    let clocks = ClockControl::max(system.clock_control).freeze();
+    let delay = Delay::new(&amp;clocks);
+
+    // Initialize GPIO for status LED
+    let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
+    let mut led = Output::new(io.pins.gpio8, Level::Low);
+
+    // Initialize our temperature monitoring components
+    let mut store: EmbeddedTemperatureStore&lt;READING_BUFFER_SIZE&gt; =
+        EmbeddedTemperatureStore::new();
+    let mut protocol_handler: EmbeddedProtocolHandler&lt;READING_BUFFER_SIZE&gt; =
+        EmbeddedProtocolHandler::new();
+
+    // Initialize with boot time
+    protocol_handler.init(get_boot_timestamp());
+
+    // System status
+    esp_println::println!("🌡️ ESP32-C3 Temperature Monitor Starting");
+    esp_println::println!("📊 Buffer capacity: {} readings", store.capacity());
+    esp_println::println!("⚡ Sample rate: {} Hz", temp_embedded::SAMPLE_RATE_HZ);
+
+    let mut reading_count = 0u32;
+
+    loop {
+        // Flash LED to show we're alive
+        led.set_high();
+        delay.delay_millis(50);
+        led.set_low();
+
+        // Simulate reading from hardware sensor
+        let adc_value = simulate_adc_reading(reading_count);
+        let temperature = Temperature::from_embedded_sensor(adc_value);
+
+        // Store the reading
+        let timestamp = get_current_timestamp();
+        if let Err(e) = protocol_handler.add_reading(temperature, timestamp) {
+            esp_println::println!("Storage error: {}", e);
+        } else {
+            reading_count += 1;
+
+            if reading_count % 10 == 0 {
+                // Process status command every 10 readings
+                let status_command = EmbeddedCommand::GetStatus;
+                let response = protocol_handler.process_command(status_command, timestamp);
+
+                if let EmbeddedResponse::Status { uptime_seconds, reading_count, buffer_usage, .. } = response {
+                    esp_println::println!("Status: {} readings, {}% buffer, uptime: {}s",
+                                         reading_count, buffer_usage, uptime_seconds);
+                }
+
+                // Show latest statistics
+                let stats_command = EmbeddedCommand::GetStats;
+                let stats_response = protocol_handler.process_command(stats_command, timestamp);
+
+                if let EmbeddedResponse::Stats(stats) = stats_response {
+                    esp_println::println!("Stats: Min={:.1}°C, Max={:.1}°C, Avg={:.1}°C",
+                                         stats.min.celsius, stats.max.celsius, stats.average.celsius);
+                }
+            }
+        }
+
+        // Wait according to sample rate (100ms for 10Hz)
+        delay.delay_millis(100);
+    }
+}
+
+fn simulate_adc_reading(count: u32) -&gt; u16 {
+    // Simulate temperature sensor ADC reading
+    // Varies between ~20-30°C (ADC values ~800-1200 for our conversion)
+    let base_temp = 25.0;
+    let variation = (count as f32 * 0.1).sin() * 5.0;
+    let temp_celsius = base_temp + variation;
+
+    // Convert to 12-bit ADC value (assuming 10mV/°C sensor, 3.3V ref)
+    let voltage = temp_celsius * 0.01; // 10mV/°C
+    let adc_value = (voltage / 3.3) * 4095.0;
+    adc_value as u16
+}
+
+fn get_boot_timestamp() -&gt; u32 {
+    // In real implementation, this would be actual boot time
+    0
+}
+
+fn get_current_timestamp() -&gt; u32 {
+    // In real implementation, this would use hardware timer
+    // For simulation, we'll use a simple counter
+    static mut COUNTER: u32 = 0;
+    unsafe {
+        COUNTER += 1;
+        COUNTER
+    }
+}</code></pre></pre>
+<h2 id="testing-the-complete-system"><a class="header" href="#testing-the-complete-system">Testing the Complete System</a></h2>
+<h3 id="end-to-end-test-scenarios"><a class="header" href="#end-to-end-test-scenarios">End-to-End Test Scenarios</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// tests/integration_tests.rs
+use temp_core::{Temperature, mock::MockTemperatureSensor, TemperatureSensor};
+use temp_store::{TemperatureStore, TemperatureReading};
+use temp_protocol::{TemperatureProtocolHandler, Command, Response};
+use temp_embedded::{EmbeddedTemperatureStore, EmbeddedProtocolHandler};
+
+#[tokio::test]
+async fn test_complete_system_integration() {
+    // Test that all components work together
+    let mut sensor = MockTemperatureSensor::new("integration_test".to_string(), 25.0);
+    let store = TemperatureStore::new(100);
+    let mut protocol_handler = TemperatureProtocolHandler::new();
+
+    // 1. Read sensor data
+    let temp = sensor.read_temperature().unwrap();
+    assert!((temp.celsius - 25.0).abs() &lt; 1.0);
+
+    // 2. Store readings
+    let reading = TemperatureReading::new(temp);
+    store.add_reading(reading);
+    assert_eq!(store.len(), 1);
+
+    // 3. Process protocol commands
+    let command = Command::GetReading { sensor_id: "integration_test".to_string() };
+    let request = protocol_handler.create_command(command);
+    let response = protocol_handler.process_command(request);
+
+    // Verify response
+    if let temp_protocol::MessagePayload::Response(Response::Reading { temperature, .. }) = response.payload {
+        assert!((temperature - 25.0).abs() &lt; 1.0);
+    } else {
+        panic!("Expected reading response");
+    }
+
+    println!("✅ Complete system integration test passed");
+}
+
+#[test]
+fn test_desktop_vs_embedded_compatibility() {
+    // Test that both implementations produce compatible results
+    use temp_embedded::EmbeddedTemperatureReading;
+
+    let temp = Temperature::new(23.5);
+
+    // Desktop version
+    let desktop_reading = TemperatureReading::new(temp);
+
+    // Embedded version
+    let embedded_reading = EmbeddedTemperatureReading::new(temp, 1000);
+
+    // Both should have same temperature
+    assert_eq!(desktop_reading.temperature, embedded_reading.temperature);
+
+    println!("✅ Desktop/Embedded compatibility test passed");
+}
+
+#[test]
+fn test_protocol_binary_size_optimization() {
+    use temp_protocol::TemperatureProtocolHandler;
+    use temp_embedded::EmbeddedProtocolHandler;
+
+    let desktop_handler = TemperatureProtocolHandler::new();
+    let embedded_handler: EmbeddedProtocolHandler&lt;64&gt; = EmbeddedProtocolHandler::new();
+
+    // Create same command in both systems
+    let command = temp_protocol::Command::GetStatus;
+    let embedded_command = temp_embedded::EmbeddedCommand::GetStatus;
+
+    // Test serialization sizes
+    let desktop_msg = desktop_handler.create_command(command);
+    let desktop_json = desktop_handler.serialize_json(&amp;desktop_msg).unwrap();
+    let desktop_binary = desktop_handler.serialize_binary(&amp;desktop_msg).unwrap();
+
+    let embedded_binary = embedded_handler.serialize_binary(&amp;embedded_command).unwrap();
+
+    println!("Desktop JSON: {} bytes", desktop_json.len());
+    println!("Desktop binary: {} bytes", desktop_binary.len());
+    println!("Embedded binary: {} bytes", embedded_binary.len());
+
+    // Binary should be smaller than JSON
+    assert!(desktop_binary.len() &lt; desktop_json.len());
+
+    // Embedded should be very compact
+    assert!(embedded_binary.len() &lt;= desktop_binary.len());
+
+    println!("✅ Protocol size optimization test passed");
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="performance-analysis"><a class="header" href="#performance-analysis">Performance Analysis</a></h2>
+<h3 id="memory-usage-comparison"><a class="header" href="#memory-usage-comparison">Memory Usage Comparison</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Analysis of memory usage across different modes
+fn analyze_memory_usage() {
+    use std::mem::size_of;
+    use temp_store::TemperatureStore;
+    use temp_embedded::{EmbeddedTemperatureStore, EmbeddedProtocolHandler};
+    use temp_protocol::TemperatureProtocolHandler;
+
+    println!("\n📊 Memory Usage Analysis");
+    println!("========================");
+
+    // Desktop components
+    println!("\n🖥️  Desktop Mode:");
+    println!("  TemperatureStore:           ~{} bytes + Vec capacity",
+             size_of::&lt;TemperatureStore&gt;());
+    println!("  ProtocolHandler:            ~{} bytes + HashMap capacity",
+             size_of::&lt;TemperatureProtocolHandler&gt;());
+    println!("  Total baseline:             ~{} bytes (+ dynamic allocations)",
+             size_of::&lt;TemperatureStore&gt;() + size_of::&lt;TemperatureProtocolHandler&gt;());
+
+    // Embedded components
+    println!("\n📱 Embedded Mode (64 readings):");
+    let embedded_store: EmbeddedTemperatureStore&lt;64&gt; = EmbeddedTemperatureStore::new();
+    let embedded_handler: EmbeddedProtocolHandler&lt;64&gt; = EmbeddedProtocolHandler::new();
+
+    println!("  EmbeddedTemperatureStore:   {} bytes", size_of_val(&amp;embedded_store));
+    println!("  EmbeddedProtocolHandler:    {} bytes", size_of_val(&amp;embedded_handler));
+    println!("  Total fixed:                {} bytes (no heap allocations)",
+             size_of_val(&amp;embedded_store) + size_of_val(&amp;embedded_handler));
+
+    // Performance characteristics
+    println!("\n⚡ Performance Characteristics:");
+    println!("  Desktop:  Dynamic allocation, thread-safe, unlimited capacity");
+    println!("  Embedded: Fixed allocation, deterministic, limited capacity");
+    println!("  ESP32-C3: ~320KB RAM available, ~2MB flash for code");
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="response-time-benchmarks"><a class="header" href="#response-time-benchmarks">Response Time Benchmarks</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Benchmark different operations
+use std::time::{Duration, Instant};
+
+fn benchmark_operations() {
+    println!("\n🏁 Performance Benchmarks");
+    println!("=========================");
+
+    // Sensor reading benchmark
+    let mut sensor = temp_core::mock::MockTemperatureSensor::new("benchmark".to_string(), 25.0);
+    let start = Instant::now();
+    for _ in 0..10_000 {
+        let _ = sensor.read_temperature().unwrap();
+    }
+    let sensor_time = start.elapsed();
+    println!("Sensor readings:     {} ns per reading",
+             sensor_time.as_nanos() / 10_000);
+
+    // Storage benchmark
+    let store = temp_store::TemperatureStore::new(10_000);
+    let temp = temp_core::Temperature::new(25.0);
+    let reading = temp_store::TemperatureReading::new(temp);
+
+    let start = Instant::now();
+    for _ in 0..10_000 {
+        store.add_reading(reading);
+    }
+    let storage_time = start.elapsed();
+    println!("Storage operations:  {} ns per operation",
+             storage_time.as_nanos() / 10_000);
+
+    // Protocol serialization benchmark
+    let mut handler = temp_protocol::TemperatureProtocolHandler::new();
+    let command = temp_protocol::Command::GetStatus;
+    let message = handler.create_command(command);
+
+    let start = Instant::now();
+    for _ in 0..1_000 {
+        let _ = handler.serialize_binary(&amp;message).unwrap();
+    }
+    let serialize_time = start.elapsed();
+    println!("Binary serialization: {} μs per message",
+             serialize_time.as_micros() / 1_000);
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="production-deployment-considerations"><a class="header" href="#production-deployment-considerations">Production Deployment Considerations</a></h2>
+<h3 id="what-weve-achieved"><a class="header" href="#what-weve-achieved">What We've Achieved</a></h3>
+<p>✅ <strong>Memory Safety</strong>: No buffer overflows, dangling pointers, or memory leaks
+✅ <strong>Concurrency</strong>: Thread-safe operations without data races
+✅ <strong>Performance</strong>: Zero-cost abstractions, optimized for embedded
+✅ <strong>Reliability</strong>: Comprehensive error handling and recovery
+✅ <strong>Testability</strong>: Extensive test coverage across all components
+✅ <strong>Portability</strong>: Runs on desktop, embedded, and ESP32-C3
+✅ <strong>Maintainability</strong>: Clean architecture with separation of concerns</p>
+<h3 id="production-enhancements-needed"><a class="header" href="#production-enhancements-needed">Production Enhancements Needed</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Additional features for production deployment
+pub struct ProductionEnhancements {
+    // Security
+    pub authentication: bool,        // User authentication
+    pub encryption: bool,           // Data encryption at rest/transit
+    pub secure_boot: bool,          // Verified boot process
+
+    // Reliability
+    pub watchdog: bool,             // Hardware watchdog timer
+    pub error_recovery: bool,       // Automatic error recovery
+    pub redundancy: bool,           // Sensor redundancy
+
+    // Connectivity
+    pub wifi_management: bool,      // WiFi connection management
+    pub ota_updates: bool,          // Over-the-air firmware updates
+    pub cloud_integration: bool,    // Cloud data upload
+
+    // Monitoring
+    pub remote_diagnostics: bool,   // Remote system monitoring
+    pub performance_metrics: bool,  // Performance telemetry
+    pub alerting: bool,            // Automated alerts
+
+    // Standards Compliance
+    pub industrial_protocols: bool, // Modbus, OPC-UA, etc.
+    pub safety_standards: bool,     // IEC 61508, ISO 26262
+    pub regulatory: bool,          // FCC, CE, UL certification
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="deployment-architecture-options"><a class="header" href="#deployment-architecture-options">Deployment Architecture Options</a></h3>
+<pre><code>1. Standalone Embedded Device
+   ┌─────────────────┐
+   │    ESP32-C3     │
+   │                 │
+   │  temp_embedded  │
+   │  WiFi/Bluetooth │
+   │  Local Display  │
+   └─────────────────┘
+
+2. Gateway + Cloud Architecture
+   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+   │ ESP32-C3    │───▶│  Gateway    │───▶│   Cloud     │
+   │ Sensors     │    │  Raspberry  │    │  Dashboard  │
+   │ temp_esp32  │    │  Pi/PC      │    │  Analytics  │
+   └─────────────┘    └─────────────┘    └─────────────┘
+
+3. Industrial IoT Platform
+   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+   │ Multiple    │───▶│  Industrial │───▶│  SCADA      │
+   │ ESP32-C3    │    │  Gateway    │    │  System     │
+   │ Nodes       │    │  Modbus/OPC │    │  HMI        │
+   └─────────────┘    └─────────────┘    └─────────────┘
+</code></pre>
+<h2 id="exercise-deploy-your-complete-temperature-monitor"><a class="header" href="#exercise-deploy-your-complete-temperature-monitor">Exercise: Deploy Your Complete Temperature Monitor</a></h2>
+<p>Time to bring everything together! You'll deploy and test your complete temperature monitoring system.</p>
+<h3 id="requirements"><a class="header" href="#requirements">Requirements</a></h3>
+<p>Deploy your system in at least one configuration:</p>
 <ol>
-<li><strong>Protocol Design Matters</strong>: Well-designed protocols with proper framing prevent parsing ambiguities</li>
-<li><strong>Async is Essential</strong>: Modern network services require async/await for scalability</li>
-<li><strong>Error Handling is Critical</strong>: Network services must gracefully handle all types of failures</li>
-<li><strong>Performance Testing is Mandatory</strong>: Always benchmark and profile network code</li>
-<li><strong>Security First</strong>: Validate all inputs and limit resource usage to prevent attacks</li>
-<li><strong>Documentation Enables Adoption</strong>: Clear examples and API docs are essential</li>
-<li><strong>Monitoring Provides Visibility</strong>: Metrics and logging help debug production issues</li>
-<li><strong>Testing Builds Confidence</strong>: Comprehensive tests prevent regressions and ensure reliability</li>
+<li><strong>Desktop Configuration</strong>: Full-featured system with all capabilities</li>
+<li><strong>Embedded Simulation</strong>: Resource-constrained version for testing</li>
+<li><strong>ESP32-C3 Deployment</strong> (if hardware available): Real hardware deployment</li>
 </ol>
-<p>This capstone project demonstrates how to build production-ready network services in Rust, combining performance, safety, and maintainability. The skills learned here apply directly to building web servers, microservices, and distributed systems.</p>
-<p><strong>Congratulations!</strong> You've completed a comprehensive journey through systems programming with Rust, from basic ownership concepts to building production network services.</p>
+<h3 id="implementation-steps"><a class="header" href="#implementation-steps">Implementation Steps</a></h3>
+<ol>
+<li>
+<p><strong>System Integration</strong>:</p>
+<pre><code class="language-bash"># Test all components work together
+cargo test --workspace
+
+# Build desktop version
+cargo build --release --workspace
+
+# Build embedded version
+cargo build -p temp_embedded --no-default-features --release
+</code></pre>
+</li>
+<li>
+<p><strong>Desktop Deployment</strong>:</p>
+<pre><code class="language-bash"># Run integrated desktop system
+cargo run --example desktop_integration
+
+# Test with multiple sensor types
+cargo run --example multi_sensor_demo
+</code></pre>
+</li>
+<li>
+<p><strong>Embedded Testing</strong>:</p>
+<pre><code class="language-bash"># Test embedded components
+cargo test -p temp_embedded
+
+# Check binary size
+cargo size -p temp_embedded --release
+</code></pre>
+</li>
+<li>
+<p><strong>ESP32-C3 Deployment</strong> (optional):</p>
+<pre><code class="language-bash"># Build for ESP32-C3
+cargo build -p temp_esp32 --target riscv32imc-esp-espidf --release
+
+# Flash to hardware (if available)
+espflash flash --monitor target/riscv32imc-esp-espidf/release/temp_esp32
+</code></pre>
+</li>
+</ol>
+<h3 id="success-criteria"><a class="header" href="#success-criteria">Success Criteria</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"/>
+All workspace tests pass (31+ tests across all crates)</li>
+<li><input disabled="" type="checkbox"/>
+Desktop integration runs without errors</li>
+<li><input disabled="" type="checkbox"/>
+Embedded version compiles with size constraints</li>
+<li><input disabled="" type="checkbox"/>
+System demonstrates all functionality from Chapters 13-18:
+<ul>
+<li><input disabled="" type="checkbox"/>
+Temperature sensor reading (Chapter 13)</li>
+<li><input disabled="" type="checkbox"/>
+Thread-safe storage (Chapter 14)</li>
+<li><input disabled="" type="checkbox"/>
+Async monitoring (Chapter 15)</li>
+<li><input disabled="" type="checkbox"/>
+Binary protocol communication (Chapter 16)</li>
+<li><input disabled="" type="checkbox"/>
+no_std operation (Chapter 17)</li>
+<li><input disabled="" type="checkbox"/>
+Multi-target building (Chapter 18)</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+Performance analysis shows reasonable resource usage</li>
+<li><input disabled="" type="checkbox"/>
+System runs continuously without crashes</li>
+</ul>
+<h3 id="validation-tests"><a class="header" href="#validation-tests">Validation Tests</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Run these tests to validate your complete system
+#[tokio::test]
+async fn test_my_complete_temperature_monitor() {
+    // TODO: Create a comprehensive test that:
+    // 1. Initializes all components
+    // 2. Simulates sensor readings over time
+    // 3. Tests protocol communication
+    // 4. Verifies data storage and statistics
+    // 5. Confirms error handling works
+    // 6. Measures performance characteristics
+
+    println!("🎉 My temperature monitor works!");
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="congratulations"><a class="header" href="#congratulations">Congratulations!</a></h2>
+<p>You've successfully built a complete, production-ready temperature monitoring system in Rust!</p>
+<h3 id="what-youve-accomplished"><a class="header" href="#what-youve-accomplished">What You've Accomplished</a></h3>
+<p>🌟 <strong>Technical Mastery</strong>: You've applied every major Rust concept:</p>
+<ul>
+<li>Ownership and borrowing for memory safety</li>
+<li>Error handling with Result and Option</li>
+<li>Trait-based abstraction and generics</li>
+<li>Concurrent programming with threads and async</li>
+<li>no_std embedded programming</li>
+<li>Comprehensive testing strategies</li>
+<li>Production build and deployment</li>
+</ul>
+<p>🌟 <strong>System Engineering</strong>: You've built a real system:</p>
+<ul>
+<li>Modular architecture with clean interfaces</li>
+<li>Progressive complexity from simple to embedded</li>
+<li>Multiple deployment targets from one codebase</li>
+<li>Comprehensive testing and validation</li>
+<li>Production deployment considerations</li>
+</ul>
+<p>🌟 <strong>Professional Skills</strong>: You've demonstrated:</p>
+<ul>
+<li>Code organization and workspace management</li>
+<li>CI/CD pipeline setup and automation</li>
+<li>Cross-compilation and target optimization</li>
+<li>Documentation and API design</li>
+<li>Performance analysis and optimization</li>
+</ul>
+<h3 id="your-journey"><a class="header" href="#your-journey">Your Journey</a></h3>
+<ul>
+<li><strong>Day 1</strong>: Rust fundamentals, ownership, and basic types</li>
+<li><strong>Day 2</strong>: Advanced features, traits, error handling, and async</li>
+<li><strong>Day 3</strong>: Applied everything to build a complete embedded system</li>
+</ul>
+<p>You started with <code>println!("Hello, world!");</code> and finished with a deployable embedded temperature monitoring system. That's an incredible journey!</p>
+<h3 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h3>
+<p>Your Rust journey continues:</p>
+<ol>
+<li><strong>Extend Your System</strong>: Add features like WiFi connectivity, web dashboards, or cloud integration</li>
+<li><strong>Contribute to Open Source</strong>: Your skills are now ready for contributing to Rust projects</li>
+<li><strong>Build More Systems</strong>: Apply these patterns to other embedded or systems programming projects</li>
+<li><strong>Share Your Knowledge</strong>: Help others learn Rust and embedded programming</li>
+</ol>
+<h3 id="final-thoughts"><a class="header" href="#final-thoughts">Final Thoughts</a></h3>
+<p>Rust empowers you to build systems that are:</p>
+<ul>
+<li><strong>Safe</strong>: Memory safety without garbage collection</li>
+<li><strong>Fast</strong>: Zero-cost abstractions and predictable performance</li>
+<li><strong>Reliable</strong>: Comprehensive error handling and testing</li>
+<li><strong>Maintainable</strong>: Clean abstractions and excellent tooling</li>
+<li><strong>Portable</strong>: Write once, deploy everywhere</li>
+</ul>
+<p>You now have the skills to build the safe, fast, and reliable systems that power our digital world.</p>
+<p><strong>Welcome to the Rust community! 🦀</strong></p>
+<hr />
+<p><em>"The best way to learn systems programming is to build systems. You've just built a great one!"</em></p>
 
                     </main>
 
@@ -1490,6 +878,22 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 
         </div>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
 

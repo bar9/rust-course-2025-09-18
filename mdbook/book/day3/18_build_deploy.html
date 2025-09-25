@@ -155,223 +155,295 @@
                         <h1 id="chapter-18-build-package--deploy"><a class="header" href="#chapter-18-build-package--deploy">Chapter 18: Build, Package &amp; Deploy</a></h1>
 <h2 id="learning-objectives"><a class="header" href="#learning-objectives">Learning Objectives</a></h2>
 <ul>
-<li>Master Cargo workspaces for multi-crate projects</li>
-<li>Use features for conditional compilation</li>
-<li>Set up cross-compilation for different targets</li>
-<li>Create and publish crates to crates.io</li>
-<li>Implement CI/CD pipelines</li>
-<li>Optimize binary size and build times</li>
+<li>Master Cargo workspaces for multi-crate embedded projects</li>
+<li>Use features for std/no_std conditional compilation</li>
+<li>Set up cross-compilation for embedded targets (ESP32-C3)</li>
+<li>Implement CI/CD pipelines for embedded systems</li>
+<li>Optimize binary size for resource-constrained environments</li>
+<li>Deploy to embedded hardware using modern tooling</li>
 </ul>
-<h2 id="cargo-workspaces"><a class="header" href="#cargo-workspaces">Cargo Workspaces</a></h2>
-<p>Workspaces allow you to manage multiple related packages together.</p>
-<h3 id="creating-a-workspace"><a class="header" href="#creating-a-workspace">Creating a Workspace</a></h3>
+<h2 id="cargo-workspaces-for-embedded-projects"><a class="header" href="#cargo-workspaces-for-embedded-projects">Cargo Workspaces for Embedded Projects</a></h2>
+<p>Our temperature monitoring system demonstrates how workspaces manage complexity in embedded projects with multiple targets.</p>
+<h3 id="our-capstone-workspace-structure"><a class="header" href="#our-capstone-workspace-structure">Our Capstone Workspace Structure</a></h3>
 <pre><code class="language-toml"># Cargo.toml (workspace root)
 [workspace]
 members = [
-    "core",
-    "cli",
-    "server",
+    "temp_core",      # Core types and traits
+    "temp_store",     # Thread-safe storage
+    "temp_async",     # Async monitoring
+    "temp_protocol",  # Serialization protocols
+    "temp_embedded",  # no_std embedded version
+    "temp_esp32",     # ESP32-C3 deployment
 ]
+resolver = "2"
 
-# Shared dependencies
+# Shared dependencies across all crates
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.35", features = ["full"] }
+heapless = "0.8"
+postcard = { version = "1.0", features = ["alloc"] }
 
-# Share compilation profile
+# Optimized release profile
 [profile.release]
-lto = true
-opt-level = 3
+lto = true              # Link-time optimization
+opt-level = 3           # Maximum optimization
+codegen-units = 1       # Better optimization
+
+# Embedded-specific profile
+[profile.embedded]
+inherits = "release"
+opt-level = "z"         # Optimize for size
+strip = true            # Strip debug symbols
+panic = "abort"         # Smaller panic handler
 </code></pre>
-<h3 id="member-crates"><a class="header" href="#member-crates">Member Crates</a></h3>
-<pre><code class="language-toml"># core/Cargo.toml
+<p>This structure allows us to:</p>
+<ul>
+<li><strong>Shared Development</strong>: All crates use the same dependency versions</li>
+<li><strong>Progressive Complexity</strong>: Each crate builds on the previous ones</li>
+<li><strong>Multi-Target Builds</strong>: Desktop and embedded from the same codebase</li>
+<li><strong>Optimized Profiles</strong>: Different optimization strategies for different use cases</li>
+</ul>
+<h3 id="member-crate-configuration"><a class="header" href="#member-crate-configuration">Member Crate Configuration</a></h3>
+<pre><code class="language-toml"># temp_core/Cargo.toml - Foundation crate
 [package]
-name = "myproject-core"
+name = "temp_core"
 version = "0.1.0"
+edition = "2021"
 
 [dependencies]
-serde = { workspace = true }
+serde = { workspace = true, default-features = false, optional = true }
 
-# cli/Cargo.toml
+[features]
+default = ["serde"]
+serde = ["dep:serde"]
+std = []
+</code></pre>
+<pre><code class="language-toml"># temp_embedded/Cargo.toml - no_std version
 [package]
-name = "myproject-cli"
+name = "temp_embedded"
 version = "0.1.0"
+edition = "2021"
 
 [dependencies]
-myproject-core = { path = "../core" }
-tokio = { workspace = true }
+heapless = { workspace = true }
+serde = { workspace = true, default-features = false }
+postcard = { workspace = true }
+temp_core = { path = "../temp_core", default-features = false }
+
+[features]
+default = []
+std = ["temp_core/std"]
 </code></pre>
-<h3 id="workspace-commands"><a class="header" href="#workspace-commands">Workspace Commands</a></h3>
-<pre><code class="language-bash"># Build all workspace members
+<h3 id="workspace-commands-for-our-project"><a class="header" href="#workspace-commands-for-our-project">Workspace Commands for Our Project</a></h3>
+<pre><code class="language-bash"># Build all crates for desktop
 cargo build --workspace
 
-# Test specific package
-cargo test -p myproject-core
+# Test specific embedded crate
+cargo test -p temp_embedded
 
-# Run specific binary
-cargo run -p myproject-cli
+# Build only the embedded components
+cargo build -p temp_embedded -p temp_esp32
 
-# Check all members
+# Check all crates for both std and no_std
 cargo check --workspace --all-targets
-</code></pre>
-<h2 id="features-and-conditional-compilation"><a class="header" href="#features-and-conditional-compilation">Features and Conditional Compilation</a></h2>
-<p>Features allow optional functionality and dependencies.</p>
-<h3 id="defining-features"><a class="header" href="#defining-features">Defining Features</a></h3>
-<pre><code class="language-toml"># Cargo.toml
-[features]
-default = ["json"]
-json = ["serde", "serde_json"]
-async = ["tokio", "async-trait"]
-full = ["json", "async", "metrics"]
+cargo check --workspace --no-default-features
 
-# Optional dependencies
-[dependencies]
-serde = { version = "1.0", optional = true }
-serde_json = { version = "1.0", optional = true }
-tokio = { version = "1.35", optional = true }
-async-trait = { version = "0.1", optional = true }
+# Run desktop version of temperature monitor
+cargo run -p temp_protocol
 </code></pre>
-<h3 id="using-features-in-code"><a class="header" href="#using-features-in-code">Using Features in Code</a></h3>
+<h2 id="features-for-stdno_std-conditional-compilation"><a class="header" href="#features-for-stdno_std-conditional-compilation">Features for std/no_std Conditional Compilation</a></h2>
+<p>Features enable the same codebase to work on both desktop and embedded systems.</p>
+<h3 id="feature-strategy-in-our-temperature-monitor"><a class="header" href="#feature-strategy-in-our-temperature-monitor">Feature Strategy in Our Temperature Monitor</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Conditional compilation
-#[cfg(feature = "json")]
-use serde::{Serialize, Deserialize};
+</span>// temp_core/src/lib.rs
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct Config {
-    pub name: String,
-    pub port: u16,
+// Conditional imports based on environment
+#[cfg(feature = "std")]
+use std::fmt;
+
+#[cfg(not(feature = "std"))]
+use core::fmt;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+// Conditional derive based on features
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Temperature {
+    pub celsius: f32,
 }
 
-// Feature-gated modules
-#[cfg(feature = "async")]
-pub mod async_client {
-    use tokio::net::TcpStream;
-    
-    pub async fn connect(addr: &amp;str) -&gt; Result&lt;TcpStream, std::io::Error&gt; {
-        TcpStream::connect(addr).await
+// Platform-specific implementations
+impl Temperature {
+    #[cfg(feature = "std")]
+    pub fn from_system_sensor() -&gt; Result&lt;Self, std::io::Error&gt; {
+        // Read from system temperature sensor
+        unimplemented!("System sensor reading")
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn from_embedded_sensor(adc_value: u16) -&gt; Self {
+        // Convert ADC reading to temperature
+        let voltage = (adc_value as f32 / 4095.0) * 3.3;
+        let celsius = voltage / 0.01; // 10mV/°C sensor
+        Temperature { celsius }
     }
 }
-
-// Platform-specific code
-#[cfg(target_os = "windows")]
-fn platform_specific() {
-    println!("Running on Windows");
-}
-
-#[cfg(target_os = "linux")]
-fn platform_specific() {
-    println!("Running on Linux");
-}
 <span class="boring">}</span></code></pre></pre>
-<h2 id="cross-compilation"><a class="header" href="#cross-compilation">Cross-Compilation</a></h2>
-<p>Build for different platforms from a single machine.</p>
-<h3 id="setting-up-targets"><a class="header" href="#setting-up-targets">Setting Up Targets</a></h3>
-<pre><code class="language-bash"># Install target toolchains
-rustup target add x86_64-pc-windows-gnu
-rustup target add aarch64-unknown-linux-gnu
-rustup target add wasm32-unknown-unknown
-
-# List installed targets
-rustup target list --installed
-</code></pre>
-<h3 id="cross-compiling"><a class="header" href="#cross-compiling">Cross-Compiling</a></h3>
-<pre><code class="language-bash"># Build for Windows from Linux/Mac
-cargo build --target x86_64-pc-windows-gnu
-
-# Build for ARM Linux
-cargo build --target aarch64-unknown-linux-gnu
-
-# Build for WebAssembly
-cargo build --target wasm32-unknown-unknown
-</code></pre>
-<h3 id="cross-configuration"><a class="header" href="#cross-configuration">Cross Configuration</a></h3>
-<pre><code class="language-toml"># .cargo/config.toml
-[target.x86_64-pc-windows-gnu]
-linker = "x86_64-w64-mingw32-gcc"
-
-[target.aarch64-unknown-linux-gnu]
-linker = "aarch64-linux-gnu-gcc"
-
-# Set default target
-[build]
-target = "x86_64-unknown-linux-musl"
-</code></pre>
-<h2 id="publishing-crates"><a class="header" href="#publishing-crates">Publishing Crates</a></h2>
-<h3 id="preparing-for-publication"><a class="header" href="#preparing-for-publication">Preparing for Publication</a></h3>
-<pre><code class="language-toml"># Cargo.toml
-[package]
-name = "awesome-crate"
-version = "0.1.0"
-authors = ["Your Name &lt;you@example.com&gt;"]
-edition = "2021"
-description = "A brief description of your crate"
-documentation = "https://docs.rs/awesome-crate"
-homepage = "https://github.com/yourusername/awesome-crate"
-repository = "https://github.com/yourusername/awesome-crate"
-license = "MIT OR Apache-2.0"
-keywords = ["networking", "async", "protocol"]
-categories = ["network-programming", "asynchronous"]
-
-[badges]
-maintenance = { status = "actively-developed" }
-</code></pre>
-<h3 id="publishing-process"><a class="header" href="#publishing-process">Publishing Process</a></h3>
-<pre><code class="language-bash"># Login to crates.io
-cargo login YOUR_API_TOKEN
-
-# Verify package
-cargo package --list
-
-# Dry run
-cargo publish --dry-run
-
-# Publish
-cargo publish
-
-# Yank a version (emergency)
-cargo yank --vers 0.1.0
-</code></pre>
-<h2 id="binary-size-optimization"><a class="header" href="#binary-size-optimization">Binary Size Optimization</a></h2>
-<h3 id="release-profile-optimization"><a class="header" href="#release-profile-optimization">Release Profile Optimization</a></h3>
-<pre><code class="language-toml"># Cargo.toml
-[profile.release]
-opt-level = "z"     # Optimize for size
-lto = true          # Link-time optimization
-codegen-units = 1   # Single codegen unit
-strip = true        # Strip symbols
-panic = "abort"     # Smaller panic handler
-
-[profile.release-small]
-inherits = "release"
-opt-level = "s"
-</code></pre>
-<h3 id="reducing-dependencies"><a class="header" href="#reducing-dependencies">Reducing Dependencies</a></h3>
+<h3 id="conditional-storage-implementation"><a class="header" href="#conditional-storage-implementation">Conditional Storage Implementation</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Use no_std when possible
-#![no_std]
+</span>// temp_store/src/lib.rs
+#[cfg(feature = "std")]
+use std::sync::{Arc, Mutex};
 
-// Avoid large dependencies
-// Instead of:
-// use regex::Regex;
+#[cfg(not(feature = "std"))]
+use heapless::Vec;
 
-// Consider:
-use simple_pattern_match;
+// Different storage backends based on environment
+#[cfg(feature = "std")]
+pub struct TemperatureStore {
+    readings: Arc&lt;Mutex&lt;Vec&lt;TemperatureReading&gt;&gt;&gt;,
+    capacity: usize,
+}
 
-// Feature-gate heavy dependencies
-#[cfg(feature = "full")]
-use heavy_dependency;
+#[cfg(not(feature = "std"))]
+pub struct TemperatureStore&lt;const N: usize&gt; {
+    readings: Vec&lt;TemperatureReading, N&gt;,
+    total_readings: u32,
+}
 <span class="boring">}</span></code></pre></pre>
-<h2 id="cicd-with-github-actions"><a class="header" href="#cicd-with-github-actions">CI/CD with GitHub Actions</a></h2>
-<h3 id="basic-rust-ci-pipeline"><a class="header" href="#basic-rust-ci-pipeline">Basic Rust CI Pipeline</a></h3>
+<h3 id="build-configuration-examples"><a class="header" href="#build-configuration-examples">Build Configuration Examples</a></h3>
+<pre><code class="language-bash"># Desktop build with all features
+cargo build --features "std,serde,async"
+
+# Embedded build minimal features
+cargo build --no-default-features --features "serde"
+
+# ESP32 build
+cargo build --target riscv32imc-esp-espidf --no-default-features
+</code></pre>
+<h2 id="cross-compilation-for-embedded-targets"><a class="header" href="#cross-compilation-for-embedded-targets">Cross-Compilation for Embedded Targets</a></h2>
+<h3 id="esp32-c3-target-setup"><a class="header" href="#esp32-c3-target-setup">ESP32-C3 Target Setup</a></h3>
+<pre><code class="language-bash"># Install ESP32 toolchain
+curl -LO https://github.com/esp-rs/rust-build/releases/download/v1.75.0.0/install-rust-toolchain.sh
+chmod +x install-rust-toolchain.sh
+./install-rust-toolchain.sh
+
+# Install additional tools
+cargo install espflash
+cargo install ldproxy
+</code></pre>
+<h3 id="cross-compilation-configuration"><a class="header" href="#cross-compilation-configuration">Cross-Compilation Configuration</a></h3>
+<pre><code class="language-toml"># .cargo/config.toml
+[build]
+# Default target for local development
+target = "x86_64-unknown-linux-gnu"
+
+[target.riscv32imc-esp-espidf]
+linker = "ldproxy"
+runner = "espflash flash --monitor"
+
+[target.riscv32imc-unknown-none-elf]
+linker = "riscv32-esp-elf-gcc"
+runner = "probe-rs run --chip esp32c3"
+
+[env]
+# ESP-IDF specific environment variables
+ESP_IDF_VERSION = "v5.1.2"
+</code></pre>
+<h3 id="multi-target-build-scripts"><a class="header" href="#multi-target-build-scripts">Multi-Target Build Scripts</a></h3>
+<pre><code class="language-bash"># build.sh - Cross-platform build script
+#!/bin/bash
+set -e
+
+echo "Building temperature monitor for multiple targets..."
+
+# Desktop builds
+echo "Building for desktop..."
+cargo build --workspace --release
+
+# Embedded simulation build
+echo "Building embedded simulation..."
+cargo build -p temp_embedded --no-default-features --release
+
+# ESP32-C3 build
+echo "Building for ESP32-C3..."
+cargo build -p temp_esp32 \
+    --target riscv32imc-esp-espidf \
+    --no-default-features \
+    --features "embedded" \
+    --release
+
+echo "All builds completed successfully!"
+</code></pre>
+<h2 id="binary-size-optimization-for-embedded"><a class="header" href="#binary-size-optimization-for-embedded">Binary Size Optimization for Embedded</a></h2>
+<h3 id="embedded-specific-profile"><a class="header" href="#embedded-specific-profile">Embedded-Specific Profile</a></h3>
+<pre><code class="language-toml"># Cargo.toml
+[profile.embedded]
+inherits = "release"
+opt-level = "z"           # Optimize for size over speed
+lto = true               # Link-time optimization
+codegen-units = 1        # Better optimization
+strip = "symbols"        # Remove debug symbols
+panic = "abort"          # Smaller panic handler
+overflow-checks = false  # Disable overflow checks
+
+[profile.embedded.package.temp_esp32]
+opt-level = "s"          # Slightly less aggressive for main binary
+</code></pre>
+<h3 id="size-analysis-tools"><a class="header" href="#size-analysis-tools">Size Analysis Tools</a></h3>
+<pre><code class="language-bash"># Analyze binary size breakdown
+cargo bloat --release --target riscv32imc-esp-espidf -p temp_esp32
+
+# Size comparison between profiles
+cargo size --release -- --format=sysv
+cargo size --profile embedded -- --format=sysv
+
+# Memory usage analysis
+cargo nm --release | grep -E "(\.text|\.data|\.bss)" | sort
+</code></pre>
+<h3 id="code-size-optimization-techniques"><a class="header" href="#code-size-optimization-techniques">Code Size Optimization Techniques</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Use const fn for compile-time computation
+const fn calculate_buffer_size(sensor_count: usize) -&gt; usize {
+    sensor_count * 64 // 64 readings per sensor
+}
+
+// Prefer arrays over Vec when size is known
+const SENSORS: usize = 3;
+const BUFFER_SIZE: usize = calculate_buffer_size(SENSORS);
+static mut READINGS_BUFFER: [TemperatureReading; BUFFER_SIZE] = [TemperatureReading::empty(); BUFFER_SIZE];
+
+// Use #[inline] judiciously
+#[inline]
+fn critical_fast_path(temp: f32) -&gt; bool {
+    temp &gt; 50.0 // Critical temperature check
+}
+
+// Avoid large dependencies for simple operations
+// Instead of regex for simple patterns
+fn parse_sensor_id(input: &amp;str) -&gt; Option&lt;u8&gt; {
+    if input.starts_with("temp_") &amp;&amp; input.len() == 7 {
+        input.chars().last()?.to_digit(10).map(|d| d as u8)
+    } else {
+        None
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="cicd-for-embedded-systems"><a class="header" href="#cicd-for-embedded-systems">CI/CD for Embedded Systems</a></h2>
+<h3 id="comprehensive-github-actions-workflow"><a class="header" href="#comprehensive-github-actions-workflow">Comprehensive GitHub Actions Workflow</a></h3>
 <pre><code class="language-yaml"># .github/workflows/ci.yml
-name: CI
+name: Temperature Monitor CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
@@ -380,21 +452,21 @@ env:
 
 jobs:
   test:
+    name: Test Suite
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly]
+        rust: [stable, beta]
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-        override: true
         components: rustfmt, clippy
-    
-    - name: Cache cargo
+
+    - name: Cache cargo dependencies
       uses: actions/cache@v3
       with:
         path: |
@@ -402,31 +474,79 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    
+
     - name: Check formatting
-      run: cargo fmt -- --check
-    
-    - name: Clippy
-      run: cargo clippy -- -D warnings
-    
-    - name: Test
-      run: cargo test --verbose
-    
-    - name: Build
-      run: cargo build --release
+      run: cargo fmt --all -- --check
+
+    - name: Clippy analysis
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+    - name: Test std builds
+      run: cargo test --workspace --all-features
+
+    - name: Test no_std builds
+      run: cargo test -p temp_core -p temp_embedded --no-default-features
 
   cross-compile:
+    name: Cross Compilation
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64-pc-windows-gnu, aarch64-unknown-linux-gnu]
+        target:
+          - x86_64-pc-windows-gnu
+          - aarch64-unknown-linux-gnu
+          - riscv32imc-unknown-none-elf
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: ${{ matrix.target }}
-    - run: cargo build --target ${{ matrix.target }}
+        targets: ${{ matrix.target }}
+
+    - name: Install cross-compilation tools
+      if: matrix.target == 'riscv32imc-unknown-none-elf'
+      run: |
+        curl -LO https://github.com/esp-rs/rust-build/releases/download/v1.75.0.0/install-rust-toolchain.sh
+        chmod +x install-rust-toolchain.sh
+        ./install-rust-toolchain.sh --extra-crates "ldproxy"
+
+    - name: Build for target
+      run: |
+        if [[ "${{ matrix.target }}" == "riscv32imc-unknown-none-elf" ]]; then
+          cargo build -p temp_embedded --target ${{ matrix.target }} --no-default-features
+        else
+          cargo build --workspace --target ${{ matrix.target }} --release
+        fi
+
+  embedded-test:
+    name: Embedded Testing
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+
+    - name: Install embedded testing tools
+      run: |
+        cargo install probe-rs --features cli
+        cargo install cargo-embed
+
+    - name: Test embedded builds
+      run: |
+        cargo check -p temp_embedded --target thumbv7em-none-eabihf --no-default-features
+        cargo test -p temp_embedded --lib # Run tests on host
+
+  size-analysis:
+    name: Binary Size Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - run: cargo install cargo-bloat cargo-size
+
+    - name: Analyze binary sizes
+      run: |
+        cargo build --release -p temp_esp32
+        cargo size --release -p temp_esp32 -- --format=sysv
+        cargo bloat --release -p temp_esp32
 </code></pre>
 <h3 id="release-pipeline"><a class="header" href="#release-pipeline">Release Pipeline</a></h3>
 <pre><code class="language-yaml"># .github/workflows/release.yml
@@ -437,116 +557,260 @@ on:
     types: [created]
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
+  distribute:
+    name: Distribute Binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            suffix: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            suffix: ".exe"
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            suffix: ""
+
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-    
-    - name: Publish to crates.io
-      run: cargo publish --token ${{ secrets.CRATES_TOKEN }}
-    
-    - name: Build binaries
-      run: |
-        cargo build --release --target x86_64-unknown-linux-musl
-        cargo build --release --target x86_64-pc-windows-gnu
-        cargo build --release --target x86_64-apple-darwin
-    
-    - name: Upload artifacts
+        targets: ${{ matrix.target }}
+
+    - name: Build release binary
+      run: cargo build --release -p temp_protocol --target ${{ matrix.target }}
+
+    - name: Upload release asset
       uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./target/release/myapp
-        asset_name: myapp-linux
+        asset_path: ./target/${{ matrix.target }}/release/temp_monitor${{ matrix.suffix }}
+        asset_name: temp_monitor-${{ matrix.target }}${{ matrix.suffix }}
         asset_content_type: application/octet-stream
 </code></pre>
-<h2 id="docker-containerization"><a class="header" href="#docker-containerization">Docker Containerization</a></h2>
-<h3 id="multi-stage-dockerfile"><a class="header" href="#multi-stage-dockerfile">Multi-stage Dockerfile</a></h3>
-<pre><code class="language-dockerfile"># Build stage
-FROM rust:1.75 as builder
+<h2 id="modern-distribution-with-cargo-dist"><a class="header" href="#modern-distribution-with-cargo-dist">Modern Distribution with cargo-dist</a></h2>
+<p>cargo-dist automates building and distributing Rust binaries across platforms.</p>
+<h3 id="cargo-dist-configuration"><a class="header" href="#cargo-dist-configuration">cargo-dist Configuration</a></h3>
+<pre><code class="language-toml"># Cargo.toml
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI
+cargo-dist-version = "0.8.0"
+# CI backends to support
+ci = ["github"]
+# The installers to generate for each app
+installers = ["shell", "powershell", "homebrew"]
+# Target platforms to build apps for ("rustc -vV" to find yours)
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+  "x86_64-unknown-linux-gnu"
+]
 
-WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+# The archive format to use for windows builds (defaults to .zip)
+windows-archive = ".tar.gz"
+# The archive format to use for non-windows builds (defaults to .tar.xz)
+unix-archive = ".tar.gz"
 
-# Build in release mode
-RUN cargo build --release
-
-# Runtime stage
-FROM debian:bookworm-slim
-
-RUN apt-get update &amp;&amp; apt-get install -y \
-    ca-certificates \
-    &amp;&amp; rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /app/target/release/myapp /usr/local/bin/myapp
-
-EXPOSE 8080
-CMD ["myapp"]
+[workspace.metadata.dist.dependencies.apt]
+cmake = '*'
 </code></pre>
-<h3 id="minimal-alpine-image"><a class="header" href="#minimal-alpine-image">Minimal Alpine Image</a></h3>
-<pre><code class="language-dockerfile"># Build with musl for static linking
-FROM rust:1.75-alpine as builder
+<h3 id="initialize-cargo-dist"><a class="header" href="#initialize-cargo-dist">Initialize cargo-dist</a></h3>
+<pre><code class="language-bash"># Initialize cargo-dist in the workspace
+cargo dist init
 
-RUN apk add --no-cache musl-dev
+# Generate CI configuration
+cargo dist generate-ci
 
-WORKDIR /app
-COPY . .
+# Build local release
+cargo dist build
 
-RUN cargo build --release --target x86_64-unknown-linux-musl
-
-# Minimal runtime
-FROM scratch
-
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/myapp /myapp
-
-EXPOSE 8080
-ENTRYPOINT ["/myapp"]
+# Check what cargo-dist would build
+cargo dist plan
 </code></pre>
-<h2 id="comparison-with-cnet"><a class="header" href="#comparison-with-cnet">Comparison with C++/.NET</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>Aspect</th><th>Rust (Cargo)</th><th>C++</th><th>.NET</th></tr></thead><tbody>
-<tr><td>Package Manager</td><td>Built-in (Cargo)</td><td>External (vcpkg, conan)</td><td>Built-in (NuGet)</td></tr>
-<tr><td>Build System</td><td>Cargo</td><td>CMake, Make, Bazel</td><td>MSBuild</td></tr>
-<tr><td>Cross-compilation</td><td>Native support</td><td>Complex setup</td><td>Limited</td></tr>
-<tr><td>Docker size</td><td>Can be &lt;10MB</td><td>Usually &gt;100MB</td><td>&gt;100MB</td></tr>
-<tr><td>CI/CD</td><td>Simple YAML</td><td>Complex scripts</td><td>Azure DevOps</td></tr>
+<h2 id="embedded-deployment-tools"><a class="header" href="#embedded-deployment-tools">Embedded Deployment Tools</a></h2>
+<h3 id="probe-rs-for-hardware-debugging"><a class="header" href="#probe-rs-for-hardware-debugging">probe-rs for Hardware Debugging</a></h3>
+<pre><code class="language-toml"># .cargo/config.toml
+[target.thumbv7em-none-eabihf]
+runner = "probe-rs run --chip STM32F401CCUx"
+
+[target.riscv32imc-esp-espidf]
+runner = "espflash flash --monitor"
+</code></pre>
+<h3 id="deploy-script-example"><a class="header" href="#deploy-script-example">Deploy Script Example</a></h3>
+<pre><code class="language-bash">#!/bin/bash
+# deploy.sh - Deploy to ESP32-C3
+
+set -e
+
+CHIP="esp32c3"
+PORT="/dev/ttyUSB0"
+
+echo "Building temperature monitor for ESP32-C3..."
+cargo build --release -p temp_esp32 \
+    --target riscv32imc-esp-espidf \
+    --no-default-features
+
+echo "Flashing to ESP32-C3..."
+espflash flash \
+    --chip $CHIP \
+    --port $PORT \
+    --baud 921600 \
+    target/riscv32imc-esp-espidf/release/temp_esp32
+
+echo "Monitoring serial output..."
+espflash monitor --port $PORT
+</code></pre>
+<h3 id="probe-rs-configuration"><a class="header" href="#probe-rs-configuration">probe-rs Configuration</a></h3>
+<pre><code class="language-toml"># Embed.toml
+[default.probe]
+protocol = "Swd"
+speed = 20_000
+
+[default.flashing]
+enabled = true
+restore_unwritten_bytes = false
+
+[default.general]
+chip = "STM32F401CCUx"
+
+[default.reset]
+enabled = true
+halt_afterwards = false
+
+[default.gdb]
+enabled = false
+</code></pre>
+<h2 id="language-comparison-build--deploy"><a class="header" href="#language-comparison-build--deploy">Language Comparison: Build &amp; Deploy</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Aspect</th><th><strong>Rust</strong></th><th><strong>C/C++</strong></th><th><strong>C#</strong></th><th><strong>Go</strong></th></tr></thead><tbody>
+<tr><td><strong>Package Manager</strong></td><td>Built-in (Cargo)</td><td>External (vcpkg, conan)</td><td>Built-in (NuGet)</td><td>Built-in (go mod)</td></tr>
+<tr><td><strong>Build System</strong></td><td>Cargo</td><td>CMake, Make, Ninja</td><td>MSBuild</td><td>Built-in</td></tr>
+<tr><td><strong>Cross-compilation</strong></td><td>Native support</td><td>Complex toolchain setup</td><td>Limited</td><td>Excellent</td></tr>
+<tr><td><strong>Embedded Support</strong></td><td>First-class</td><td>Traditional choice</td><td>Limited</td><td>Not suitable</td></tr>
+<tr><td><strong>Binary Size</strong></td><td>&lt;50KB optimized</td><td>&lt;20KB (C), &gt;1MB (C++)</td><td>&gt;10MB with runtime</td><td>&gt;5MB</td></tr>
+<tr><td><strong>CI/CD Complexity</strong></td><td>Simple YAML</td><td>Complex scripts</td><td>Azure DevOps integration</td><td>Simple</td></tr>
+<tr><td><strong>Deployment</strong></td><td>Single binary</td><td>Dependencies/static linking</td><td>Runtime required</td><td>Single binary</td></tr>
 </tbody></table>
 </div>
-<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
-<h3 id="exercise-171-create-a-workspace"><a class="header" href="#exercise-171-create-a-workspace">Exercise 17.1: Create a Workspace</a></h3>
-<p>Create a workspace with three crates:</p>
-<ul>
-<li><code>common</code>: Shared types and utilities</li>
-<li><code>server</code>: HTTP server using the common crate</li>
-<li><code>client</code>: CLI client using the common crate</li>
-</ul>
-<h3 id="exercise-172-feature-flags"><a class="header" href="#exercise-172-feature-flags">Exercise 17.2: Feature Flags</a></h3>
-<p>Add these features to your crate:</p>
-<ul>
-<li><code>metrics</code>: Enable performance metrics</li>
-<li><code>tls</code>: Enable TLS support</li>
-<li><code>compression</code>: Enable response compression</li>
-</ul>
-<h3 id="exercise-173-ci-pipeline"><a class="header" href="#exercise-173-ci-pipeline">Exercise 17.3: CI Pipeline</a></h3>
-<p>Create a GitHub Actions workflow that:</p>
+<h2 id="exercise-deploy-temperature-monitor-to-production"><a class="header" href="#exercise-deploy-temperature-monitor-to-production">Exercise: Deploy Temperature Monitor to Production</a></h2>
+<p>Build a complete deployment pipeline for your temperature monitoring system that works across desktop and embedded targets.</p>
+<h3 id="requirements"><a class="header" href="#requirements">Requirements</a></h3>
+<p>Your deployment system should:</p>
 <ol>
-<li>Runs tests on Linux, Windows, and macOS</li>
-<li>Checks code formatting</li>
-<li>Runs clippy</li>
-<li>Builds for multiple targets</li>
-<li>Caches dependencies</li>
+<li>
+<p><strong>Multi-Target Building</strong>:</p>
+<ul>
+<li>Desktop version with full std features</li>
+<li>Embedded version with no_std constraints</li>
+<li>ESP32-C3 version for hardware deployment</li>
+</ul>
+</li>
+<li>
+<p><strong>Feature Configuration</strong>:</p>
+<ul>
+<li><code>std</code> feature for desktop builds</li>
+<li><code>embedded</code> feature for no_std builds</li>
+<li><code>simulation</code> feature for testing without hardware</li>
+</ul>
+</li>
+<li>
+<p><strong>Size Optimization</strong>:</p>
+<ul>
+<li>Optimized profiles for embedded deployment</li>
+<li>Binary size analysis and reporting</li>
+</ul>
+</li>
+<li>
+<p><strong>CI/CD Pipeline</strong>:</p>
+<ul>
+<li>Automated testing for both std and no_std builds</li>
+<li>Cross-compilation verification</li>
+<li>Release artifact generation</li>
+</ul>
+</li>
+<li>
+<p><strong>Distribution</strong>:</p>
+<ul>
+<li>Desktop binaries for multiple platforms</li>
+<li>Embedded firmware images</li>
+<li>Installation scripts</li>
+</ul>
+</li>
+</ol>
+<h3 id="starting-configuration"><a class="header" href="#starting-configuration">Starting Configuration</a></h3>
+<p>Your workspace should already have the basic structure. Enhance it with deployment-specific configuration:</p>
+<pre><code class="language-toml"># Cargo.toml (add these sections)
+[workspace.metadata.dist]
+cargo-dist-version = "0.8.0"
+ci = ["github"]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc", "x86_64-apple-darwin"]
+
+[profile.embedded]
+inherits = "release"
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"
+
+[profile.simulation]
+inherits = "dev"
+debug = true
+opt-level = 1
+</code></pre>
+<h3 id="implementation-steps"><a class="header" href="#implementation-steps">Implementation Steps</a></h3>
+<ol>
+<li>
+<p><strong>Configure Features</strong>: Set up conditional compilation for different deployment targets</p>
+</li>
+<li>
+<p><strong>Optimize Builds</strong>: Create profiles optimized for embedded deployment</p>
+</li>
+<li>
+<p><strong>Set Up Cross-Compilation</strong>: Configure toolchains for ESP32-C3 target</p>
+</li>
+<li>
+<p><strong>Create Build Scripts</strong>: Automate building for multiple targets</p>
+</li>
+<li>
+<p><strong>Implement CI/CD</strong>: Create GitHub Actions workflow for automated testing and deployment</p>
+</li>
+<li>
+<p><strong>Test Deployment</strong>: Verify builds work on target platforms</p>
+</li>
+</ol>
+<h3 id="success-criteria"><a class="header" href="#success-criteria">Success Criteria</a></h3>
+<ul>
+<li>Desktop version runs with full features and networking</li>
+<li>Embedded version compiles to &lt;50KB binary</li>
+<li>CI pipeline successfully builds and tests all targets</li>
+<li>Binary size analysis reports memory usage</li>
+<li>ESP32-C3 version can be flashed to hardware</li>
+<li>Release artifacts are automatically generated</li>
+</ul>
+<h3 id="extension-ideas"><a class="header" href="#extension-ideas">Extension Ideas</a></h3>
+<ol>
+<li><strong>Over-the-Air Updates</strong>: Implement firmware update mechanism</li>
+<li><strong>Docker Deployment</strong>: Create containerized version for server deployment</li>
+<li><strong>Package Distribution</strong>: Publish crates to crates.io</li>
+<li><strong>Hardware Simulation</strong>: Test embedded code without physical hardware</li>
+<li><strong>Performance Benchmarks</strong>: Automated performance testing in CI</li>
 </ol>
 <h2 id="key-takeaways"><a class="header" href="#key-takeaways">Key Takeaways</a></h2>
-<p>✅ <strong>Workspaces simplify multi-crate projects</strong> - Share dependencies and compilation</p>
-<p>✅ <strong>Features enable conditional compilation</strong> - Ship different configurations</p>
-<p>✅ <strong>Cross-compilation is straightforward</strong> - Build for any target from any host</p>
-<p>✅ <strong>Publishing to crates.io is simple</strong> - One command to share with the world</p>
-<p>✅ <strong>CI/CD with GitHub Actions is powerful</strong> - Automate testing and releases</p>
-<p>✅ <strong>Docker images can be tiny</strong> - Static binaries in scratch containers</p>
-<hr />
-<p>Next: <a href="./19_capstone.html">Chapter 19: Capstone Project</a></p>
+<ol>
+<li><strong>Workspaces Scale</strong>: Multi-crate workspaces manage complexity in embedded projects</li>
+<li><strong>Features Enable Flexibility</strong>: Same codebase works across std and no_std environments</li>
+<li><strong>Cross-Compilation is Powerful</strong>: Build for any target from any development machine</li>
+<li><strong>Size Matters in Embedded</strong>: Optimization profiles crucial for resource-constrained systems</li>
+<li><strong>CI/CD Prevents Regressions</strong>: Automated testing catches issues across all targets</li>
+<li><strong>Modern Tooling Simplifies Deployment</strong>: cargo-dist and probe-rs streamline distribution</li>
+<li><strong>Rust Shines in Embedded</strong>: Memory safety without performance cost ideal for embedded systems</li>
+</ol>
+<p>The Rust ecosystem provides unmatched tooling for building, testing, and deploying embedded systems while maintaining the same high-level abstractions used in desktop development.</p>
+<p><strong>Next</strong>: In Chapter 19, we'll bring everything together in the final capstone integration, deploying our complete temperature monitoring system to ESP32-C3 hardware.</p>
 
                     </main>
 
@@ -577,6 +841,22 @@ ENTRYPOINT ["/myapp"]
 
         </div>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
 

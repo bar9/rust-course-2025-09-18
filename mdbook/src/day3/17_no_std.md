@@ -1,16 +1,27 @@
-# Chapter 17: no_std Programming Introduction
+# Chapter 17: no_std & Embedded Patterns
 
 ## Learning Objectives
 - Understand the difference between `core`, `alloc`, and `std` libraries
-- Write `no_std` libraries and applications for embedded systems
+- Convert existing Rust code to work in `no_std` environments
 - Use heapless data structures for memory-constrained environments
-- Master const functions for compile-time computation
+- Master const functions for compile-time computation and configuration
 - Apply embedded programming patterns and best practices
 - Handle resource constraints and real-time requirements
 
-## Core vs Std: Understanding Rust's Standard Library
+## Why no_std Matters in Embedded Systems
 
-Rust's standard library is actually composed of several layers:
+Embedded systems often operate under strict constraints:
+- **Limited Memory**: Kilobytes, not gigabytes of RAM
+- **No Operating System**: Direct hardware control without OS services
+- **Real-time Requirements**: Deterministic timing and response
+- **Power Constraints**: Battery-operated devices need efficiency
+- **Code Size Limits**: Flash memory is precious
+
+Rust's `no_std` approach provides zero-cost abstractions without runtime overhead, making it ideal for these environments.
+
+## Core vs Alloc vs Std: Understanding Rust's Library Layers
+
+Rust's standard library is composed of three layers:
 
 ```rust
 #![no_std]
@@ -32,7 +43,7 @@ fn find_max_core_only(slice: &[i32]) -> Option<i32> {
     if slice.is_empty() {
         return None;
     }
-    
+
     let mut max = slice[0];
     for &item in slice.iter().skip(1) {
         if item > max {
@@ -48,29 +59,149 @@ fn core_types_example() {
     let x: i32 = 42;
     let y: Option<i32> = Some(x);
     let z: Result<i32, &str> = Ok(x);
-    
+
     // Iterators work (but no collect() without alloc)
     let data = [1, 2, 3, 4, 5];
     let sum: i32 = data.iter().sum();
-    
+
     // String slices work, but no String type
     let text: &str = "Hello, embedded world!";
     let first_char = text.chars().next();
-    
+
     // Arrays work, but no Vec without alloc
     let mut buffer = [0u8; 64];
     buffer[0] = 42;
 }
 ```
 
-**C/C++ Comparison:**
-- **C**: Manual memory management, platform-specific libraries
-- **C++**: STL available but often avoided in embedded contexts
-- **Rust**: Explicit library layers with zero-cost abstractions maintained
+**Library Comparison:**
+
+| Layer | Features | Use Case |
+|-------|----------|----------|
+| **core** | Basic types, iterators, traits | Minimal embedded, bootloaders |
+| **alloc** | Heap allocation (Vec, String, Box) | Embedded with heap allocator |
+| **std** | OS services, networking, threading | Desktop applications |
+
+**Rust vs Other Languages:**
+
+| Aspect | **Rust (no_std)** | **C** | **C++** |
+|--------|-------------------|--------|---------|
+| **Memory Safety** | Compile-time guaranteed | Manual management | RAII + manual |
+| **Zero-cost Abstractions** | Built-in | Manual optimization | Template metaprogramming |
+| **Standard Library** | Explicit layers (core/alloc/std) | Platform-specific libraries | STL often avoided in embedded |
+| **Error Handling** | Result<T, E> with no overhead | Error codes | Exceptions (often disabled) |
+
+## Converting to no_std: A Practical Example
+
+Let's convert a temperature monitoring function from std to no_std:
+
+```rust
+// STD VERSION
+use std::collections::HashMap;
+use std::vec::Vec;
+
+struct TemperatureMonitor {
+    sensors: HashMap<String, f32>,
+    history: Vec<f32>,
+}
+
+impl TemperatureMonitor {
+    fn new() -> Self {
+        Self {
+            sensors: HashMap::new(),
+            history: Vec::new(),
+        }
+    }
+
+    fn add_reading(&mut self, sensor_id: String, temp: f32) {
+        self.sensors.insert(sensor_id, temp);
+        self.history.push(temp);
+    }
+
+    fn format_status(&self) -> String {
+        format!("Sensors: {}, History: {} readings",
+                self.sensors.len(), self.history.len())
+    }
+}
+```
+
+```rust
+// NO_STD VERSION
+#![no_std]
+
+use heapless::{FnvIndexMap, Vec, String};
+
+struct EmbeddedTemperatureMonitor {
+    sensors: FnvIndexMap<heapless::String<16>, f32, 8>, // Max 8 sensors
+    history: Vec<f32, 100>, // Max 100 readings
+}
+
+impl EmbeddedTemperatureMonitor {
+    const fn new() -> Self {
+        Self {
+            sensors: FnvIndexMap::new(),
+            history: Vec::new(),
+        }
+    }
+
+    fn add_reading(&mut self, sensor_id: &str, temp: f32) -> Result<(), &'static str> {
+        // Convert to heapless string
+        let mut key = heapless::String::new();
+        key.push_str(sensor_id).map_err(|_| "Sensor ID too long")?;
+
+        self.sensors.insert(key, temp).map_err(|_| "Too many sensors")?;
+        self.history.push(temp).map_err(|_| "History full")?;
+
+        Ok(())
+    }
+
+    fn format_status(&self) -> heapless::String<64> {
+        let mut status = heapless::String::new();
+        status.push_str("Sensors: ").ok();
+        push_number(&mut status, self.sensors.len() as i32);
+        status.push_str(", History: ").ok();
+        push_number(&mut status, self.history.len() as i32);
+        status.push_str(" readings").ok();
+        status
+    }
+
+    fn get_average(&self) -> Option<f32> {
+        if self.history.is_empty() {
+            return None;
+        }
+
+        let sum: f32 = self.history.iter().sum();
+        Some(sum / self.history.len() as f32)
+    }
+}
+
+// Helper function for formatting numbers without std::format!
+fn push_number(s: &mut heapless::String<64>, mut num: i32) {
+    if num == 0 {
+        s.push('0').ok();
+        return;
+    }
+
+    if num < 0 {
+        s.push('-').ok();
+        num = -num;
+    }
+
+    let mut digits = heapless::Vec::<u8, 16>::new();
+    while num > 0 {
+        digits.push((num % 10) as u8).ok();
+        num /= 10;
+    }
+
+    for &digit in digits.iter().rev() {
+        s.push((b'0' + digit) as char).ok();
+    }
+}
+```
 
 ## Using Alloc Without Std
 
-The `alloc` crate provides heap allocation without OS dependencies:
+When you need heap allocation but not OS services, `alloc` provides the middle ground:
 
 ```rust
 #![no_std]
@@ -80,36 +211,11 @@ use alloc::{
     vec::Vec,
     string::String,
     boxed::Box,
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     format,
-    vec,
 };
 
-// Now we can use heap-allocated types
-fn alloc_examples() {
-    // Vectors work
-    let mut numbers = Vec::new();
-    numbers.push(1);
-    numbers.push(2);
-    numbers.push(3);
-    
-    // Strings work
-    let greeting = String::from("Hello");
-    let formatted = format!("{}!", greeting);
-    
-    // Box for single heap allocation
-    let boxed_value = Box::new(42i32);
-    
-    // Collections that don't require hashing
-    let mut map = BTreeMap::new();
-    map.insert("key", "value");
-    
-    // But HashMap requires std (uses RandomState)
-    // This won't compile in no_std:
-    // use std::collections::HashMap; // Error!
-}
-
-// Custom allocator example (requires global allocator)
+// Global allocator required for alloc
 use linked_list_allocator::LockedHeap;
 
 #[global_allocator]
@@ -117,19 +223,38 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 // Initialize heap in embedded context
 fn init_heap() {
-    use linked_list_allocator::LockedHeap;
     const HEAP_SIZE: usize = 1024;
     static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
-    
+
     unsafe {
         ALLOCATOR.lock().init(HEAP.as_mut_ptr(), HEAP_SIZE);
     }
+}
+
+// Now we can use heap-allocated types
+fn alloc_examples() {
+    let mut numbers = Vec::new();
+    numbers.push(1);
+    numbers.push(2);
+
+    let greeting = String::from("Hello");
+    let formatted = format!("{}!", greeting);
+
+    let boxed_value = Box::new(42i32);
+
+    // Collections that don't require hashing
+    let mut map = BTreeMap::new();
+    map.insert("key", "value");
+
+    // HashMap requires std due to RandomState dependency
+    // This won't compile in no_std:
+    // use std::collections::HashMap; // Error!
 }
 ```
 
 ## Heapless Data Structures
 
-The `heapless` crate provides fixed-capacity collections:
+The `heapless` crate provides fixed-capacity collections perfect for embedded systems:
 
 ```rust
 #![no_std]
@@ -138,360 +263,405 @@ use heapless::{
     Vec, String, FnvIndexMap,
     pool::{Pool, Node},
     spsc::{Producer, Consumer, Queue},
-    mpmc::Q8,
 };
 
-// Fixed-capacity vector
-fn heapless_vec_example() {
-    // Vec with maximum 8 elements
-    let mut vec: Vec<i32, 8> = Vec::new();
-    
-    vec.push(1).ok(); // Returns Result - can fail if full
-    vec.push(2).ok();
-    vec.push(3).ok();
-    
-    // Check capacity
-    assert_eq!(vec.len(), 3);
-    assert_eq!(vec.capacity(), 8);
-    
-    // Iterate like normal Vec
-    for &item in &vec {
-        // Process item
-    }
-    
-    // Convert to slice
-    let slice: &[i32] = &vec;
+// Fixed-capacity vector - perfect for sensor readings
+fn heapless_sensor_storage() {
+    // Vec with maximum 32 temperature readings
+    let mut temperatures: Vec<f32, 32> = Vec::new();
+
+    temperatures.push(23.5).ok(); // Returns Result - can fail if full
+    temperatures.push(24.1).ok();
+    temperatures.push(23.8).ok();
+
+    // Check capacity and usage
+    assert_eq!(temperatures.len(), 3);
+    assert_eq!(temperatures.capacity(), 32);
+
+    // Calculate average
+    let sum: f32 = temperatures.iter().sum();
+    let average = sum / temperatures.len() as f32;
+
+    // Convert to slice for processing
+    let slice: &[f32] = &temperatures;
+    process_readings(slice);
 }
 
-// Fixed-capacity string
+fn process_readings(readings: &[f32]) {
+    for &temp in readings {
+        if temp > 25.0 {
+            // Handle high temperature
+        }
+    }
+}
+
+// Fixed-capacity string for sensor names
 fn heapless_string_example() {
-    // String with maximum 32 bytes
-    let mut text: String<32> = String::new();
-    
-    text.push_str("Hello").ok();
-    text.push(' ').ok();
-    text.push_str("embedded").ok();
-    
-    // Format into heapless string (requires ufmt crate for no_std)
-    // let formatted: String<64> = ufmt::uformat!("Value: {}", 42);
+    let mut sensor_name: String<16> = String::new();
+
+    sensor_name.push_str("temp_").ok();
+    sensor_name.push_str("01").ok();
+
+    // Safe string formatting without heap
+    assert_eq!(sensor_name.as_str(), "temp_01");
 }
 
-// Hash map alternative
-fn heapless_map_example() {
-    // Map with maximum 16 entries
-    let mut map: FnvIndexMap<&str, i32, 16> = FnvIndexMap::new();
-    
-    map.insert("temperature", 23).ok();
-    map.insert("humidity", 45).ok();
-    
-    if let Some(&temp) = map.get("temperature") {
-        // Use temperature value
+// Hash map alternative for sensor lookup
+fn sensor_registry_example() {
+    let mut sensors: FnvIndexMap<&str, f32, 16> = FnvIndexMap::new();
+
+    sensors.insert("living_room", 23.5).ok();
+    sensors.insert("kitchen", 24.2).ok();
+    sensors.insert("bedroom", 22.8).ok();
+
+    if let Some(&temp) = sensors.get("living_room") {
+        if temp > 25.0 {
+            // Trigger cooling
+        }
     }
-    
-    // Iterate over entries
-    for (key, value) in &map {
-        // Process key-value pairs
+
+    // Iterate over all sensors
+    for (location, &temperature) in &sensors {
+        println!("{}: {:.1}°C", location, temperature);
     }
 }
 
 // Memory pool for dynamic allocation without heap
-fn memory_pool_example() {
-    // Create pool with 16 nodes
-    static mut MEMORY: [Node<[u8; 32]>; 16] = [Node::new(); 16];
-    static POOL: Pool<[u8; 32]> = Pool::new();
-    
-    // Initialize pool
+static mut SENSOR_POOL_MEMORY: [Node<[u8; 64]>; 8] = [Node::new(); 8];
+static SENSOR_POOL: Pool<[u8; 64]> = Pool::new();
+
+fn init_sensor_pool() {
     unsafe {
-        POOL.grow_exact(&mut MEMORY);
+        SENSOR_POOL.grow_exact(&mut SENSOR_POOL_MEMORY);
     }
-    
-    // Allocate from pool
-    if let Some(mut buffer) = POOL.alloc() {
-        buffer[0] = 42;
-        // Use buffer...
-        // Automatically returned to pool when dropped
-    }
+}
+
+fn use_sensor_buffer() -> Option<()> {
+    let mut buffer = SENSOR_POOL.alloc()?; // Get buffer from pool
+
+    // Use buffer for sensor data processing
+    buffer[0] = 0x42; // Sensor command
+    buffer[1] = 0x01; // Sensor ID
+
+    // Buffer automatically returned to pool when dropped
+    Some(())
 }
 
 // Lock-free queue for interrupt communication
-fn lock_free_queue_example() {
-    static mut QUEUE: Queue<u32, 8> = Queue::new();
-    
-    // In main thread - split queue
-    let (mut producer, mut consumer) = unsafe { QUEUE.split() };
-    
+static mut SENSOR_QUEUE: Queue<f32, 16> = Queue::new();
+
+fn init_sensor_communication() {
+    // Split queue for producer/consumer
+    let (mut producer, mut consumer) = unsafe { SENSOR_QUEUE.split() };
+
     // Producer side (could be in interrupt)
-    producer.enqueue(42).ok();
-    producer.enqueue(13).ok();
-    
+    producer.enqueue(23.5).ok(); // Temperature reading
+    producer.enqueue(24.1).ok();
+
     // Consumer side (main loop)
-    while let Some(value) = consumer.dequeue() {
-        // Process value
+    while let Some(temperature) = consumer.dequeue() {
+        process_temperature_reading(temperature);
     }
+}
+
+fn process_temperature_reading(temp: f32) {
+    // Process the temperature reading
 }
 ```
 
-## Const Functions and Compile-time Computation
+## Const Functions for Compile-time Configuration
 
-Const functions enable computation at compile time:
+Const functions enable zero-cost configuration and computation:
 
 ```rust
 #![no_std]
 
-// Simple const function
-const fn add(a: i32, b: i32) -> i32 {
-    a + b
+// Configuration constants computed at compile time
+const SYSTEM_CLOCK_HZ: u32 = 16_000_000; // 16 MHz
+const UART_BAUD_RATE: u32 = 115_200;
+
+// Const function to calculate UART register values
+const fn calculate_uart_divisor(clock_hz: u32, baud_rate: u32) -> u32 {
+    clock_hz / (16 * baud_rate)
 }
 
-// Const function with control flow
-const fn factorial(n: u32) -> u32 {
-    if n == 0 {
+// Computed at compile time - zero runtime cost
+const UART_DIVISOR: u32 = calculate_uart_divisor(SYSTEM_CLOCK_HZ, UART_BAUD_RATE);
+
+// Temperature sensor configuration
+const fn celsius_to_adc_value(celsius: f32) -> u16 {
+    // Simple linear conversion: 10mV/°C, 3.3V reference, 12-bit ADC
+    let voltage = celsius * 0.01; // 10mV/°C
+    let adc_value = (voltage / 3.3) * 4095.0;
+    adc_value as u16
+}
+
+// Temperature thresholds computed at compile time
+const TEMP_THRESHOLD_LOW: u16 = celsius_to_adc_value(5.0);   // 5°C
+const TEMP_THRESHOLD_HIGH: u16 = celsius_to_adc_value(35.0); // 35°C
+const TEMP_CRITICAL: u16 = celsius_to_adc_value(50.0);       // 50°C
+
+// Const generic functions for buffer sizing
+const fn next_power_of_two(n: usize) -> usize {
+    if n <= 1 {
         1
     } else {
-        n * factorial(n - 1)
+        2 * next_power_of_two((n + 1) / 2)
     }
 }
 
-// Const function with loops (requires const fn in loops feature)
-const fn sum_range(start: i32, end: i32) -> i32 {
-    let mut sum = 0;
-    let mut i = start;
-    while i <= end {
-        sum += i;
-        i += 1;
-    }
-    sum
-}
-
-// Const generic functions
-const fn create_array<const N: usize>() -> [i32; N] {
-    [0; N]
-}
-
-// Using const functions
-const FACTORIAL_5: u32 = factorial(5); // Computed at compile time
-const SUM_1_TO_10: i32 = sum_range(1, 10); // Also compile time
-const BUFFER: [i32; 100] = create_array::<100>(); // Zero-cost
-
-// Const fn for embedded configuration
-const fn calculate_baud_divisor(clock_freq: u32, baud_rate: u32) -> u32 {
-    clock_freq / (16 * baud_rate)
-}
-
-const SYSTEM_CLOCK: u32 = 16_000_000; // 16 MHz
-const UART_BAUD: u32 = 115_200;
-const BAUD_DIVISOR: u32 = calculate_baud_divisor(SYSTEM_CLOCK, UART_BAUD);
-
-// Const assertions (compile-time checks)
-const fn check_buffer_size(size: usize) -> usize {
-    assert!(size > 0 && size <= 1024);
-    size
-}
-
-const BUFFER_SIZE: usize = check_buffer_size(256);
-
-// Advanced const fn with const generics
-const fn is_power_of_two(n: usize) -> bool {
-    n > 0 && (n & (n - 1)) == 0
-}
-
+// Ring buffer with compile-time size validation
 struct RingBuffer<T, const N: usize> {
     buffer: [Option<T>; N],
     head: usize,
     tail: usize,
+    full: bool,
 }
 
 impl<T, const N: usize> RingBuffer<T, N> {
     const fn new() -> Self {
-        // This requires const Option::None
-        const fn none<T>() -> Option<T> { None }
-        
         // Compile-time assertion
-        assert!(is_power_of_two(N), "Buffer size must be power of two");
-        
+        assert!(N > 0 && (N & (N - 1)) == 0, "Buffer size must be power of two");
+
+        const fn none<T>() -> Option<T> { None }
+
         RingBuffer {
             buffer: [none(); N],
             head: 0,
             tail: 0,
+            full: false,
         }
     }
-    
+
+    const fn capacity(&self) -> usize {
+        N
+    }
+
     const fn mask(&self) -> usize {
-        N - 1
+        N - 1 // Works because N is power of 2
+    }
+
+    fn push(&mut self, item: T) -> Result<(), T> {
+        if self.full {
+            return Err(item);
+        }
+
+        self.buffer[self.head] = Some(item);
+        self.head = (self.head + 1) & self.mask();
+        self.full = self.head == self.tail;
+        Ok(())
+    }
+
+    fn pop(&mut self) -> Option<T> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let item = self.buffer[self.tail].take()?;
+        self.tail = (self.tail + 1) & self.mask();
+        self.full = false;
+        Some(item)
+    }
+
+    const fn is_empty(&self) -> bool {
+        !self.full && self.head == self.tail
     }
 }
+
+// Usage with compile-time validated size
+const READING_BUFFER_SIZE: usize = next_power_of_two(50); // Results in 64
+static mut TEMPERATURE_BUFFER: RingBuffer<f32, READING_BUFFER_SIZE> = RingBuffer::new();
 ```
 
 ## Embedded Programming Patterns
 
-Common patterns for embedded Rust development:
+Essential patterns for embedded Rust development:
 
 ```rust
 #![no_std]
 #![no_main]
 
 use core::panic::PanicInfo;
-use cortex_m_rt::entry;
 
 // Panic handler required for no_std
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    // In embedded systems, might reset or enter infinite loop
-    loop {}
-}
-
-// Main function for embedded
-#[entry]
-fn main() -> ! {
-    // Initialization
-    init_system();
-    
-    // Main loop
+    // In production: reset system or enter safe mode
+    // For debug: could use RTT or LED patterns
     loop {
-        // Application logic
-        handle_tasks();
-        
-        // Power management
-        cortex_m::asm::wfi(); // Wait for interrupt
+        // Infinite loop or system reset
     }
 }
 
-fn init_system() {
-    // Hardware initialization
-    init_clocks();
-    init_gpio();
-    init_peripherals();
-}
-
-fn init_clocks() {
-    // Clock configuration
-}
-
-fn init_gpio() {
-    // GPIO pin configuration
-}
-
-fn init_peripherals() {
-    // UART, SPI, I2C, etc.
-}
-
-// State machine pattern for embedded
-#[derive(Clone, Copy, Debug)]
-enum SystemState {
+// State machine for temperature monitoring device
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum MonitorState {
+    Initializing,
     Idle,
-    Measuring,
+    Reading,
+    Processing,
     Transmitting,
-    Error,
+    Error(ErrorCode),
 }
 
-struct SystemController {
-    state: SystemState,
-    measurement_count: u32,
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ErrorCode {
+    SensorTimeout,
+    InvalidReading,
+    CommunicationError,
+    OverTemperature,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum MonitorEvent {
+    InitComplete,
+    StartReading,
+    ReadingComplete(f32),
+    ReadingFailed(ErrorCode),
+    ProcessingComplete,
+    TransmissionComplete,
+    TransmissionFailed,
+    ErrorRecovered,
+}
+
+struct TemperatureMonitor {
+    state: MonitorState,
+    reading_count: u32,
     error_count: u32,
+    last_reading: Option<f32>,
 }
 
-impl SystemController {
+impl TemperatureMonitor {
     const fn new() -> Self {
-        SystemController {
-            state: SystemState::Idle,
-            measurement_count: 0,
+        Self {
+            state: MonitorState::Initializing,
+            reading_count: 0,
             error_count: 0,
+            last_reading: None,
         }
     }
-    
-    fn update(&mut self, event: SystemEvent) {
+
+    fn handle_event(&mut self, event: MonitorEvent) -> MonitorState {
         self.state = match (self.state, event) {
-            (SystemState::Idle, SystemEvent::StartMeasurement) => {
-                self.start_measurement();
-                SystemState::Measuring
+            (MonitorState::Initializing, MonitorEvent::InitComplete) => {
+                MonitorState::Idle
             }
-            (SystemState::Measuring, SystemEvent::MeasurementComplete) => {
-                self.measurement_count += 1;
-                SystemState::Transmitting
+            (MonitorState::Idle, MonitorEvent::StartReading) => {
+                self.start_sensor_reading();
+                MonitorState::Reading
             }
-            (SystemState::Transmitting, SystemEvent::TransmissionComplete) => {
-                SystemState::Idle
+            (MonitorState::Reading, MonitorEvent::ReadingComplete(temp)) => {
+                self.last_reading = Some(temp);
+                self.reading_count += 1;
+                MonitorState::Processing
             }
-            (_, SystemEvent::Error) => {
+            (MonitorState::Reading, MonitorEvent::ReadingFailed(error)) => {
                 self.error_count += 1;
-                SystemState::Error
+                MonitorState::Error(error)
             }
-            (SystemState::Error, SystemEvent::Reset) => {
-                SystemState::Idle
+            (MonitorState::Processing, MonitorEvent::ProcessingComplete) => {
+                if self.should_transmit() {
+                    MonitorState::Transmitting
+                } else {
+                    MonitorState::Idle
+                }
             }
-            // Invalid transitions stay in current state
+            (MonitorState::Transmitting, MonitorEvent::TransmissionComplete) => {
+                MonitorState::Idle
+            }
+            (MonitorState::Error(_), MonitorEvent::ErrorRecovered) => {
+                MonitorState::Idle
+            }
+            // Invalid transitions maintain current state
             _ => self.state,
         };
+
+        self.state
     }
-    
-    fn start_measurement(&self) {
-        // Start ADC conversion, etc.
+
+    fn start_sensor_reading(&self) {
+        // Initiate ADC conversion or I2C transaction
+    }
+
+    fn should_transmit(&self) -> bool {
+        // Transmit every 10 readings or if temperature is critical
+        self.reading_count % 10 == 0 ||
+        self.last_reading.map_or(false, |t| t > 40.0)
+    }
+
+    fn get_status(&self) -> &'static str {
+        match self.state {
+            MonitorState::Initializing => "Initializing sensors...",
+            MonitorState::Idle => "Ready",
+            MonitorState::Reading => "Reading sensors...",
+            MonitorState::Processing => "Processing data...",
+            MonitorState::Transmitting => "Transmitting...",
+            MonitorState::Error(ErrorCode::SensorTimeout) => "Sensor timeout",
+            MonitorState::Error(ErrorCode::InvalidReading) => "Invalid reading",
+            MonitorState::Error(ErrorCode::CommunicationError) => "Comm error",
+            MonitorState::Error(ErrorCode::OverTemperature) => "CRITICAL: Over temp!",
+        }
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum SystemEvent {
-    StartMeasurement,
-    MeasurementComplete,
-    TransmissionComplete,
-    Error,
-    Reset,
-}
-
-// Interrupt-safe communication
-use cortex_m::interrupt::{self, Mutex};
+// Interrupt-safe shared data
 use core::cell::RefCell;
+use cortex_m::interrupt::{self, Mutex};
 
-type SharedData = Mutex<RefCell<Option<u32>>>;
-static SENSOR_DATA: SharedData = Mutex::new(RefCell::new(None));
+type SharedSensorData = Mutex<RefCell<Option<f32>>>;
+static SENSOR_DATA: SharedSensorData = Mutex::new(RefCell::new(None));
 
-fn read_sensor_data() -> Option<u32> {
+fn read_shared_sensor_data() -> Option<f32> {
     interrupt::free(|cs| {
-        SENSOR_DATA.borrow(cs).borrow().clone()
+        *SENSOR_DATA.borrow(cs).borrow()
     })
 }
 
-fn write_sensor_data(value: u32) {
+fn write_shared_sensor_data(value: f32) {
     interrupt::free(|cs| {
         *SENSOR_DATA.borrow(cs).borrow_mut() = Some(value);
     });
 }
 
-// Task scheduler pattern
+// Task scheduler with fixed-size task array
 struct Task {
     period_ms: u32,
     last_run: u32,
+    enabled: bool,
     function: fn(),
 }
 
 impl Task {
     const fn new(period_ms: u32, function: fn()) -> Self {
-        Task {
+        Self {
             period_ms,
             last_run: 0,
+            enabled: true,
             function,
         }
     }
-    
+
     fn should_run(&self, current_time: u32) -> bool {
-        current_time.wrapping_sub(self.last_run) >= self.period_ms
+        self.enabled && current_time.wrapping_sub(self.last_run) >= self.period_ms
     }
-    
+
     fn run(&mut self, current_time: u32) {
         (self.function)();
         self.last_run = current_time;
     }
 }
 
-static mut TASKS: [Task; 3] = [
-    Task::new(100, sensor_task),    // 100ms period
-    Task::new(1000, heartbeat_task), // 1s period  
-    Task::new(5000, status_task),   // 5s period
+// Fixed task schedule
+static mut TASKS: [Task; 4] = [
+    Task::new(100, sensor_task),      // 100ms - sensor reading
+    Task::new(1000, heartbeat_task),  // 1s - status LED
+    Task::new(5000, telemetry_task),  // 5s - data transmission
+    Task::new(60000, watchdog_task),  // 60s - system health check
 ];
 
-fn handle_tasks() {
+fn run_scheduler() {
     let current_time = get_system_time_ms();
-    
+
     unsafe {
         for task in &mut TASKS {
             if task.should_run(current_time) {
@@ -502,627 +672,299 @@ fn handle_tasks() {
 }
 
 fn sensor_task() {
-    // Read sensors
+    // Read temperature sensors
 }
 
 fn heartbeat_task() {
-    // Toggle LED
+    // Toggle status LED
 }
 
-fn status_task() {
-    // Send status update
+fn telemetry_task() {
+    // Send sensor data via radio/WiFi
+}
+
+fn watchdog_task() {
+    // Pet watchdog, check system health
 }
 
 fn get_system_time_ms() -> u32 {
     // Return system time in milliseconds
+    // Implementation depends on hardware timer
     0 // Placeholder
 }
 ```
 
-## Error Handling in no_std
+## Exercise: Convert Temperature System to no_std
 
-Robust error handling without std:
+Build a complete no_std version of our temperature monitoring system:
+
+### Requirements
+
+1. **Core Types**: Temperature and sensor traits that work in no_std
+2. **Fixed Storage**: Use heapless collections for storing readings
+3. **Protocol Handler**: Binary protocol processing without allocation
+4. **Const Configuration**: Compile-time system parameters
+5. **Error Handling**: Comprehensive error handling without std
+
+### Starting Implementation
 
 ```rust
+// In temp_embedded/src/lib.rs
 #![no_std]
 
-// Custom error types
-#[derive(Debug, Clone, Copy)]
-enum SensorError {
-    NotInitialized,
-    CommunicationFailed,
-    InvalidData,
-    Timeout,
+use heapless::{Vec, String, FnvIndexMap};
+use serde::{Deserialize, Serialize};
+
+// Re-export core temperature types
+pub use temp_core::Temperature;
+
+// Fixed-capacity temperature reading
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct EmbeddedTemperatureReading {
+    pub temperature: Temperature,
+    pub timestamp: u32, // Using u32 for embedded systems
 }
 
-#[derive(Debug, Clone, Copy)]
-enum SystemError {
-    Sensor(SensorError),
-    Memory,
-    Hardware,
-}
-
-impl From<SensorError> for SystemError {
-    fn from(err: SensorError) -> Self {
-        SystemError::Sensor(err)
+impl EmbeddedTemperatureReading {
+    pub fn new(temperature: Temperature, timestamp: u32) -> Self {
+        Self { temperature, timestamp }
     }
 }
 
-// Result type alias
-type SystemResult<T> = Result<T, SystemError>;
-
-// Error handling functions
-fn read_temperature_sensor() -> Result<i16, SensorError> {
-    // Simulate sensor reading
-    if !is_sensor_initialized() {
-        return Err(SensorError::NotInitialized);
-    }
-    
-    if !is_communication_ok() {
-        return Err(SensorError::CommunicationFailed);
-    }
-    
-    let raw_value = read_adc();
-    if raw_value > 4095 {
-        return Err(SensorError::InvalidData);
-    }
-    
-    Ok(raw_value as i16)
-}
-
-fn process_sensor_data() -> SystemResult<()> {
-    let temperature = read_temperature_sensor()?; // Error propagation
-    
-    if temperature > 1000 {
-        return Err(SystemError::Hardware);
-    }
-    
-    // Process temperature
-    store_temperature(temperature)?;
-    
-    Ok(())
-}
-
-fn store_temperature(temp: i16) -> SystemResult<()> {
-    // Simulate memory operation
-    if is_memory_full() {
-        Err(SystemError::Memory)
-    } else {
-        // Store temperature
-        Ok(())
-    }
-}
-
-// Utility functions (would be implemented for real hardware)
-fn is_sensor_initialized() -> bool { true }
-fn is_communication_ok() -> bool { true }
-fn read_adc() -> u16 { 1234 }
-fn is_memory_full() -> bool { false }
-
-// Error recovery patterns
-fn safe_sensor_operation() -> SystemResult<i16> {
-    const MAX_RETRIES: usize = 3;
-    let mut retries = 0;
-    
-    loop {
-        match read_temperature_sensor() {
-            Ok(value) => return Ok(value),
-            Err(SensorError::CommunicationFailed) if retries < MAX_RETRIES => {
-                retries += 1;
-                // Wait and retry
-                delay_ms(10);
-                continue;
-            }
-            Err(e) => return Err(e.into()),
-        }
-    }
-}
-
-fn delay_ms(_ms: u32) {
-    // Platform-specific delay implementation
-}
-```
-
-## Memory Management in no_std
-
-Strategies for managing memory without heap:
-
-```rust
-#![no_std]
-
-use heapless::{Vec, String};
-use heapless::pool::{Pool, Node};
-
-// Stack-allocated buffers
-const BUFFER_SIZE: usize = 1024;
-static mut WORK_BUFFER: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
-
-fn use_stack_buffer() {
-    let mut local_buffer = [0u8; 256];
-    
-    // Use buffer for temporary work
-    fill_buffer(&mut local_buffer, 0xFF);
-    
-    // Buffer automatically cleaned up when function exits
-}
-
-fn fill_buffer(buffer: &mut [u8], value: u8) {
-    for byte in buffer {
-        *byte = value;
-    }
-}
-
-// Memory pool for dynamic allocation
-static mut POOL_MEMORY: [Node<[u8; 64]>; 32] = [Node::new(); 32];
-static BUFFER_POOL: Pool<[u8; 64]> = Pool::new();
-
-fn init_memory_pool() {
-    unsafe {
-        BUFFER_POOL.grow_exact(&mut POOL_MEMORY);
-    }
-}
-
-fn use_pooled_memory() -> Option<()> {
-    let buffer = BUFFER_POOL.alloc()?; // Get buffer from pool
-    
-    // Use buffer...
-    // Buffer automatically returned to pool when dropped
-    
-    Some(())
-}
-
-// Ring buffer implementation
-struct RingBuffer<T, const N: usize> {
-    buffer: [core::mem::MaybeUninit<T>; N],
-    head: usize,
-    tail: usize,
-    full: bool,
-}
-
-impl<T, const N: usize> RingBuffer<T, N> {
-    const fn new() -> Self {
-        RingBuffer {
-            buffer: unsafe { core::mem::MaybeUninit::uninit().assume_init() },
-            head: 0,
-            tail: 0,
-            full: false,
-        }
-    }
-    
-    fn push(&mut self, item: T) -> Result<(), T> {
-        if self.is_full() {
-            return Err(item);
-        }
-        
-        unsafe {
-            self.buffer[self.head].as_mut_ptr().write(item);
-        }
-        
-        self.head = (self.head + 1) % N;
-        self.full = self.head == self.tail;
-        Ok(())
-    }
-    
-    fn pop(&mut self) -> Option<T> {
-        if self.is_empty() {
-            return None;
-        }
-        
-        let item = unsafe { self.buffer[self.tail].as_ptr().read() };
-        
-        self.tail = (self.tail + 1) % N;
-        self.full = false;
-        Some(item)
-    }
-    
-    const fn is_full(&self) -> bool {
-        self.full
-    }
-    
-    const fn is_empty(&self) -> bool {
-        !self.full && self.head == self.tail
-    }
-    
-    fn len(&self) -> usize {
-        if self.full {
-            N
-        } else if self.head >= self.tail {
-            self.head - self.tail
-        } else {
-            N - self.tail + self.head
-        }
-    }
-}
-
-// Fixed-capacity string formatting
-fn format_sensor_data(temp: i16, humidity: u8) -> heapless::String<64> {
-    let mut output = heapless::String::new();
-    
-    // Simple formatting without std::format!
-    output.push_str("Temp: ").ok();
-    push_number(&mut output, temp as i32);
-    output.push_str("C, Humidity: ").ok();
-    push_number(&mut output, humidity as i32);
-    output.push('%').ok();
-    
-    output
-}
-
-fn push_number(s: &mut heapless::String<64>, mut num: i32) {
-    if num == 0 {
-        s.push('0').ok();
-        return;
-    }
-    
-    if num < 0 {
-        s.push('-').ok();
-        num = -num;
-    }
-    
-    // Simple number to string conversion
-    let mut digits = heapless::Vec::<u8, 16>::new();
-    while num > 0 {
-        digits.push((num % 10) as u8).ok();
-        num /= 10;
-    }
-    
-    for &digit in digits.iter().rev() {
-        s.push((b'0' + digit) as char).ok();
-    }
-}
-```
-
-## Common Pitfalls and Solutions
-
-### 1. Stack Overflow
-
-```rust
-#![no_std]
-
-// BAD: Large arrays on stack
-fn bad_large_stack_usage() {
-    let large_array = [0u8; 10000]; // Might overflow stack
-    process_data(&large_array);
-}
-
-// GOOD: Use static storage or heap
-static mut LARGE_BUFFER: [u8; 10000] = [0; 10000];
-
-fn good_large_data_usage() {
-    unsafe {
-        process_data(&LARGE_BUFFER);
-    }
-}
-
-// Or use memory pool
-fn good_pooled_usage() {
-    if let Some(buffer) = BUFFER_POOL.alloc() {
-        process_small_data(&*buffer);
-    }
-}
-
-fn process_data(_data: &[u8]) {}
-fn process_small_data(_data: &[u8; 64]) {}
-```
-
-### 2. Integer Overflow
-
-```rust
-// BAD: Unchecked arithmetic
-fn bad_arithmetic(a: u32, b: u32) -> u32 {
-    a + b // Can overflow silently in release mode
-}
-
-// GOOD: Checked arithmetic
-fn good_arithmetic(a: u32, b: u32) -> Option<u32> {
-    a.checked_add(b)
-}
-
-// Or wrapping arithmetic when overflow is expected
-fn wrapping_counter(current: u32) -> u32 {
-    current.wrapping_add(1)
-}
-```
-
-## Exercises
-
-### Exercise 1: Sensor Data Logger
-
-Create a no_std sensor data logger with fixed-capacity storage:
-
-```rust
-#![no_std]
-
-use heapless::{Vec, String};
-
-#[derive(Clone, Copy, Debug)]
-struct SensorReading {
-    timestamp: u32,
-    temperature: i16,
-    humidity: u8,
-    pressure: u16,
-}
-
-struct DataLogger<const N: usize> {
-    readings: Vec<SensorReading, N>,
+// Fixed-capacity storage for embedded systems
+pub struct EmbeddedTemperatureStore<const N: usize> {
+    readings: Vec<EmbeddedTemperatureReading, N>,
     total_readings: u32,
 }
 
-impl<const N: usize> DataLogger<N> {
-    const fn new() -> Self {
-        // TODO: Initialize data logger
+impl<const N: usize> EmbeddedTemperatureStore<N> {
+    pub const fn new() -> Self {
+        // TODO: Initialize with fixed capacity
         unimplemented!()
     }
-    
-    fn log_reading(&mut self, reading: SensorReading) -> Result<(), &'static str> {
-        // TODO: Add reading to storage
-        // If storage is full, remove oldest reading (circular buffer behavior)
+
+    pub fn add_reading(&mut self, reading: EmbeddedTemperatureReading) -> Result<(), &'static str> {
+        // TODO: Add reading, handling full buffer (circular buffer behavior)
         unimplemented!()
     }
-    
-    fn get_latest(&self) -> Option<SensorReading> {
+
+    pub fn get_latest(&self) -> Option<EmbeddedTemperatureReading> {
         // TODO: Return most recent reading
         unimplemented!()
     }
-    
-    fn get_average_temperature(&self) -> Option<i16> {
-        // TODO: Calculate average temperature from stored readings
+
+    pub fn get_stats(&self) -> EmbeddedTemperatureStats {
+        // TODO: Calculate stats without heap allocation
         unimplemented!()
     }
-    
-    fn format_summary(&self) -> heapless::String<256> {
-        // TODO: Format summary string without std::format!
-        // Include: count, latest reading, average temperature
+
+    pub fn clear(&mut self) {
+        // TODO: Clear all readings
         unimplemented!()
     }
-    
-    fn clear(&mut self) {
-        // TODO: Clear all stored readings
-        unimplemented!()
-    }
-}
 
-// Test your implementation
-fn test_data_logger() {
-    let mut logger: DataLogger<10> = DataLogger::new();
-    
-    // Log some readings
-    for i in 0..15 {
-        let reading = SensorReading {
-            timestamp: i * 1000,
-            temperature: 20 + (i as i16),
-            humidity: 50 + (i as u8 % 20),
-            pressure: 1013 + (i as u16),
-        };
-        logger.log_reading(reading).ok();
-    }
-    
-    let summary = logger.format_summary();
-    // Print summary (would use RTT or UART in real embedded system)
-}
-```
-
-### Exercise 2: State Machine Controller
-
-Implement a state machine for controlling an embedded device:
-
-```rust
-#![no_std]
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum DeviceState {
-    PowerOff,
-    Initializing,
-    Ready,
-    Measuring,
-    Transmitting,
-    Error(ErrorCode),
-    Shutdown,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum ErrorCode {
-    SensorFault,
-    CommunicationError,
-    OverTemperature,
-    LowBattery,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Event {
-    PowerOn,
-    InitComplete,
-    InitFailed(ErrorCode),
-    StartMeasurement,
-    MeasurementComplete,
-    MeasurementFailed,
-    TransmitData,
-    TransmissionComplete,
-    TransmissionFailed,
-    ErrorRecovered,
-    Shutdown,
-}
-
-struct StateMachine {
-    current_state: DeviceState,
-    measurement_count: u32,
-    error_count: u32,
-}
-
-impl StateMachine {
-    const fn new() -> Self {
-        // TODO: Initialize state machine
-        unimplemented!()
-    }
-    
-    fn handle_event(&mut self, event: Event) -> DeviceState {
-        // TODO: Implement state transitions based on current state and event
-        // Return new state after transition
-        unimplemented!()
-    }
-    
-    fn can_handle_event(&self, event: Event) -> bool {
-        // TODO: Check if current state can handle the given event
-        unimplemented!()
-    }
-    
-    fn is_operational(&self) -> bool {
-        // TODO: Return true if device can perform measurements
-        unimplemented!()
-    }
-    
-    fn get_status_string(&self) -> &'static str {
-        // TODO: Return human-readable status string
-        unimplemented!()
-    }
-    
-    fn reset(&mut self) {
-        // TODO: Reset to initial state
-        unimplemented!()
-    }
-}
-
-// Test your implementation
-fn test_state_machine() {
-    let mut sm = StateMachine::new();
-    
-    assert_eq!(sm.current_state, DeviceState::PowerOff);
-    
-    // Power on sequence
-    sm.handle_event(Event::PowerOn);
-    assert_eq!(sm.current_state, DeviceState::Initializing);
-    
-    sm.handle_event(Event::InitComplete);
-    assert_eq!(sm.current_state, DeviceState::Ready);
-    
-    // Measurement cycle
-    sm.handle_event(Event::StartMeasurement);
-    sm.handle_event(Event::MeasurementComplete);
-    
-    // Test error handling
-    sm.handle_event(Event::InitFailed(ErrorCode::SensorFault));
-    // Should handle error appropriately
-}
-```
-
-### Exercise 3: Memory Pool Allocator
-
-Create a custom memory pool for managing buffers:
-
-```rust
-#![no_std]
-
-use core::mem::{MaybeUninit, size_of, align_of};
-use core::ptr::{self, NonNull};
-
-struct MemoryPool<T, const N: usize> {
-    // TODO: Define pool structure
-    // Hint: Use an array for storage and a free list
-}
-
-struct PoolHandle<T> {
-    // TODO: Handle that manages allocated memory
-    // Should automatically return memory to pool when dropped
-}
-
-impl<T, const N: usize> MemoryPool<T, N> {
-    const fn new() -> Self {
-        // TODO: Initialize empty pool
-        unimplemented!()
-    }
-    
-    fn init(&mut self) {
-        // TODO: Set up free list linking all blocks
-        unimplemented!()
-    }
-    
-    fn alloc(&mut self) -> Option<PoolHandle<T>> {
-        // TODO: Allocate block from free list
-        unimplemented!()
-    }
-    
-    fn free_count(&self) -> usize {
-        // TODO: Return number of available blocks
-        unimplemented!()
-    }
-    
-    fn total_count(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         N
     }
-    
-    unsafe fn free(&mut self, ptr: NonNull<T>) {
-        // TODO: Return block to free list
-        // This should be called by PoolHandle::drop
+
+    pub fn len(&self) -> usize {
+        // TODO: Return current number of readings
+        unimplemented!()
+    }
+
+    pub fn is_full(&self) -> bool {
+        // TODO: Check if storage is at capacity
         unimplemented!()
     }
 }
 
-impl<T> PoolHandle<T> {
-    unsafe fn new(ptr: NonNull<T>, pool: *mut dyn PoolFree<T>) -> Self {
-        // TODO: Create new handle
+// Statistics without heap allocation
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct EmbeddedTemperatureStats {
+    pub min: Temperature,
+    pub max: Temperature,
+    pub average: Temperature,
+    pub count: usize,
+}
+
+// Const configuration functions
+pub const fn calculate_sample_rate(desired_hz: u32, clock_hz: u32) -> u32 {
+    clock_hz / desired_hz
+}
+
+pub const fn validate_buffer_size(size: usize) -> usize {
+    assert!(size > 0 && size <= 1024, "Buffer size must be 1-1024");
+    assert!(size & (size - 1) == 0, "Buffer size must be power of 2");
+    size
+}
+
+// Configuration constants
+pub const SYSTEM_CLOCK_HZ: u32 = 16_000_000;
+pub const SAMPLE_RATE_HZ: u32 = 10; // 10 Hz sampling
+pub const TIMER_DIVISOR: u32 = calculate_sample_rate(SAMPLE_RATE_HZ, SYSTEM_CLOCK_HZ);
+pub const READING_BUFFER_SIZE: usize = validate_buffer_size(64);
+
+// Binary protocol for embedded communication
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum EmbeddedCommand {
+    GetStatus,
+    GetLatestReading,
+    GetReadingCount,
+    ClearReadings,
+    SetSampleRate(u32),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum EmbeddedResponse {
+    Status {
+        uptime_seconds: u32,
+        reading_count: u32,
+        sample_rate: u32,
+    },
+    Reading(EmbeddedTemperatureReading),
+    ReadingCount(u32),
+    Cleared,
+    SampleRateSet(u32),
+    Error(u8), // Error code as u8 for compact binary encoding
+}
+
+pub struct EmbeddedProtocolHandler<const N: usize> {
+    store: EmbeddedTemperatureStore<N>,
+    sample_rate: u32,
+    start_time: u32,
+}
+
+impl<const N: usize> EmbeddedProtocolHandler<N> {
+    pub const fn new() -> Self {
+        // TODO: Initialize protocol handler
         unimplemented!()
     }
-    
-    fn as_ptr(&self) -> *mut T {
-        // TODO: Get raw pointer to allocated memory
+
+    pub fn process_command(&mut self, command: EmbeddedCommand, current_time: u32) -> EmbeddedResponse {
+        // TODO: Process commands and return appropriate responses
         unimplemented!()
     }
-}
 
-impl<T> Drop for PoolHandle<T> {
-    fn drop(&mut self) {
-        // TODO: Return memory to pool
+    pub fn serialize_binary(&self, response: &EmbeddedResponse) -> Result<Vec<u8, 256>, postcard::Error> {
+        // TODO: Serialize response to binary using postcard
         unimplemented!()
     }
-}
 
-// Trait for returning memory to pool (needed for Handle to work with any pool)
-trait PoolFree<T> {
-    unsafe fn free(&mut self, ptr: NonNull<T>);
-}
+    pub fn deserialize_binary(&self, data: &[u8]) -> Result<EmbeddedCommand, postcard::Error> {
+        // TODO: Deserialize command from binary
+        unimplemented!()
+    }
 
-impl<T, const N: usize> PoolFree<T> for MemoryPool<T, N> {
-    unsafe fn free(&mut self, ptr: NonNull<T>) {
-        self.free(ptr);
+    pub fn add_reading(&mut self, temperature: Temperature, timestamp: u32) -> Result<(), &'static str> {
+        let reading = EmbeddedTemperatureReading::new(temperature, timestamp);
+        self.store.add_reading(reading)
     }
 }
 
-// Test your implementation
-fn test_memory_pool() {
-    let mut pool: MemoryPool<[u8; 64], 8> = MemoryPool::new();
-    pool.init();
-    
-    assert_eq!(pool.free_count(), 8);
-    
-    // Allocate some blocks
-    let block1 = pool.alloc().unwrap();
-    let block2 = pool.alloc().unwrap();
-    
-    assert_eq!(pool.free_count(), 6);
-    
-    // Use blocks
-    unsafe {
-        let ptr1 = block1.as_ptr();
-        (*ptr1)[0] = 42;
+// Error types for embedded systems
+#[derive(Debug, Clone, Copy)]
+pub enum EmbeddedError {
+    BufferFull,
+    InvalidSampleRate,
+    SensorTimeout,
+    InvalidCommand,
+    SerializationError,
+}
+
+impl EmbeddedError {
+    pub const fn error_code(&self) -> u8 {
+        match self {
+            EmbeddedError::BufferFull => 1,
+            EmbeddedError::InvalidSampleRate => 2,
+            EmbeddedError::SensorTimeout => 3,
+            EmbeddedError::InvalidCommand => 4,
+            EmbeddedError::SerializationError => 5,
+        }
     }
-    
-    // Blocks automatically freed when dropped
-    drop(block1);
-    drop(block2);
-    
-    assert_eq!(pool.free_count(), 8);
+
+    pub const fn description(&self) -> &'static str {
+        match self {
+            EmbeddedError::BufferFull => "Buffer full",
+            EmbeddedError::InvalidSampleRate => "Invalid sample rate",
+            EmbeddedError::SensorTimeout => "Sensor timeout",
+            EmbeddedError::InvalidCommand => "Invalid command",
+            EmbeddedError::SerializationError => "Serialization error",
+        }
+    }
+}
+
+// Utility function for creating fixed-capacity strings
+pub fn create_status_string(reading_count: u32, sample_rate: u32) -> String<128> {
+    let mut status = String::new();
+    status.push_str("Readings: ").ok();
+    push_number(&mut status, reading_count as i32);
+    status.push_str(", Rate: ").ok();
+    push_number(&mut status, sample_rate as i32);
+    status.push_str(" Hz").ok();
+    status
+}
+
+fn push_number(s: &mut String<128>, mut num: i32) {
+    // TODO: Implement number to string conversion without std::format!
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_embedded_store_basic_operations() {
+        // TODO: Test basic store operations
+    }
+
+    #[test]
+    fn test_embedded_store_circular_buffer() {
+        // TODO: Test circular buffer behavior when full
+    }
+
+    #[test]
+    fn test_const_configuration() {
+        // TODO: Test compile-time configuration
+    }
+
+    #[test]
+    fn test_protocol_binary_serialization() {
+        // TODO: Test binary protocol serialization
+    }
+
+    #[test]
+    fn test_error_handling() {
+        // TODO: Test error handling without std
+    }
 }
 ```
+
+### Success Criteria
+
+- All code works in `#![no_std]` environment
+- Fixed-capacity storage behaves correctly when full
+- Binary protocol serialization works without allocation
+- Const functions provide zero-cost configuration
+- Comprehensive error handling without std types
+- All tests pass demonstrating embedded-ready functionality
+
+### Extension Ideas
+
+1. **Power Management**: Add sleep modes and wake-on-interrupt
+2. **Watchdog Integration**: System reset on hang detection
+3. **Interrupt Handlers**: Safe interrupt-driven sensor reading
+4. **Memory Analysis**: Verify stack and flash usage
+5. **Hardware Abstraction**: Generic sensor traits for different platforms
 
 ## Key Takeaways
 
-1. **Understand Library Layers**: `core` is always available, `alloc` adds heap allocation, `std` adds OS features
-2. **Use Heapless Collections**: Fixed-capacity alternatives prevent memory allocation failures
-3. **Leverage Const Functions**: Compute values at compile time to reduce runtime overhead
-4. **Memory Management**: Use pools, ring buffers, and static allocation instead of heap when possible
-5. **Error Handling**: Custom error types with `Result` provide type-safe error handling
-6. **State Machines**: Explicit state management prevents invalid operations
+1. **Library Layers**: `core` for basics, `alloc` for heap, `std` for OS features
+2. **Fixed Capacity**: Use heapless collections to avoid allocation failures
+3. **Const Functions**: Compute configuration at compile time for zero overhead
+4. **State Machines**: Explicit state management prevents invalid operations in resource-constrained environments
+5. **Error Handling**: Custom error types with Result provide type-safe error handling without exceptions
+6. **Memory Patterns**: Pools, ring buffers, and static allocation replace heap when needed
 7. **Interrupt Safety**: Use `Mutex<RefCell<T>>` for interrupt-safe shared data
-8. **Resource Constraints**: Always consider memory, power, and timing constraints in embedded contexts
+8. **Binary Protocols**: Compact serialization saves bandwidth and storage
 
-**Next**: In Chapter 17, we'll explore build systems, deployment strategies, and CI/CD for Rust projects.
+**Next**: In Chapter 18, we'll explore build systems, cross-compilation, and deployment strategies for getting our embedded code running on actual hardware.

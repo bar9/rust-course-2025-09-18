@@ -1,231 +1,263 @@
-# Chapter 14: Concurrency Fundamentals
+# Chapter 14: Concurrency & Shared State
+## Building Thread-Safe Applications with Arc, Mutex, and Channels
 
-## Learning Objectives
-- Master Rust's thread-safe shared state management using `Arc<Mutex<T>>` and `Arc<RwLock<T>>`
-- Understand message passing with channels (`mpsc`) and when to use each approach
-- Learn about `Send` and `Sync` traits and their role in thread safety
-- Apply deadlock prevention strategies in multi-threaded code
-- Use Rayon for data parallelism and performance optimization
-- Compare Rust's concurrency model to C++/C# threading approaches
+### Learning Objectives
+By the end of this chapter, you'll be able to:
+- Spawn and manage threads in Rust
+- Share data safely between threads using Arc and Mutex
+- Use channels for message passing between threads
+- Choose between different synchronization primitives (Mutex vs RwLock)
+- Understand when to use threads vs async programming
+- Apply concurrency patterns to embedded systems
+- Build thread-safe data structures
+- Debug common concurrency issues
 
-## Thread Safety: Send and Sync Traits
+---
 
-Rust's concurrency safety is built on two key traits:
+## Why Concurrency Matters
+
+Modern applications need to handle multiple tasks simultaneously - reading from sensors, processing data, handling user input, and communicating over networks. Rust's ownership system makes concurrent programming safer than in most languages.
+
+**Concurrency Comparison Across Languages:**
+
+| Aspect | C/C++ | C# | Go | Rust |
+|--------|-------|----|----|------|
+| Data races | Runtime crashes | Runtime exceptions | Panic | **Compile-time prevention** |
+| Memory safety | Manual management | GC overhead | GC overhead | **Zero-cost safety** |
+| Deadlock prevention | Manual | Manual | Manual | **Ownership helps** |
+| Performance | Fast but unsafe | Good with GC | Good with GC | **Fast and safe** |
+| Learning curve | High | Medium | Low | **Medium (worth it!)** |
+
+### The Problem with Shared Mutable State
 
 ```rust
-// Send: Types that can be transferred between threads
-// Sync: Types that can be safely shared between threads (T is Sync if &T is Send)
-
 use std::thread;
-use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 
-// Most types are Send and Sync automatically
-fn demonstrate_send_sync() {
-    let data = vec![1, 2, 3, 4, 5];
-    
-    // This works because Vec<i32> is Send
-    let handle = thread::spawn(move || {
-        println!("Data in thread: {:?}", data);
+// This won't compile - and that's good!
+fn broken_shared_counter() {
+    let mut counter = 0;
+
+    let handle1 = thread::spawn(|| {
+        for _ in 0..1000 {
+            counter += 1; // ❌ Error: can't capture mutable reference
+        }
     });
-    
-    handle.join().unwrap();
+
+    let handle2 = thread::spawn(|| {
+        for _ in 0..1000 {
+            counter += 1; // ❌ Error: can't capture mutable reference
+        }
+    });
+
+    handle1.join().unwrap();
+    handle2.join().unwrap();
+
+    println!("Counter: {}", counter); // What should this be?
 }
 ```
 
-**C++/C# Comparison:**
-- **C++**: No built-in thread safety guarantees; developers must manually ensure thread safety
-- **C#**: Thread safety is runtime-checked; race conditions possible
-- **Rust**: Thread safety is compile-time guaranteed through Send/Sync traits
+Rust prevents this at compile time because:
+1. **Data races**: Multiple threads modifying the same data
+2. **Use after free**: One thread might deallocate while another is reading
+3. **Inconsistent state**: Partially updated data structures
 
-## Shared State with Arc<Mutex<T>>
+## Arc: Atomic Reference Counting
 
-`Arc<Mutex<T>>` is the primary pattern for shared mutable state:
+`Arc<T>` (Atomically Reference Counted) enables multiple owners of the same data:
+
+```rust
+use std::sync::Arc;
+use std::thread;
+
+fn sharing_immutable_data() {
+    let data = Arc::new(vec![1, 2, 3, 4, 5]);
+    let mut handles = vec![];
+
+    for i in 0..3 {
+        let data_clone = Arc::clone(&data); // Cheap reference count increment
+        let handle = thread::spawn(move || {
+            println!("Thread {}: {:?}", i, data_clone);
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Original data still accessible: {:?}", data);
+}
+```
+
+**Key Points about Arc:**
+- **Cheap cloning**: Only increments a counter, doesn't copy data
+- **Thread-safe**: Reference counting is atomic
+- **Immutable by default**: `Arc<T>` gives you `&T`, not `&mut T`
+- **No garbage collection**: Automatically dropped when last reference goes away
+
+## Mutex: Mutual Exclusion
+
+`Mutex<T>` provides thread-safe mutable access to data:
 
 ```rust
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-fn shared_counter_example() {
+fn safe_shared_counter() {
     let counter = Arc::new(Mutex::new(0));
     let mut handles = vec![];
-    
-    for i in 0..10 {
+
+    for _ in 0..10 {
         let counter_clone = Arc::clone(&counter);
         let handle = thread::spawn(move || {
-            for _ in 0..1000 {
+            for _ in 0..100 {
                 let mut num = counter_clone.lock().unwrap();
                 *num += 1;
-                // Mutex is automatically released when `num` goes out of scope
+                // Lock is automatically released when `num` goes out of scope
             }
-            println!("Thread {} finished", i);
         });
         handles.push(handle);
     }
-    
+
     for handle in handles {
         handle.join().unwrap();
     }
-    
-    println!("Final counter value: {}", *counter.lock().unwrap());
-    // Output: Final counter value: 10000
+
+    println!("Counter: {}", *counter.lock().unwrap());
+    // Should print "Counter: 1000" (10 threads × 100 increments)
 }
 
-// Better error handling with Mutex
-fn safe_shared_counter() -> Result<i32, Box<dyn std::error::Error>> {
-    let counter = Arc::new(Mutex::new(0));
-    let mut handles = vec![];
-    
-    for _ in 0..10 {
-        let counter_clone = Arc::clone(&counter);
-        let handle = thread::spawn(move || -> Result<(), Box<dyn std::error::Error + Send>> {
-            for _ in 0..1000 {
-                let mut num = counter_clone.lock()
-                    .map_err(|e| format!("Mutex poisoned: {}", e))?;
-                *num += 1;
-            }
-            Ok(())
-        });
-        handles.push(handle);
-    }
-    
-    // Collect results and handle errors
-    for handle in handles {
-        handle.join().unwrap()?;
-    }
-    
-    let final_value = counter.lock()
-        .map_err(|e| format!("Final lock failed: {}", e))?;
-    Ok(*final_value)
+// Real-world pattern: shared configuration
+use std::collections::HashMap;
+
+type Config = Arc<Mutex<HashMap<String, String>>>;
+
+fn update_config(config: &Config, key: String, value: String) {
+    let mut map = config.lock().unwrap();
+    map.insert(key, value);
+}
+
+fn read_config(config: &Config, key: &str) -> Option<String> {
+    let map = config.lock().unwrap();
+    map.get(key).cloned()
 }
 ```
 
-## Reader-Writer Locks: Arc<RwLock<T>>
+**Mutex Best Practices:**
+- **Keep critical sections small**: Don't hold locks longer than necessary
+- **Avoid nested locks**: Can cause deadlocks
+- **Consider RwLock**: For read-heavy workloads
+- **Handle poisoning**: Use `.unwrap()` for prototypes, proper error handling in production
 
-When you have many readers and few writers, `RwLock` can be more efficient:
+## RwLock: Multiple Readers, Single Writer
+
+`RwLock<T>` allows multiple concurrent readers OR one writer:
 
 ```rust
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 
-fn rwlock_example() {
+fn reader_writer_example() {
     let data = Arc::new(RwLock::new(vec![1, 2, 3, 4, 5]));
     let mut handles = vec![];
-    
-    // Spawn reader threads
-    for i in 0..5 {
+
+    // Spawn multiple readers
+    for i in 0..3 {
         let data_clone = Arc::clone(&data);
         let handle = thread::spawn(move || {
-            for _ in 0..10 {
-                let data_guard = data_clone.read().unwrap();
-                println!("Reader {} sees: {:?}", i, *data_guard);
-                thread::sleep(Duration::from_millis(10));
-            }
+            // Multiple readers can access simultaneously
+            let read_guard = data_clone.read().unwrap();
+            println!("Reader {}: sum = {}", i, read_guard.iter().sum::<i32>());
+            thread::sleep(Duration::from_millis(100)); // Simulate work
         });
         handles.push(handle);
     }
-    
-    // Spawn writer threads
-    for i in 0..2 {
-        let data_clone = Arc::clone(&data);
-        let handle = thread::spawn(move || {
-            for j in 0..5 {
-                let mut data_guard = data_clone.write().unwrap();
-                data_guard.push(i * 10 + j);
-                println!("Writer {} added: {}", i, i * 10 + j);
-                thread::sleep(Duration::from_millis(50));
-            }
-        });
-        handles.push(handle);
-    }
-    
+
+    // Spawn a writer (will wait for readers to finish)
+    let data_clone = Arc::clone(&data);
+    let handle = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(50)); // Let readers start first
+        let mut write_guard = data_clone.write().unwrap();
+        write_guard.push(6);
+        println!("Writer: added element 6");
+    });
+    handles.push(handle);
+
     for handle in handles {
         handle.join().unwrap();
     }
-    
+
     println!("Final data: {:?}", *data.read().unwrap());
 }
 ```
 
-## Message Passing with Channels
+**When to use RwLock vs Mutex:**
+- **RwLock**: Read-heavy workloads (config, caches, lookups)
+- **Mutex**: Write-heavy or simple cases (counters, queues)
+- **Performance**: RwLock has higher overhead, only benefits with many readers
 
-Channels provide a safer alternative to shared state for many use cases:
+## Channels: Message Passing
+
+Channels enable communication between threads without shared state:
 
 ```rust
-use std::sync::mpsc;
+use std::sync::mpsc; // Multiple Producer, Single Consumer
 use std::thread;
 use std::time::Duration;
 
 fn basic_channel_example() {
     let (tx, rx) = mpsc::channel();
-    
-    // Spawn producer thread
+
+    // Spawn a producer thread
     thread::spawn(move || {
-        let messages = vec![
-            "Hello",
-            "from",
-            "the",
-            "producer",
-            "thread"
-        ];
-        
+        let messages = vec!["hello", "from", "the", "thread"];
+
         for msg in messages {
             tx.send(msg).unwrap();
             thread::sleep(Duration::from_millis(100));
         }
-        // tx is dropped here, which closes the channel
     });
-    
-    // Receive messages in main thread
+
+    // Main thread as consumer
     for received in rx {
         println!("Received: {}", received);
     }
 }
 
-// Multiple producer, single consumer
-fn mpsc_example() {
+// Multiple producers, single consumer
+fn multiple_producers() {
     let (tx, rx) = mpsc::channel();
-    
-    // Clone sender for multiple producers
+
     for i in 0..3 {
         let tx_clone = tx.clone();
         thread::spawn(move || {
-            for j in 0..5 {
-                let msg = format!("Message {}-{}", i, j);
-                tx_clone.send(msg).unwrap();
-                thread::sleep(Duration::from_millis(10));
-            }
+            tx_clone.send(format!("Message from thread {}", i)).unwrap();
         });
     }
-    
-    // Drop the original sender
-    drop(tx);
-    
-    // Collect all messages
-    let mut messages = Vec::new();
+
+    drop(tx); // Close the sending side
+
     for received in rx {
-        messages.push(received);
+        println!("Got: {}", received);
     }
-    
-    messages.sort(); // Messages may arrive out of order
-    println!("All messages: {:?}", messages);
 }
 
-// Synchronous channel for backpressure
-fn sync_channel_example() {
+// Bounded channels for backpressure
+fn bounded_channel_example() {
     let (tx, rx) = mpsc::sync_channel(2); // Buffer size of 2
-    
+
     thread::spawn(move || {
         for i in 0..5 {
             println!("Sending {}", i);
-            tx.send(i).unwrap(); // This will block when buffer is full
+            tx.send(i).unwrap(); // Will block when buffer is full
             println!("Sent {}", i);
         }
     });
-    
-    thread::sleep(Duration::from_secs(1));
-    
+
+    thread::sleep(Duration::from_secs(1)); // Let sender get ahead
+
     for received in rx {
         println!("Received: {}", received);
         thread::sleep(Duration::from_millis(500)); // Slow consumer
@@ -233,558 +265,279 @@ fn sync_channel_example() {
 }
 ```
 
-## Producer-Consumer Pattern
+**Channel Patterns:**
+- **Fan-out**: One producer, multiple consumers (need multiple channels)
+- **Fan-in**: Multiple producers, one consumer (mpsc)
+- **Pipeline**: Chain of processing stages
+- **Worker pool**: Fixed number of workers processing tasks
 
-A common concurrency pattern combining channels and shared state:
+## Real-World Concurrency Patterns
 
-```rust
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
-use std::time::Duration;
-
-#[derive(Debug, Clone)]
-struct WorkItem {
-    id: u32,
-    data: String,
-}
-
-#[derive(Debug)]
-struct WorkResult {
-    item_id: u32,
-    result: String,
-    processing_time_ms: u64,
-}
-
-fn producer_consumer_example() {
-    let (work_tx, work_rx) = mpsc::channel::<WorkItem>();
-    let (result_tx, result_rx) = mpsc::channel::<WorkResult>();
-    let work_rx = Arc::new(Mutex::new(work_rx));
-    
-    // Spawn multiple worker threads
-    let num_workers = 3;
-    for worker_id in 0..num_workers {
-        let work_rx_clone = Arc::clone(&work_rx);
-        let result_tx_clone = result_tx.clone();
-        
-        thread::spawn(move || {
-            loop {
-                let work_item = {
-                    let rx = work_rx_clone.lock().unwrap();
-                    rx.recv()
-                };
-                
-                match work_item {
-                    Ok(item) => {
-                        let start = std::time::Instant::now();
-                        
-                        // Simulate work
-                        let processed_data = item.data.to_uppercase();
-                        thread::sleep(Duration::from_millis(100 + (item.id % 3) * 50));
-                        
-                        let result = WorkResult {
-                            item_id: item.id,
-                            result: processed_data,
-                            processing_time_ms: start.elapsed().as_millis() as u64,
-                        };
-                        
-                        result_tx_clone.send(result).unwrap();
-                        println!("Worker {} processed item {}", worker_id, item.id);
-                    }
-                    Err(_) => {
-                        println!("Worker {} shutting down", worker_id);
-                        break;
-                    }
-                }
-            }
-        });
-    }
-    
-    // Producer thread
-    thread::spawn(move || {
-        for i in 0..10 {
-            let item = WorkItem {
-                id: i,
-                data: format!("task-{}", i),
-            };
-            work_tx.send(item).unwrap();
-            thread::sleep(Duration::from_millis(50));
-        }
-        // Channel closes when work_tx is dropped
-    });
-    
-    // Drop our copy of result_tx so the channel closes when workers are done
-    drop(result_tx);
-    
-    // Collect results
-    let mut results = Vec::new();
-    for result in result_rx {
-        results.push(result);
-    }
-    
-    results.sort_by_key(|r| r.item_id);
-    for result in results {
-        println!("Result: {:?}", result);
-    }
-}
-```
-
-## Deadlock Prevention
-
-Common strategies to avoid deadlocks:
-
-```rust
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
-
-// BAD: Potential deadlock
-fn deadlock_example() {
-    let resource1 = Arc::new(Mutex::new(1));
-    let resource2 = Arc::new(Mutex::new(2));
-    
-    let r1_clone = Arc::clone(&resource1);
-    let r2_clone = Arc::clone(&resource2);
-    
-    let handle1 = thread::spawn(move || {
-        let _guard1 = r1_clone.lock().unwrap();
-        thread::sleep(Duration::from_millis(10)); // Simulate work
-        let _guard2 = r2_clone.lock().unwrap(); // Potential deadlock here
-        println!("Thread 1 completed");
-    });
-    
-    let handle2 = thread::spawn(move || {
-        let _guard2 = resource2.lock().unwrap();
-        thread::sleep(Duration::from_millis(10)); // Simulate work
-        let _guard1 = resource1.lock().unwrap(); // Potential deadlock here
-        println!("Thread 2 completed");
-    });
-    
-    handle1.join().unwrap();
-    handle2.join().unwrap();
-}
-
-// GOOD: Ordered lock acquisition prevents deadlock
-fn deadlock_prevention() {
-    let resource1 = Arc::new(Mutex::new(1));
-    let resource2 = Arc::new(Mutex::new(2));
-    
-    let r1_clone = Arc::clone(&resource1);
-    let r2_clone = Arc::clone(&resource2);
-    
-    let handle1 = thread::spawn(move || {
-        // Always lock resource1 first, then resource2
-        let _guard1 = r1_clone.lock().unwrap();
-        thread::sleep(Duration::from_millis(10));
-        let _guard2 = r2_clone.lock().unwrap();
-        println!("Thread 1 completed safely");
-    });
-    
-    let handle2 = thread::spawn(move || {
-        // Same order: resource1 first, then resource2
-        let _guard1 = resource1.lock().unwrap();
-        thread::sleep(Duration::from_millis(10));
-        let _guard2 = resource2.lock().unwrap();
-        println!("Thread 2 completed safely");
-    });
-    
-    handle1.join().unwrap();
-    handle2.join().unwrap();
-}
-
-// Using try_lock to avoid blocking
-fn try_lock_pattern() {
-    let resource = Arc::new(Mutex::new(42));
-    let resource_clone = Arc::clone(&resource);
-    
-    thread::spawn(move || {
-        let _guard = resource_clone.lock().unwrap();
-        thread::sleep(Duration::from_millis(100)); // Hold lock for a while
-    });
-    
-    thread::sleep(Duration::from_millis(10)); // Let other thread acquire lock
-    
-    match resource.try_lock() {
-        Ok(guard) => println!("Got lock: {}", *guard),
-        Err(_) => println!("Lock is busy, doing something else instead"),
-    }
-}
-```
-
-## Data Parallelism with Rayon
-
-Rayon provides easy data parallelism without explicit thread management:
-
-```rust
-use rayon::prelude::*;
-
-fn rayon_examples() {
-    // Parallel iterator operations
-    let numbers: Vec<i32> = (0..1_000_000).collect();
-    
-    // Parallel map
-    let squares: Vec<i32> = numbers
-        .par_iter()
-        .map(|&x| x * x)
-        .collect();
-    
-    println!("First 10 squares: {:?}", &squares[..10]);
-    
-    // Parallel filtering and reduction
-    let sum_of_even_squares: i32 = numbers
-        .par_iter()
-        .filter(|&&x| x % 2 == 0)
-        .map(|&x| x * x)
-        .sum();
-    
-    println!("Sum of even squares: {}", sum_of_even_squares);
-    
-    // Parallel sorting
-    let mut data: Vec<i32> = (0..100_000).rev().collect();
-    data.par_sort_unstable();
-    println!("Data is sorted: {}", is_sorted(&data));
-}
-
-fn is_sorted<T: Ord>(slice: &[T]) -> bool {
-    slice.windows(2).all(|w| w[0] <= w[1])
-}
-
-// Custom parallel work
-fn parallel_file_processing() {
-    let filenames: Vec<String> = (0..100)
-        .map(|i| format!("file_{}.txt", i))
-        .collect();
-    
-    let results: Vec<_> = filenames
-        .par_iter()
-        .map(|filename| {
-            // Simulate file processing
-            let size = filename.len() * 1024; // Mock file size
-            (filename.clone(), size)
-        })
-        .collect();
-    
-    let total_size: usize = results.iter().map(|(_, size)| size).sum();
-    println!("Processed {} files, total size: {} bytes", results.len(), total_size);
-}
-
-// Parallel fold with custom operations
-fn parallel_fold_example() {
-    let numbers: Vec<f64> = (1..=1_000_000).map(|x| x as f64).collect();
-    
-    // Calculate mean using parallel fold
-    let (sum, count) = numbers
-        .par_iter()
-        .fold(|| (0.0, 0), |acc, &x| (acc.0 + x, acc.1 + 1))
-        .reduce(|| (0.0, 0), |a, b| (a.0 + b.0, a.1 + b.1));
-    
-    let mean = sum / count as f64;
-    println!("Mean: {}", mean);
-    
-    // Calculate standard deviation
-    let variance = numbers
-        .par_iter()
-        .map(|&x| (x - mean).powi(2))
-        .sum::<f64>() / count as f64;
-    
-    println!("Standard deviation: {}", variance.sqrt());
-}
-```
-
-## Common Pitfalls and Solutions
-
-### 1. Mutex Poisoning
-
-```rust
-use std::sync::{Arc, Mutex};
-use std::thread;
-
-fn handle_poisoned_mutex() {
-    let data = Arc::new(Mutex::new(vec![1, 2, 3]));
-    let data_clone = Arc::clone(&data);
-    
-    // Thread that panics while holding the mutex
-    let handle = thread::spawn(move || {
-        let mut guard = data_clone.lock().unwrap();
-        guard.push(4);
-        panic!("Simulated panic!"); // This poisons the mutex
-    });
-    
-    // This will fail
-    let _ = handle.join();
-    
-    // Handle poisoned mutex properly
-    match data.lock() {
-        Ok(guard) => println!("Data: {:?}", *guard),
-        Err(poisoned) => {
-            println!("Mutex was poisoned, but we can recover the data");
-            let guard = poisoned.into_inner();
-            println!("Recovered data: {:?}", *guard);
-        }
-    }
-}
-```
-
-### 2. Avoiding Arc<Mutex<T>> When Possible
-
-```rust
-use std::sync::mpsc;
-use std::thread;
-
-// Instead of shared mutable state, use message passing
-fn prefer_message_passing() {
-    let (tx, rx) = mpsc::channel();
-    
-    // Spawn data processor thread
-    thread::spawn(move || {
-        let mut data = vec![1, 2, 3];
-        
-        for command in rx {
-            match command {
-                Command::Add(value) => data.push(value),
-                Command::Get(response_tx) => {
-                    response_tx.send(data.clone()).unwrap();
-                }
-                Command::Stop => break,
-            }
-        }
-    });
-    
-    // Use the data processor
-    tx.send(Command::Add(4)).unwrap();
-    tx.send(Command::Add(5)).unwrap();
-    
-    let (response_tx, response_rx) = mpsc::channel();
-    tx.send(Command::Get(response_tx)).unwrap();
-    let data = response_rx.recv().unwrap();
-    
-    println!("Data: {:?}", data);
-    tx.send(Command::Stop).unwrap();
-}
-
-#[derive(Debug)]
-enum Command {
-    Add(i32),
-    Get(mpsc::Sender<Vec<i32>>),
-    Stop,
-}
-```
-
-## Exercises
-
-### Exercise 1: Thread Pool Implementation
-
-Create a simple thread pool that can execute closures:
+### Worker Pool Pattern
 
 ```rust
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
-struct ThreadPool {
-    workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
-}
-
-type Job = Box<dyn FnOnce() + Send + 'static>;
-
-impl ThreadPool {
-    pub fn new(size: usize) -> ThreadPool {
-        // TODO: Implement thread pool creation
-        unimplemented!()
-    }
-    
-    pub fn execute<F>(&self, f: F)
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        // TODO: Send job to worker thread
-        unimplemented!()
-    }
-}
-
-struct Worker {
+struct Task {
     id: usize,
-    thread: thread::JoinHandle<()>,
+    data: String,
 }
 
-impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
-        // TODO: Create worker that processes jobs from receiver
-        unimplemented!()
-    }
-}
-
-// Test your implementation
-fn test_thread_pool() {
-    let pool = ThreadPool::new(4);
-    
-    for i in 0..8 {
-        pool.execute(move || {
-            println!("Executing task {}", i);
-            thread::sleep(Duration::from_millis(100));
-        });
-    }
-    
-    thread::sleep(Duration::from_secs(1));
-}
-```
-
-### Exercise 2: Concurrent Cache
-
-Implement a thread-safe cache with expiration:
-
-```rust
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
-
-struct CacheEntry<T> {
-    value: T,
-    expires_at: Instant,
-}
-
-struct Cache<K, V> {
-    data: Arc<RwLock<HashMap<K, CacheEntry<V>>>>,
-    default_ttl: Duration,
-}
-
-impl<K, V> Cache<K, V>
-where
-    K: Clone + Eq + std::hash::Hash,
-    V: Clone,
-{
-    pub fn new(default_ttl: Duration) -> Self {
-        // TODO: Implement cache creation
-        unimplemented!()
-    }
-    
-    pub fn get(&self, key: &K) -> Option<V> {
-        // TODO: Get value if not expired, clean up expired entries
-        unimplemented!()
-    }
-    
-    pub fn set(&self, key: K, value: V) {
-        // TODO: Insert value with expiration time
-        unimplemented!()
-    }
-    
-    pub fn set_with_ttl(&self, key: K, value: V, ttl: Duration) {
-        // TODO: Insert value with custom TTL
-        unimplemented!()
-    }
-    
-    pub fn cleanup_expired(&self) {
-        // TODO: Remove all expired entries
-        unimplemented!()
+impl Task {
+    fn process(&self) -> String {
+        // Simulate work
+        thread::sleep(std::time::Duration::from_millis(100));
+        format!("Processed task {}: {}", self.id, self.data)
     }
 }
 
-// Test concurrent access
-fn test_concurrent_cache() {
-    let cache = Arc::new(Cache::new(Duration::from_millis(100)));
-    let mut handles = vec![];
-    
-    // Writer threads
-    for i in 0..5 {
-        let cache_clone = Arc::clone(&cache);
-        let handle = thread::spawn(move || {
-            for j in 0..10 {
-                cache_clone.set(format!("key-{}-{}", i, j), j);
-                thread::sleep(Duration::from_millis(10));
-            }
-        });
-        handles.push(handle);
-    }
-    
-    // Reader threads
-    for i in 0..3 {
-        let cache_clone = Arc::clone(&cache);
-        let handle = thread::spawn(move || {
-            for j in 0..20 {
-                if let Some(value) = cache_clone.get(&format!("key-0-{}", j % 10)) {
-                    println!("Reader {} got value: {}", i, value);
+struct WorkerPool {
+    workers: Vec<thread::JoinHandle<()>>,
+    sender: mpsc::Sender<Task>,
+}
+
+impl WorkerPool {
+    fn new(size: usize) -> Self {
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let mut workers = Vec::with_capacity(size);
+
+        for id in 0..size {
+            let receiver_clone = Arc::clone(&receiver);
+            let worker = thread::spawn(move || {
+                loop {
+                    let task = {
+                        let receiver = receiver_clone.lock().unwrap();
+                        receiver.recv()
+                    };
+
+                    match task {
+                        Ok(task) => {
+                            println!("Worker {}: {}", id, task.process());
+                        }
+                        Err(_) => {
+                            println!("Worker {} shutting down", id);
+                            break;
+                        }
+                    }
                 }
-                thread::sleep(Duration::from_millis(5));
-            }
+            });
+
+            workers.push(worker);
+        }
+
+        WorkerPool { workers, sender }
+    }
+
+    fn execute(&self, task: Task) {
+        self.sender.send(task).unwrap();
+    }
+
+    fn shutdown(self) {
+        drop(self.sender); // Close channel
+
+        for worker in self.workers {
+            worker.join().unwrap();
+        }
+    }
+}
+
+fn worker_pool_example() {
+    let pool = WorkerPool::new(3);
+
+    for i in 0..10 {
+        pool.execute(Task {
+            id: i,
+            data: format!("task-data-{}", i),
         });
-        handles.push(handle);
     }
-    
-    for handle in handles {
-        handle.join().unwrap();
-    }
+
+    pool.shutdown();
 }
 ```
 
-### Exercise 3: Pipeline Processing
+## Embedded Concurrency Considerations
 
-Create a multi-stage processing pipeline using channels:
+When targeting embedded systems, concurrency has different constraints:
+
+### Interrupt Safety and Critical Sections
 
 ```rust
-use std::sync::mpsc;
-use std::thread;
+// On embedded systems (no_std), you often need interrupt-safe primitives
+// This is pseudo-code showing the concept
 
-#[derive(Debug, Clone)]
-struct DataItem {
-    id: u32,
-    content: String,
-}
+#[cfg(feature = "embedded")]
+mod embedded_concurrency {
+    use cortex_m::interrupt;
+    use heapless::spsc; // Single producer, single consumer queue
 
-// Create a processing pipeline: Input -> Transform -> Filter -> Output
-fn create_processing_pipeline() {
-    let (input_tx, input_rx) = mpsc::channel();
-    let (transform_tx, transform_rx) = mpsc::channel();
-    let (filter_tx, filter_rx) = mpsc::channel();
-    let (output_tx, output_rx) = mpsc::channel();
-    
-    // Stage 1: Transform (uppercase content)
-    thread::spawn(move || {
-        for item in input_rx {
-            let transformed = DataItem {
-                id: item.id,
-                content: item.content.to_uppercase(),
-            };
-            transform_tx.send(transformed).unwrap();
-        }
-    });
-    
-    // Stage 2: Filter (only items with even IDs)
-    thread::spawn(move || {
-        // TODO: Implement filter stage
-        unimplemented!()
-    });
-    
-    // Stage 3: Output processing
-    thread::spawn(move || {
-        // TODO: Process filtered items
-        unimplemented!()
-    });
-    
-    // Generate input data
-    for i in 0..20 {
-        let item = DataItem {
-            id: i,
-            content: format!("item-{}", i),
-        };
-        input_tx.send(item).unwrap();
+    static mut SENSOR_DATA: Option<f32> = None;
+
+    // Interrupt service routine
+    fn sensor_interrupt() {
+        // Critical section - interrupts disabled
+        interrupt::free(|_| {
+            unsafe {
+                SENSOR_DATA = Some(read_sensor_register());
+            }
+        });
     }
-    drop(input_tx);
-    
-    // Collect results
-    for result in output_rx {
-        println!("Final result: {:?}", result);
+
+    // Main thread
+    pub fn get_sensor_data() -> Option<f32> {
+        interrupt::free(|_| unsafe {
+            SENSOR_DATA.take()
+        })
+    }
+
+    fn read_sensor_register() -> f32 {
+        // Hardware register access
+        25.0
     }
 }
 ```
+
+### Embassy Async Model (Preview)
+
+Embassy provides cooperative async concurrency for embedded:
+
+```rust
+// This is what we'll cover in Chapter 15
+#[cfg(feature = "preview")]
+mod embassy_preview {
+    // Embassy tasks run cooperatively
+    // - Single stack (memory efficient)
+    // - Interrupt-driven wakeups
+    // - Zero-cost async for embedded
+
+    // We'll learn this in detail in the next chapter!
+}
+```
+
+## Exercise: Build Thread-Safe Temperature Storage
+
+Now it's time to build the second increment of our capstone project!
+
+### Your Task: Complete temp_store
+
+Building on the `temp_core` from Chapter 13, create a thread-safe temperature storage system.
+
+1. **Create the temp_store crate** (if following along):
+   ```bash
+   cargo new temp_store --lib
+   # Add temp_core as dependency
+   ```
+
+2. **Implement `TemperatureReading`**:
+   ```rust
+   pub struct TemperatureReading {
+       pub temperature: Temperature,
+       pub timestamp: u64, // Unix timestamp
+   }
+   ```
+
+3. **Create thread-safe `TemperatureStore`**:
+   - Use `Arc<Mutex<Vec<TemperatureReading>>>` for storage
+   - Implement circular buffer (fixed capacity, removes oldest when full)
+   - Methods needed:
+     - `new(capacity: usize) -> Self`
+     - `add_reading(&self, reading: TemperatureReading)`
+     - `get_latest(&self) -> Option<TemperatureReading>`
+     - `get_all(&self) -> Vec<TemperatureReading>`
+     - `calculate_stats(&self) -> Option<TemperatureStats>`
+     - `clear(&self)`
+     - `clone_handle(&self) -> Self` (for sharing between threads)
+
+4. **Implement `TemperatureStats`**:
+   ```rust
+   pub struct TemperatureStats {
+       pub min: Temperature,
+       pub max: Temperature,
+       pub average: Temperature,
+       pub count: usize,
+   }
+   ```
+
+5. **Write comprehensive tests**:
+   - Basic storage operations
+   - Circular buffer behavior
+   - Statistics calculation
+   - **Thread safety**: Multiple threads reading/writing concurrently
+   - Edge cases (empty store, single reading, etc.)
+
+### Extension Challenges
+
+1. **Performance Optimization**:
+   - Use `RwLock` instead of `Mutex` for read-heavy patterns
+   - Benchmark the difference
+
+2. **Advanced Statistics**:
+   - Add standard deviation calculation
+   - Add temperature trend detection (rising/falling)
+
+3. **Configurable Storage**:
+   - Support different storage strategies (circular vs growing)
+   - Add memory usage monitoring
+
+4. **Real-world Simulation**:
+   - Create multiple "sensor" threads adding readings
+   - Create "monitor" threads calculating stats
+   - Demonstrate no data races or corruption
+
+### Success Criteria
+
+- All tests pass: `cargo test -p temp_store`
+- No warnings: `cargo clippy`
+- Thread safety test demonstrates concurrent access
+- Statistics are calculated correctly
+- Circular buffer maintains size limit
+- Code is well-documented and follows Rust conventions
+
+### Integration with Previous Work
+
+Your `TemperatureStore` should work seamlessly with the `Temperature` and `TemperatureSensor` traits from Chapter 13:
+
+```rust
+// Example usage combining both increments
+fn integrate_with_sensors() {
+    let store = TemperatureStore::new(100);
+    let mut sensor = MockTemperatureSensor::new("test".to_string(), 25.0);
+
+    // Simulate readings from sensor
+    for _ in 0..10 {
+        match sensor.read_temperature() {
+            Ok(temp) => {
+                let reading = TemperatureReading::new(temp);
+                store.add_reading(reading);
+            }
+            Err(e) => eprintln!("Sensor error: {:?}", e),
+        }
+    }
+
+    if let Some(stats) = store.calculate_stats() {
+        println!("Temperature stats: min={}, max={}, avg={}",
+                 stats.min, stats.max, stats.average);
+    }
+}
+```
+
+This foundation will be essential when we add async programming in Chapter 15!
 
 ## Key Takeaways
 
-1. **Thread Safety is Guaranteed**: Rust's `Send` and `Sync` traits ensure thread safety at compile time
-2. **Choose the Right Pattern**: Use `Arc<Mutex<T>>` for shared state, channels for message passing
-3. **RwLock for Read-Heavy Workloads**: `Arc<RwLock<T>>` allows multiple concurrent readers
-4. **Prevent Deadlocks**: Use consistent lock ordering and consider `try_lock()` for non-blocking attempts
-5. **Rayon for Data Parallelism**: Easy parallel processing of collections with minimal code changes
-6. **Handle Poisoned Mutexes**: Always handle the case where a thread panics while holding a mutex
-7. **Prefer Message Passing**: Often cleaner and safer than shared mutable state
-8. **Performance Considerations**: Measure before optimizing; sometimes single-threaded code is faster
+✅ **Arc enables safe sharing**: Multiple owners of immutable data
 
-**Next**: In Chapter 14, we'll explore async programming, which provides concurrency without the overhead of OS threads.
+✅ **Mutex provides thread-safe mutation**: Interior mutability with locking
+
+✅ **RwLock optimizes for readers**: Multiple readers, single writer
+
+✅ **Channels enable message passing**: Avoid shared state complexity
+
+✅ **Worker pools scale processing**: Fixed threads, dynamic work
+
+✅ **Critical sections for embedded**: Interrupt-safe operations
+
+✅ **Choose the right tool**: Arc+Mutex, RwLock, channels, or async
+
+Understanding these concurrency primitives prepares you for async programming, which we'll explore in Chapter 15!
