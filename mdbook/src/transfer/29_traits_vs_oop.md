@@ -1,4 +1,4 @@
-# Chapter 23: Serde Deep Dive - From Reflection to Compile-Time Codegen
+# Chapter 23: Traits vs OOP - From Inheritance to Composition
 ## Mastering Zero-Cost Serialization with Trait-Based Design
 
 ### Serialization Paradigm Comparison
@@ -431,4 +431,6 @@ impl Add<f64> for Point {
 
 This leads to more flexible, composable, and maintainable designs.
 
-**Next Up:** Understanding Rust's workflow and how the compiler becomes your pair programming partner.
+---
+
+Next: [Chapter 32: Idiomatic Rust Patterns for Production Systems](./32_idiomatic_patterns.md)

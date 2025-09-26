@@ -17,8 +17,6 @@
 - [Generics & Type Safety](./day2/08_generics.md)
 - [Enums & Pattern Matching](./day2/09_pattern_matching.md)
 - [Error Handling Deep Dive](./day2/10_error_handling.md)
-- [Iterators & Functional Programming](./day2/11_iterators.md)
-- [Modules & Visibility](./day2/12_modules_visibility.md)
 
 # Day 3: Embedded Systems Programming with ESP32-C3
 
@@ -30,13 +28,14 @@
 - [Build, Package & Deploy](./day3/18_build_deploy.md)
 - [Final Integration - Complete Temperature Monitoring System](./day3/19_capstone.md)
 
-# Transfer Day: C++/.NET to Rust with Serde & Axum
+# Day 4: Enterprise Transition - From C++/.NET to Production Rust
 
-- [Memory Management & Serialization Paradigm Shift](./transfer/20_memory_paradigm.md)
-- [Null Safety & Error Handling](./transfer/21_null_safety.md)
-- [Type System Differences](./transfer/22_type_differences.md)
-- [Serde Deep Dive - From Reflection to Compile-Time Codegen](./transfer/23_traits_vs_oop.md)
-- [Axum Web Services - From ASP.NET to Type-Safe APIs](./transfer/24_workflow.md)
-- [Unsafe Rust & Hardware Register Access](./transfer/25_unsafe_ffi.md)
-- [Real-Time Performance & Embedded Optimization](./transfer/26_performance.md)
-- [Embedded Rust Patterns & IoT Integration](./transfer/27_idiomatic_patterns.md)
+- [Iterators & Functional Programming](./transfer/22_iterators.md)
+- [Macros & Code Generation](./transfer/23_macros.md)
+- [Unsafe Rust & FFI with Bindgen](./transfer/24_unsafe_ffi.md)
+- [Embedded HAL - Registers, SVD2Rust & Volatile Access](./transfer/25_embedded_hal.md)
+- [Memory Management Paradigm Shift](./transfer/26_memory_paradigm.md)
+- [Null Safety & Error Handling](./transfer/27_null_safety.md)
+- [Type System Differences](./transfer/28_type_differences.md)
+- [Traits vs OOP - From Inheritance to Composition](./transfer/29_traits_vs_oop.md)
+- [Idiomatic Rust Patterns for Production Systems](./transfer/32_idiomatic_patterns.md)

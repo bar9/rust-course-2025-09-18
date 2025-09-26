@@ -528,4 +528,4 @@ class TimerEvent : public Event { };
 
 ---
 
-Next: [Chapter 23: Traits vs OOP](./23_traits_vs_oop.md)
+Next: [Chapter 29: Traits vs OOP](./29_traits_vs_oop.md)

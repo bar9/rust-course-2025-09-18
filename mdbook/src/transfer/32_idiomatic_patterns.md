@@ -1,4 +1,4 @@
-# Chapter 27: Idiomatic Rust Patterns
+# Chapter 27: Idiomatic Rust Patterns for Production Systems
 
 ## Learning Objectives
 - Master idiomatic Rust patterns and conventions

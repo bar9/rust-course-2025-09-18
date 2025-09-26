@@ -324,4 +324,6 @@ fn size_comparison() {
 
 **The Result:** Code that simply cannot have null pointer exceptions. The compiler won't let you forget to handle the None case, making your programs fundamentally more reliable.
 
-**Next Up:** Understanding Rust's type system differences and why there are no implicit conversions.
+---
+
+Next: [Chapter 28: Type System Differences](./28_type_differences.md)
